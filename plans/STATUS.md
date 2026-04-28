@@ -146,7 +146,7 @@ One row per sub-plan. Columns:
 | [11.4](11.4-science-bot.md) | done | claude | plan/11.4 | 2026-04-28 | 05, 11.2 | Done. Greedy contribute + complete with per-round cap. |
 | [11.5](11.5-domestic-bot.md) | done | claude | plan/11.5 | 2026-04-28 | 06, 11.2 | Done. Buys cheapest at best-adjacency cell + produce. |
 | [11.6](11.6-foreign-bot.md) | done | claude | plan/11.6 | 2026-04-28 | 07, 11.2 | Done. Upkeep + recruit + flip-when-resolver-predicts-win. |
-| [11.7](11.7-solo-mode.md) | pending |  |  |  | 10.3, 10.6, 11.3, 11.4, 11.5, 11.6 | Touches `src/lobby/`, `src/App.tsx`. |
+| [11.7](11.7-solo-mode.md) | done | claude | plan/11.7 | 2026-04-28 | 10.3, 10.6, 11.3, 11.4, 11.5, 11.6 | Done. buildBotMap + CreateMatchForm with solo toggle; net wiring it.todo. |
 
 ## 12 — Testing & debugging
 

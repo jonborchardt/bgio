@@ -21,16 +21,16 @@ import {
   Box,
   Button,
   CircularProgress,
-  MenuItem,
   Paper,
-  Select,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
 import { lobby } from './lobbyClient.ts';
+import type { SettlementSetupData } from './lobbyClient.ts';
 import { SeatPicker } from './SeatPicker.tsx';
 import { AuthForms } from './AuthForms.tsx';
+import { CreateMatchForm, type CreateMatchConfig } from './CreateMatchForm.tsx';
 
 /** localStorage key for the persisted auth token + minimal user blob.
  * 10.7 puts the token in its own slot rather than co-mingling with the
@@ -106,7 +106,6 @@ export function LobbyShell({
     () => loadAuth()?.user.username ?? defaultPlayerName,
   );
   const [selected, setSelected] = useState<string | null>(null);
-  const [numPlayers, setNumPlayers] = useState<1 | 2 | 3 | 4>(4);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -134,16 +133,28 @@ export function LobbyShell({
     if (auth) void refresh();
   }, [auth, refresh]);
 
-  const onCreate = useCallback(async () => {
-    setError(null);
-    try {
-      const created = await lobby.createMatch('settlement', { numPlayers });
-      setSelected(created.matchID);
-      await refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
-  }, [numPlayers, refresh]);
+  const onCreate = useCallback(
+    async (cfg: CreateMatchConfig) => {
+      setError(null);
+      try {
+        // Solo matches stash `soloMode` + `humanRole` in `setupData` so the
+        // server (10.9 idle-bot-takeover hook + 11.7 `buildBotMap`) can spin
+        // the per-seat composed bots once the game starts.
+        const setupData: SettlementSetupData | undefined = cfg.soloMode
+          ? { soloMode: true, humanRole: cfg.humanRole }
+          : undefined;
+        const created = await lobby.createMatch('settlement', {
+          numPlayers: cfg.numPlayers,
+          ...(setupData ? { setupData } : {}),
+        });
+        setSelected(created.matchID);
+        await refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    },
+    [refresh],
+  );
 
   const onJoin = useCallback(
     async (seatID: string) => {
@@ -222,29 +233,19 @@ export function LobbyShell({
         Settlement — Lobby
       </Typography>
 
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{ alignItems: 'center', flexWrap: 'wrap' }}
+      >
         <TextField
           size="small"
           label="Player name"
           value={playerName}
           onChange={(e) => setPlayerName(e.target.value)}
-          sx={{ flex: 1 }}
+          sx={{ flex: 1, minWidth: '8rem' }}
         />
-        <Select
-          size="small"
-          value={numPlayers}
-          onChange={(e) => setNumPlayers(Number(e.target.value) as 1 | 2 | 3 | 4)}
-          aria-label="Number of players for new match"
-        >
-          {[1, 2, 3, 4].map((n) => (
-            <MenuItem key={n} value={n}>
-              {n}p
-            </MenuItem>
-          ))}
-        </Select>
-        <Button variant="contained" onClick={onCreate}>
-          Create Match
-        </Button>
+        <CreateMatchForm onCreate={onCreate} />
         <Button onClick={refresh} variant="outlined">
           Refresh
         </Button>

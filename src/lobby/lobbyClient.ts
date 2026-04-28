@@ -9,7 +9,7 @@
 // same endpoints.
 
 import { LobbyClient } from 'boardgame.io/client';
-import type { ResourceBag } from '../game/index.ts';
+import type { ResourceBag, Role } from '../game/index.ts';
 import { getServerURL } from '../clientMode.ts';
 
 /** Match-creation payload that rides on `lobbyClient.createMatch(..., { setupData })`.
@@ -21,8 +21,14 @@ import { getServerURL } from '../clientMode.ts';
 export interface SettlementSetupData {
   /** Round cap before time-up triggers (08.5). Engine default = 80. */
   turnCap?: number;
-  /** When true, force a 1-player lobby + assignRoles(1) layout (11.7). */
+  /** When true, the match is solo — server-side runBot workers (10.9) drive
+   * every non-human seat using `buildBotMap({ numPlayers, humanRole })`
+   * from `src/lobby/soloConfig.ts`. */
   soloMode?: boolean;
+  /** Required when `soloMode === true`: which role the human plays. The
+   * seat that owns this role becomes the human seat; every other seat is
+   * driven by a composed bot covering its assigned roles. */
+  humanRole?: Role;
   /** Per-match override on the bank's starting fill. Partial = merge over default. */
   startingBank?: Partial<ResourceBag>;
 }
