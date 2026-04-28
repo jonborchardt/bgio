@@ -21,6 +21,28 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      // All randomness must flow through bgio's random plugin (see
+      // src/game/random.ts) so two clients started with the same `seed`
+      // produce identical state. A stray `Math.random()` in src/ defeats
+      // determinism silently, so we forbid it at the linter.
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'Math',
+          property: 'random',
+          message: 'Use the bgio random plugin (src/game/random.ts).',
+        },
+      ],
+    },
+  },
+  {
+    // Tests are allowed to use Math.random for fixture-style data that
+    // doesn't feed into the deterministic game state. None do today, but
+    // pinning the carve-out here keeps the rule's intent (ban in src/)
+    // explicit.
+    files: ['tests/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-properties': 'off',
     },
   },
 );
