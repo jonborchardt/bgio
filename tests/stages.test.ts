@@ -94,6 +94,7 @@ describe('enterEventStage / exitEventStage (02.2)', () => {
     roleAssignments: { '0': ['chief'], '1': ['science'] },
     round: 0,
     hands: { '0': {}, '1': {} },
+    wallets: { '1': { ...EMPTY_BAG } },
     _stageStack: {},
   });
 

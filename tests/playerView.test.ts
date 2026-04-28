@@ -27,6 +27,7 @@ const buildState = (): SettlementState => {
     centerMat: { circles: {}, tradeRequest: null },
     roleAssignments,
     round: 1,
+    wallets: {},
     hands: {
       // Seat 0 holds chief + science — public roles, nothing to redact here.
       // We still give it a placeholder shape to confirm public seats stay
@@ -155,6 +156,7 @@ describe('playerView', () => {
       roleAssignments: assignRoles(2),
       round: 0,
       hands: { '0': {}, '1': {} },
+      wallets: {},
     };
     const view = playerView(G, fakeCtx, '0');
     expect(view.hands['0']).toEqual({});

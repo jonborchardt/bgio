@@ -46,6 +46,7 @@ describe('bank', () => {
         roleAssignments: {},
         round: 0,
         hands: {},
+        wallets: {},
       };
 
       const before = totalResources(G);

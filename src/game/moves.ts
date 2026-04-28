@@ -6,10 +6,16 @@
 
 import type { Move } from 'boardgame.io';
 import type { PlayerID, SettlementState } from './types.ts';
+import { pullFromMat } from './resources/moves.ts';
 
 export const pass: Move<SettlementState> = () => {
   // intentional no-op — bgio advances the turn after the move resolves.
 };
+
+// Re-export resource moves from the canonical moves barrel so `index.ts`
+// only has to know about this one file. Stage/phase gating for `pullFromMat`
+// happens at the bgio config layer (see plan 02.x), not here.
+export { pullFromMat };
 
 // ---------------------------------------------------------------------------
 // Test-only scaffolding.

@@ -156,12 +156,17 @@ describe('round-end sweep hook (mat:sweep-leftovers)', () => {
     const roleAssignments = assignRoles(4);
     const hands: Record<string, unknown> = {};
     for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
+    const wallets: Record<string, ReturnType<typeof bagOf>> = {};
+    for (const [seat, roles] of Object.entries(roleAssignments)) {
+      if (!roles.includes('chief')) wallets[seat] = bagOf({});
+    }
     return {
       bank: initialBank(),
       centerMat: initialMat(roleAssignments),
       roleAssignments,
       round: 0,
       hands,
+      wallets,
       phaseDone: false,
       othersDone: {},
       _stageStack: {},

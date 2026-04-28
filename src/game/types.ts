@@ -25,6 +25,14 @@ export interface SettlementState {
   // Decks belong to whoever owns them and live under those players' hands.
   hands: Record<PlayerID, unknown>;
 
+  // Per-seat resource wallet — the buffer between "I pulled tokens from my
+  // mat circle" and "I spent them on a card / unit / tech". Populated for
+  // every non-chief seat by `setup` (chief acts on the bank directly and
+  // never owns a wallet). The map intentionally omits the chief seat so any
+  // accidental `wallets[chiefSeat]` lookup surfaces as `undefined` rather
+  // than silently spending from a phantom bag.
+  wallets: Record<PlayerID, ResourceBag>;
+
   // Phase-progress flags consumed by 02.1's phase `endIf` checks. The real
   // moves that flip these land in 04.2 (chiefEndPhase) and the others-phase
   // role stubs; the optionality keeps existing tests/setups source-compatible.

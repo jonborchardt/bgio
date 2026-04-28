@@ -21,12 +21,21 @@ export const seedAfterChiefDistribution = (
     hands[seat] = {};
   }
 
+  // Wallets default to one empty bag per non-chief seat — matches `setup`
+  // (chief has no wallet entry). Tests that need pre-credited wallets pass
+  // a `wallets` slice via `partial`.
+  const wallets: Record<string, ReturnType<typeof freshBag>> = {};
+  for (const [seat, roles] of Object.entries(roleAssignments)) {
+    if (!roles.includes('chief')) wallets[seat] = freshBag();
+  }
+
   const base: SettlementState = {
     bank: freshBag(), // bank fully distributed → empty
     centerMat: { circles: {}, tradeRequest: null }, // empty mat — tests that need circles set them via partial
     roleAssignments,
     round: 1, // post-distribution → past round 0 setup
     hands,
+    wallets,
   };
 
   if (partial === undefined) return base;

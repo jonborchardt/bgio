@@ -22,6 +22,7 @@ const makeStubG = (): SettlementState => ({
   roleAssignments: { '0': ['chief'], '1': ['science'] },
   round: 0,
   hands: { '0': {}, '1': {} },
+  wallets: { '1': { ...EMPTY_BAG } },
 });
 
 // Minimal Ctx stub. The hooks under test never read these fields; they

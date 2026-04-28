@@ -7,9 +7,10 @@
 // non-chief seat and an empty trade-request slot.
 
 import type { Ctx } from 'boardgame.io';
-import type { PlayerID, SettlementState } from './types.ts';
+import type { PlayerID, ResourceBag, SettlementState } from './types.ts';
 import { assignRoles } from './roles.ts';
 import { initialBank } from './resources/bank.ts';
+import { bagOf } from './resources/bag.ts';
 import { initialMat } from './resources/centerMat.ts';
 
 export const setup = ({ ctx }: { ctx: Ctx }): SettlementState => {
@@ -21,12 +22,22 @@ export const setup = ({ ctx }: { ctx: Ctx }): SettlementState => {
     hands[seat] = {};
   }
 
+  // Per-seat wallets for every non-chief seat. The chief acts on the bank
+  // directly and is intentionally absent from the map (see types.ts).
+  const wallets: Record<PlayerID, ResourceBag> = {};
+  for (const [seat, roles] of Object.entries(roleAssignments)) {
+    if (!roles.includes('chief')) {
+      wallets[seat] = bagOf({});
+    }
+  }
+
   return {
     bank: initialBank(),
     centerMat: initialMat(roleAssignments),
     roleAssignments,
     round: 0,
     hands,
+    wallets,
     // Phase-progress flags — flipped by 04.2's chiefEndPhase move and the
     // others-phase role stubs. Reset at the top of every `endOfRound` phase.
     phaseDone: false,
