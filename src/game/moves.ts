@@ -10,6 +10,7 @@ import { pullFromMat } from './resources/moves.ts';
 import { chiefDistribute } from './roles/chief/distribute.ts';
 import { chiefEndPhase } from './roles/chief/endPhase.ts';
 import { chiefPlaceWorker } from './roles/chief/workerPlacement.ts';
+import { chiefPlayGoldEvent } from './roles/chief/playGoldEvent.ts';
 
 export const pass: Move<SettlementState> = () => {
   // intentional no-op — bgio advances the turn after the move resolves.
@@ -20,12 +21,18 @@ export const pass: Move<SettlementState> = () => {
 // happens at the bgio config layer (see plan 02.x), not here.
 export { pullFromMat };
 
-// Chief role moves (04.1, 04.2, 04.3). Phase gating is enforced inside each
-// move against `ctx.phase === 'chiefPhase'`, so the bgio-level stage/phase
-// config only has to authorize the chief seat in chiefPhase.
-// `chiefPlaceWorker` is a STUB gated behind G._features.workersEnabled
-// until 06 (Domestic) lands the real grid (see its module-level docs).
-export { chiefDistribute, chiefEndPhase, chiefPlaceWorker };
+// Chief role moves (04.1, 04.2, 04.3, 04.4). Phase gating is enforced
+// inside each move against `ctx.phase === 'chiefPhase'`, so the bgio-level
+// stage/phase config only has to authorize the chief seat in chiefPhase.
+// `chiefPlaceWorker` and `chiefPlayGoldEvent` are STUBS gated behind
+// feature flags / 08-dependency checks until the corresponding slices land
+// (see their module-level docs for details).
+export {
+  chiefDistribute,
+  chiefEndPhase,
+  chiefPlaceWorker,
+  chiefPlayGoldEvent,
+};
 
 // ---------------------------------------------------------------------------
 // Test-only scaffolding.

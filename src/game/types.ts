@@ -86,6 +86,17 @@ export interface SettlementState {
     workersEnabled?: boolean;
   };
 
+  // Per-round "the seat that holds <role> already played their event card"
+  // ledger. Filled in by 04.4 / 05.4 / 06.6 / 07.6 stubs and the 08.2
+  // dispatcher. Cleared by an 08.x round-end hook. Optional so tests /
+  // fixtures that don't exercise events don't need to seed it.
+  _eventPlayedThisRound?: {
+    chief?: boolean;
+    science?: boolean;
+    domestic?: boolean;
+    foreign?: boolean;
+  };
+
   // Chief-role-specific runtime state — worker token reserve, etc. Filled
   // out incrementally as chief features land (04.3 introduces `workers`).
   // Optional so existing tests / fixtures stay clean.

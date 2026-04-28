@@ -10,6 +10,7 @@ import {
   chiefDistribute,
   chiefEndPhase,
   chiefPlaceWorker,
+  chiefPlayGoldEvent,
   __testSetPhaseDone,
   __testSetOthersDone,
 } from './moves.ts';
@@ -38,6 +39,7 @@ export const Settlement: Game<SettlementState> = {
     chiefDistribute,
     chiefEndPhase,
     chiefPlaceWorker,
+    chiefPlayGoldEvent,
     __testSetPhaseDone,
     __testSetOthersDone,
   },
