@@ -6,13 +6,17 @@ import type { ResourceBag } from './resources/types.ts';
 // `PlayerID` / `Role` back from this file, but because both edges are
 // `import type`-only there is no runtime cycle — TypeScript erases them.
 import type { CenterMat } from './resources/centerMat.ts';
+// Same trick for the Science role state — type-only edge so there is no
+// runtime cycle with `./roles/science/setup.ts`, which imports `RandomAPI`
+// and `registerRoundEndHook` back from this package.
+import type { ScienceState } from './roles/science/setup.ts';
 
 export type Role = 'chief' | 'science' | 'domestic' | 'foreign';
 
 // boardgame.io identifies seats as string indices: '0', '1', '2', '3'.
 export type PlayerID = string;
 
-export type { ResourceBag, CenterMat };
+export type { ResourceBag, CenterMat, ScienceState };
 
 export interface SettlementState {
   // Public, shared state.
@@ -45,4 +49,11 @@ export interface SettlementState {
   // `./phases/stages.ts`; the runtime helpers in that file own the
   // narrower `StageName` subtype.
   _stageStack?: Record<PlayerID, string[]>;
+
+  // Science role state — 3×3 grid of science cards, the tech cards stacked
+  // under each, per-card resource contributions, completion log, and the
+  // per-round completion counter that the `science:reset-completions` hook
+  // clears at endOfRound. Optional so older test fixtures that pre-date 05.1
+  // remain source-compatible; hooks and moves that touch it must guard.
+  science?: ScienceState;
 }

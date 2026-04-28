@@ -23,16 +23,16 @@ export type TestClient = ReturnType<typeof Client<SettlementState>>;
 export const makeClient = (opts: MakeClientOptions = {}): TestClient => {
   const { numPlayers = 2, seed = 'test-seed', playerID } = opts;
 
-  // `seed` is forwarded as a top-level option; bgio's `Client` accepts it
-  // when present and ignores it otherwise. 02.3 wires the random plugin
-  // properly so tests can rely on it being deterministic.
+  // bgio's Random plugin reads `Game.seed` for setup-time determinism. We
+  // splice the per-test seed onto a shallow copy of `Settlement` so two
+  // clients launched with the same seed produce structurally identical state
+  // (including any setup-time shuffles, e.g. 05.1's science grid).
+  const seededGame = { ...Settlement, seed } as typeof Settlement;
+
   const client = Client<SettlementState>({
-    game: Settlement,
+    game: seededGame,
     numPlayers,
     playerID,
-    // Cast keeps the option opt-in without depending on bgio's published
-    // option-shape changing across patch versions.
-    ...({ seed } as { seed?: string }),
   });
 
   client.start();

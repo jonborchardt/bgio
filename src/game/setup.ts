@@ -4,7 +4,8 @@
 // per-player private hands arrive in 02.x / 03.x; until then `hands` is
 // an empty placeholder and the bank is seeded with the default starter
 // `gold: 3` (per 03.2). The center mat (03.3) builds one circle per
-// non-chief seat and an empty trade-request slot.
+// non-chief seat and an empty trade-request slot. The Science role's 3×3
+// grid + per-cell tech stacks land in 05.1.
 
 import type { Ctx } from 'boardgame.io';
 import type { PlayerID, ResourceBag, SettlementState } from './types.ts';
@@ -12,8 +13,17 @@ import { assignRoles } from './roles.ts';
 import { initialBank } from './resources/bank.ts';
 import { bagOf } from './resources/bag.ts';
 import { initialMat } from './resources/centerMat.ts';
+import { setupScience } from './roles/science/setup.ts';
+import { fromBgio, type BgioRandomLike } from './random.ts';
 
-export const setup = ({ ctx }: { ctx: Ctx }): SettlementState => {
+// bgio passes its plugin APIs alongside `ctx`. We accept the shape loosely
+// (any extra fields are ignored) and pull `random` off it explicitly so
+// `setupScience` gets a `RandomAPI`. The cast at the call site below keeps
+// the test fixtures (which pass `{ ctx }` with no `random`) source-compatible
+// — when `random` is missing we fall back to a deterministic identity
+// shuffle so module-load smoke tests don't throw.
+export const setup = (context: { ctx: Ctx; random?: BgioRandomLike }): SettlementState => {
+  const { ctx, random } = context;
   const numPlayers = ctx.numPlayers as 1 | 2 | 3 | 4;
   const roleAssignments = assignRoles(numPlayers);
 
@@ -31,6 +41,16 @@ export const setup = ({ ctx }: { ctx: Ctx }): SettlementState => {
     }
   }
 
+  // Fallback random for paths where bgio hasn't plugged in its plugin yet
+  // (e.g., direct unit tests of `setup`). Identity shuffle keeps the result
+  // deterministic — tests that need real randomness drive setup through a
+  // bgio Client.
+  const fallbackRandom: BgioRandomLike = {
+    Shuffle: <T>(arr: ReadonlyArray<T>): T[] => [...arr],
+    Number: () => 0,
+  };
+  const r = fromBgio(random ?? fallbackRandom);
+
   return {
     bank: initialBank(),
     centerMat: initialMat(roleAssignments),
@@ -46,5 +66,7 @@ export const setup = ({ ctx }: { ctx: Ctx }): SettlementState => {
     // initialized in `enterEventStage` too, but we seed an empty object so
     // observers and tests can rely on the property being present.
     _stageStack: {},
+    // Science role: build the initial 3×3 grid + per-cell tech stacks.
+    science: setupScience(r),
   };
 };
