@@ -1,8 +1,10 @@
 import { Box, Button, Paper, Stack, Typography } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
 import type { SettlementState } from './game/index.ts';
+import { ChiefPanel } from './ui/chief/ChiefPanel.tsx';
 
-export function SettlementBoard({ G, ctx, moves }: BoardProps<SettlementState>) {
+export function SettlementBoard(props: BoardProps<SettlementState>) {
+  const { G, ctx, moves } = props;
   const gameOver = ctx.gameover !== undefined;
   const seats = Object.keys(G.roleAssignments).sort();
 
@@ -59,6 +61,8 @@ export function SettlementBoard({ G, ctx, moves }: BoardProps<SettlementState>) 
           );
         })}
       </Stack>
+
+      <ChiefPanel {...props} />
 
       <Box sx={{ display: 'flex', justifyContent: 'center' }}>
         <Button

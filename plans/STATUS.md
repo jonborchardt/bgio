@@ -64,7 +64,7 @@ One row per sub-plan. Columns:
 | [04.2](04.2-end-phase.md) | done | claude | plan/04.2 | 2026-04-28 | 02.1, 02.2 | Done. chiefEndPhase flips phaseDone, bgio transitions to othersPhase. |
 | [04.3](04.3-worker-placement-stub.md) | done | claude | plan/04.3 | 2026-04-28 | 01.1, 02.1, 04.2 | Done. chiefPlaceWorker stub gated by G._features.workersEnabled. |
 | [04.4](04.4-gold-event-stub.md) | done | claude | plan/04.4 | 2026-04-28 | 01.1, 02.1, 02.2 | Done. chiefPlayGoldEvent stub - bookkeeping; 08.3 wires effects. |
-| [04.5](04.5-panel.md) | pending |  |  |  | 04.1, 04.2 | Touches `src/Board.tsx`. Soft dep on 09.4. |
+| [04.5](04.5-panel.md) | done | claude | plan/04.5 | 2026-04-28 | 04.1, 04.2 | Done. ChiefPanel + CircleEditor; render tests are it.todo until RTL lands. |
 
 ## 05 — Science
 
