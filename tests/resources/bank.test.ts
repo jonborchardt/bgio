@@ -45,6 +45,7 @@ describe('bank', () => {
         centerMat: { circles: { '1': sideBag }, tradeRequest: null },
         roleAssignments: {},
         round: 0,
+        settlementsJoined: 0,
         hands: {},
         wallets: {},
       };

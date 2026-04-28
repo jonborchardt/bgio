@@ -51,6 +51,7 @@ const build2pState = (
     centerMat: { circles: matCircles, tradeRequest: null },
     roleAssignments,
     round: 1,
+    settlementsJoined: 0,
     hands,
     wallets,
     foreign: emptyForeign(),

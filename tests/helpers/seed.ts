@@ -34,6 +34,7 @@ export const seedAfterChiefDistribution = (
     centerMat: { circles: {}, tradeRequest: null }, // empty mat — tests that need circles set them via partial
     roleAssignments,
     round: 1, // post-distribution → past round 0 setup
+    settlementsJoined: 0,
     hands,
     wallets,
   };

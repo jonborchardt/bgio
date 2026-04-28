@@ -19,6 +19,15 @@ import { UNITS } from '../data/index.ts';
 import { setupDomestic } from './roles/domestic/grid.ts';
 import { setupEvents } from './events/state.ts';
 import { fromBgio, type BgioRandomLike } from './random.ts';
+import { TURN_CAP_DEFAULT } from './endConditions.ts';
+
+// Per-match tunables passed through bgio's `Match.setupData` (or directly
+// to `setup({ ctx, random }, setupData)` in headless tests). Today the
+// only knob is `turnCap`; future fields (e.g. seeded scenarios) get added
+// here.
+export interface SettlementSetupData {
+  turnCap?: number;
+}
 
 // bgio passes its plugin APIs alongside `ctx`. We accept the shape loosely
 // (any extra fields are ignored) and pull `random` off it explicitly so
@@ -26,7 +35,10 @@ import { fromBgio, type BgioRandomLike } from './random.ts';
 // the test fixtures (which pass `{ ctx }` with no `random`) source-compatible
 // — when `random` is missing we fall back to a deterministic identity
 // shuffle so module-load smoke tests don't throw.
-export const setup = (context: { ctx: Ctx; random?: BgioRandomLike }): SettlementState => {
+export const setup = (
+  context: { ctx: Ctx; random?: BgioRandomLike },
+  setupData?: SettlementSetupData,
+): SettlementState => {
   const { ctx, random } = context;
   const numPlayers = ctx.numPlayers as 1 | 2 | 3 | 4;
   const roleAssignments = assignRoles(numPlayers);
@@ -72,6 +84,13 @@ export const setup = (context: { ctx: Ctx; random?: BgioRandomLike }): Settlemen
     centerMat: initialMat(roleAssignments),
     roleAssignments,
     round: 0,
+    // 08.5 win condition: the village hasn't absorbed any settlements yet.
+    // Incremented later by Foreign 07.4 / 07.5 outcomes. `endIf` ends the
+    // game in a win once this reaches 10.
+    settlementsJoined: 0,
+    // 08.5 time-up cap: per-match override from `setupData.turnCap`, default
+    // 80. Stored on G so `endIf` doesn't need to look back at setupData.
+    turnCap: setupData?.turnCap ?? TURN_CAP_DEFAULT,
     hands,
     wallets,
     // Phase-progress flags — flipped by 04.2's chiefEndPhase move and the

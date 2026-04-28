@@ -126,6 +126,7 @@ const buildState = (
     centerMat: { circles: matCircles, tradeRequest: null },
     roleAssignments,
     round: 1,
+    settlementsJoined: 0,
     hands,
     wallets,
     science: scienceState,

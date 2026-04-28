@@ -27,6 +27,7 @@ const buildState = (): SettlementState => {
     centerMat: { circles: {}, tradeRequest: null },
     roleAssignments,
     round: 1,
+    settlementsJoined: 0,
     wallets: {},
     hands: {
       // Seat 0 holds chief + science — public roles, nothing to redact here.
@@ -155,6 +156,7 @@ describe('playerView', () => {
       centerMat: { circles: {}, tradeRequest: null },
       roleAssignments: assignRoles(2),
       round: 0,
+      settlementsJoined: 0,
       hands: { '0': {}, '1': {} },
       wallets: {},
     };

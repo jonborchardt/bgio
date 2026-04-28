@@ -47,6 +47,24 @@ export interface SettlementState {
   roleAssignments: Record<PlayerID, Role[]>;
   round: number;
 
+  // Total number of settlements the village has joined / absorbed. Source of
+  // truth for the win condition (08.5): the game ends in a win when this
+  // reaches 10. Incremented by 07.4 (Foreign battle wins flagged `joins`)
+  // and 07.5 (Foreign tribute trade completion). Initialized to 0 by setup.
+  settlementsJoined: number;
+
+  // Per-match override for the round-count time-up cap (08.5). When unset,
+  // the engine uses `TURN_CAP_DEFAULT` (80). Set at `setup` from
+  // `setupData.turnCap` so the lobby form (10.3) can shorten or lengthen
+  // a match without rebuilding the game config.
+  turnCap?: number;
+
+  // Optional snapshot of `G.round` at the moment the win condition fired.
+  // Reserved for the persistence hook (10.7) so the server can write the
+  // win-time score even if `G.round` advances further before `endIf` is
+  // re-checked. `endIf` itself reads `G.round` directly today.
+  turnsAtWin?: number;
+
   // Private slices populated by 02.4; refined per role later.
   // Decks belong to whoever owns them and live under those players' hands.
   hands: Record<PlayerID, unknown>;

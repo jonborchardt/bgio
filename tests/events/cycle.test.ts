@@ -61,6 +61,7 @@ const wrapInG = (events: EventsState): SettlementState => ({
   centerMat: { circles: {}, tradeRequest: null },
   roleAssignments: FOUR_PLAYER_ASSIGNMENTS,
   round: 0,
+  settlementsJoined: 0,
   hands: { '0': {}, '1': {}, '2': {}, '3': {} },
   wallets: {
     '1': { ...EMPTY_BAG },

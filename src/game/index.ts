@@ -27,6 +27,7 @@ import {
 } from './moves.ts';
 import { chiefPhase, othersPhase, endOfRound } from './phases/index.ts';
 import { playerView } from './playerView.ts';
+import { endIf } from './endConditions.ts';
 
 export type {
   CenterMat,
@@ -72,4 +73,8 @@ export const Settlement: Game<SettlementState> = {
   turn: { minMoves: 1, maxMoves: 1 },
   phases: { chiefPhase, othersPhase, endOfRound },
   playerView,
+  // 08.5: bgio's `endIf` receives `{ G, ctx }` and any truthy return value
+  // sets `ctx.gameover` to that value (a `GameOutcome`). The wrapper here
+  // adapts the bgio shape to our pure 2-arg `endIf`.
+  endIf: ({ G, ctx }) => endIf(G, ctx),
 };

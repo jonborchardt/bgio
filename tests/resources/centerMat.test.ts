@@ -165,6 +165,7 @@ describe('round-end sweep hook (mat:sweep-leftovers)', () => {
       centerMat: initialMat(roleAssignments),
       roleAssignments,
       round: 0,
+      settlementsJoined: 0,
       hands,
       wallets,
       phaseDone: false,
