@@ -74,7 +74,7 @@ One row per sub-plan. Columns:
 | [05.2](05.2-contribute-move.md) | done | claude | plan/05.2 | 2026-04-28 | 01.1, 02.1, 02.2, 03.4, 05.1 | Done. Lowest-first column rule + capped-at-cost transfer. |
 | [05.3](05.3-complete-move.md) | done | claude | plan/05.3 | 2026-04-28 | 01.1, 02.5, 03.2, 05.1, 05.2 | Done. distributes 4 tech cards by color to chief/science/domestic/foreign hands. |
 | [05.4](05.4-event-stub.md) | done | claude | plan/05.4 | 2026-04-28 | 01.1, 02.1, 02.2 | Done. sciencePlayBlueEvent stub via shared playEventStub helper. |
-| [05.5](05.5-panel.md) | pending |  |  |  | 05.1, 05.2, 05.3 | Touches `src/Board.tsx`. Soft dep on 09.2. |
+| [05.5](05.5-panel.md) | done | claude | plan/05.5 | 2026-04-28 | 05.1, 05.2, 05.3 | Done. SciencePanel renders 3x3 grid + per-card contribute/complete. |
 
 ## 06 — Domestic
 
@@ -86,7 +86,7 @@ One row per sub-plan. Columns:
 | [06.4](06.4-produce-move.md) | done | claude | plan/06.4 | 2026-04-28 | 01.2, 03.2, 06.1, 06.3, 02.5 | Done. Sums building yields, doubles for workers, idempotent via producedThisRound. |
 | [06.5](06.5-adjacency-rules.md) | done | claude | plan/06.5 | 2026-04-28 | 03.1, 06.1, 06.4 | Done. yieldAdjacencyBonus + registry; produce consults it. |
 | [06.6](06.6-event-stub.md) | done | claude | plan/06.6 | 2026-04-28 | 01.1, 02.1, 02.2 | Done. domesticPlayGreenEvent stub via shared playEventStub helper. |
-| [06.7](06.7-panel.md) | pending |  |  |  | 06.1, 06.2, 06.4 | Touches `src/Board.tsx`. Soft deps on 09.2, 09.4. |
+| [06.7](06.7-panel.md) | done | claude | plan/06.7 | 2026-04-28 | 06.1, 06.2, 06.4 | Done. DomesticPanel: hand + grid + produce. |
 | [06.8](06.8-adjacency-content.md) | done | claude | plan/06.8 | 2026-04-28 | 01.2, 06.5 | Done. 12 hand-authored rules in src/data/adjacency.json. |
 
 ## 07 — Foreign
@@ -99,7 +99,7 @@ One row per sub-plan. Columns:
 | [07.4](07.4-flip-flow.md) | done | claude | plan/07.4 | 2026-04-28 | 02.2, 03.3, 07.1, 07.2, 07.3 | Done. flipBattle/assignDamage/flipTrade; foreignAwaitingDamage stage. |
 | [07.5](07.5-trade-request.md) | done | claude | plan/07.5 | 2026-04-28 | 02.2, 03.3, 07.4 | Done. placeOrInterruptTrade + chiefDecideTradeDiscard via _awaitingChiefTradeDiscard flag. |
 | [07.6](07.6-event-stub.md) | done | claude | plan/07.6 | 2026-04-28 | 01.1, 02.1, 02.2 | Done. foreignPlayRedEvent stub via shared playEventStub helper. |
-| [07.7](07.7-panel.md) | pending |  |  |  | 07.1, 07.2, 07.3, 07.4 | Touches `src/Board.tsx`. Soft deps on 09.2, 09.5. |
+| [07.7](07.7-panel.md) | done | claude | plan/07.7 | 2026-04-28 | 07.1, 07.2, 07.3, 07.4 | Done. ForeignPanel: army + decks + battle + assign-damage stub. |
 
 ## 08 — Cross-cutting
 

@@ -2,6 +2,9 @@ import { Box, Button, Paper, Stack, Typography } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
 import type { SettlementState } from './game/index.ts';
 import { ChiefPanel } from './ui/chief/ChiefPanel.tsx';
+import { SciencePanel } from './ui/science/SciencePanel.tsx';
+import { DomesticPanel } from './ui/domestic/DomesticPanel.tsx';
+import { ForeignPanel } from './ui/foreign/ForeignPanel.tsx';
 
 export function SettlementBoard(props: BoardProps<SettlementState>) {
   const { G, ctx, moves } = props;
@@ -63,6 +66,9 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
       </Stack>
 
       <ChiefPanel {...props} />
+      <SciencePanel {...props} />
+      <DomesticPanel {...props} />
+      <ForeignPanel {...props} />
 
       <Box sx={{ display: 'flex', justifyContent: 'center' }}>
         <Button
