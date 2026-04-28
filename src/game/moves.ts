@@ -13,6 +13,8 @@ import { chiefPlaceWorker } from './roles/chief/workerPlacement.ts';
 import { chiefPlayGoldEvent } from './roles/chief/playGoldEvent.ts';
 import { sciencePlayBlueEvent } from './roles/science/playBlueEvent.ts';
 import { domesticPlayGreenEvent } from './roles/domestic/playGreenEvent.ts';
+import { domesticBuyBuilding } from './roles/domestic/buy.ts';
+import { domesticUpgradeBuilding } from './roles/domestic/upgrade.ts';
 import { foreignPlayRedEvent } from './roles/foreign/playRedEvent.ts';
 import { foreignRecruit } from './roles/foreign/recruit.ts';
 import { foreignUpkeep } from './roles/foreign/upkeep.ts';
@@ -60,6 +62,12 @@ export { sciencePlayBlueEvent, domesticPlayGreenEvent, foreignPlayRedEvent };
 // 'foreignTurn'`, so the bgio-level stage config only has to authorize the
 // foreign seat in that stage.
 export { foreignRecruit, foreignUpkeep, foreignReleaseUnit };
+
+// Domestic role moves (06.2 buy / upgrade). Stage gating is enforced inside
+// each move against `ctx.activePlayers?.[playerID] === 'domesticTurn'`, so
+// the bgio-level stage config only has to authorize the domestic seat in
+// that stage.
+export { domesticBuyBuilding, domesticUpgradeBuilding };
 
 // ---------------------------------------------------------------------------
 // Test-only scaffolding.

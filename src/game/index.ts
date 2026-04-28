@@ -19,6 +19,8 @@ import {
   foreignReleaseUnit,
   scienceContribute,
   scienceComplete,
+  domesticBuyBuilding,
+  domesticUpgradeBuilding,
   __testSetPhaseDone,
   __testSetOthersDone,
 } from './moves.ts';
@@ -56,6 +58,8 @@ export const Settlement: Game<SettlementState> = {
     foreignReleaseUnit,
     scienceContribute,
     scienceComplete,
+    domesticBuyBuilding,
+    domesticUpgradeBuilding,
     __testSetPhaseDone,
     __testSetOthersDone,
   },
