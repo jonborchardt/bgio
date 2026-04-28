@@ -15,6 +15,11 @@ export const STAGES = {
   scienceTurn: 'scienceTurn',
   domesticTurn: 'domesticTurn',
   foreignTurn: 'foreignTurn',
+  // 07.4 — interrupt stage entered after `foreignFlipBattle` flips a battle
+  // card. The Foreign seat must call `foreignAssignDamage` next to resolve
+  // the fight; on resolution the seat returns to `foreignTurn` (win) or
+  // `done` (lose).
+  foreignAwaitingDamage: 'foreignAwaitingDamage',
   playingEvent: 'playingEvent',
   awaitingChiefDecision: 'awaitingChiefDecision',
   done: 'done',

@@ -12,6 +12,7 @@ import type { RandomAPI } from '../../random.ts';
 import type { BattleCardDef, TradeCardDef } from '../../../data/decks.ts';
 import { BATTLE_CARDS, TRADE_CARDS } from '../../../data/decks.ts';
 import type { UnitDef } from '../../../data/schema.ts';
+import type { ResourceBag } from '../../resources/types.ts';
 import type { BattleInFlight, UnitInstance } from './types.ts';
 
 export interface ForeignState {
@@ -33,6 +34,19 @@ export interface ForeignState {
   // run a second time and double-charge. Cleared at the start of the next
   // foreign stage by 02.2 / 07.x stage-entry plumbing.
   _upkeepPaid?: boolean;
+  // 07.4 — outcome of the most recent battle resolved in `foreignAssignDamage`.
+  // Cleared at the next `foreignFlipBattle`. The trade-flip move requires
+  // this to equal 'win' (per game-design.md "Flipping a trade card is only
+  // allowed after a winning battle").
+  lastBattleOutcome?: 'win' | 'lose';
+  // 07.4 — tribute scheduled when a battle resolves to 'lose'. The chief's
+  // next phase consumes this (or a later 07.x sub-plan does); for now we
+  // just record it on G so the move's lose-path is observable.
+  pendingTribute?: Partial<ResourceBag>;
+  // 07.5 — a trade card drawn while the mat's tradeRequest slot is already
+  // occupied. Held here until the chief decides which card to keep via
+  // `chiefDecideTradeDiscard`. Paired with `G._awaitingChiefTradeDiscard`.
+  pendingTrade?: TradeCardDef;
 }
 
 /**

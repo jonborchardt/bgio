@@ -129,6 +129,17 @@ export interface SettlementState {
     foreign?: boolean;
   };
 
+  // 07.5 — set by `placeOrInterruptTrade` when a Foreign-flipped trade
+  // card lands on top of an already-occupied `centerMat.tradeRequest` slot.
+  // The pending TradeCardDef itself is held in `G.foreign.pendingTrade`;
+  // this boolean is the cross-cutting "chief, please decide" flag the
+  // `chiefDecideTradeDiscard` move gates on. V1 simplification: bgio's
+  // `setStage` only acts on the calling seat, so we don't try to push the
+  // chief into the `awaitingChiefDecision` stage from inside a foreign
+  // move — the flag is the contract instead. Cleared by
+  // `chiefDecideTradeDiscard`.
+  _awaitingChiefTradeDiscard?: boolean;
+
   // Chief-role-specific runtime state — worker token reserve, etc. Filled
   // out incrementally as chief features land (04.3 introduces `workers`).
   // 05.3 adds the optional `hand` slot: the Chief receives gold-color

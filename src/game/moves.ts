@@ -20,6 +20,12 @@ import { foreignPlayRedEvent } from './roles/foreign/playRedEvent.ts';
 import { foreignRecruit } from './roles/foreign/recruit.ts';
 import { foreignUpkeep } from './roles/foreign/upkeep.ts';
 import { foreignReleaseUnit } from './roles/foreign/release.ts';
+import {
+  foreignFlipBattle,
+  foreignFlipTrade,
+} from './roles/foreign/flip.ts';
+import { foreignAssignDamage } from './roles/foreign/assignDamage.ts';
+import { chiefDecideTradeDiscard } from './roles/chief/decideTradeDiscard.ts';
 import { scienceContribute } from './roles/science/contribute.ts';
 import { scienceComplete } from './roles/science/complete.ts';
 
@@ -43,6 +49,7 @@ export {
   chiefEndPhase,
   chiefPlaceWorker,
   chiefPlayGoldEvent,
+  chiefDecideTradeDiscard,
 };
 
 // Science role moves (05.2 contribute, 05.3 complete). The Science seat
@@ -63,6 +70,14 @@ export { sciencePlayBlueEvent, domesticPlayGreenEvent, foreignPlayRedEvent };
 // 'foreignTurn'`, so the bgio-level stage config only has to authorize the
 // foreign seat in that stage.
 export { foreignRecruit, foreignUpkeep, foreignReleaseUnit };
+
+// Foreign flip-flow moves (07.4) and trade-request placement (07.5).
+// `foreignFlipBattle` puts the seat into `foreignAwaitingDamage`, which
+// `foreignAssignDamage` resolves; `foreignFlipTrade` either drops the
+// drawn card straight into the mat slot or stashes it for the chief to
+// resolve via `chiefDecideTradeDiscard` (registered above with the other
+// chief moves).
+export { foreignFlipBattle, foreignAssignDamage, foreignFlipTrade };
 
 // Domestic role moves (06.2 buy / upgrade, 06.4 produce). Stage gating is
 // enforced inside each move against `ctx.activePlayers?.[playerID] ===
