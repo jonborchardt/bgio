@@ -82,7 +82,7 @@ One row per sub-plan. Columns:
 |---|---|---|---|---|---|---|
 | [06.1](06.1-hand-and-grid.md) | pending |  |  |  | 01.2, 02.5, 05.1 |  |
 | [06.2](06.2-buy-and-upgrade.md) | pending |  |  |  | 01.2, 03.4, 06.1 |  |
-| [06.3](06.3-benefit-parser.md) | pending |  |  |  | 01.2, 03.1 |  |
+| [06.3](06.3-benefit-parser.md) | done | claude | plan/06.3 | 2026-04-28 | 01.2, 03.1 | Done. parseBenefit handles all 17 BUILDINGS strings + accepts defence spelling. |
 | [06.4](06.4-produce-move.md) | pending |  |  |  | 01.2, 03.2, 06.1, 06.3, 02.5 |  |
 | [06.5](06.5-adjacency-rules.md) | pending |  |  |  | 03.1, 06.1, 06.4 |  |
 | [06.6](06.6-event-stub.md) | pending |  |  |  | 01.1, 02.1, 02.2 | Soft dep on 08. |
