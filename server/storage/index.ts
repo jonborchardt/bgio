@@ -1,4 +1,4 @@
-// Storage adapter factory (10.4).
+// Storage adapter factory (10.4 / 13.3).
 //
 // bgio's `Server({ db })` accepts any `Async`-shaped object — that's the
 // adapter contract. This file is a small switch over the kind we want
@@ -15,21 +15,28 @@
 //                  construct time, and our test environment doesn't
 //                  always have it installed; we fall back to memory if
 //                  the import or instantiation throws.
+//   - 'sqlite'   — `better-sqlite3`-backed adapter from 13.3. The native
+//                  module is a runtime dep; if it's missing we log a
+//                  warning and fall back to memory so dev keeps working
+//                  on machines that haven't run `npm install` yet.
 //
-// SQLite is deferred to 13.3 — it would need `better-sqlite3` (a native
-// dependency) and the plan explicitly says "if we ever need 'em". The
-// production deploy target hasn't been picked yet; adding native deps
-// here in V1 would be premature.
+// Production deploys (Render — see render.yaml) pin
+// `STORAGE_KIND=sqlite` and ensure better-sqlite3 is installed via the
+// Dockerfile, so the fallback never fires there.
 
 import { FlatFile } from 'boardgame.io/server';
+import { makeSqliteStorage } from './sqlite.ts';
 
-/** What kind of adapter to construct. Extend with `'sqlite'` / `'postgres'`
- * in 13.3 once a deploy target is chosen. */
-export type StorageKind = 'memory' | 'flatfile';
+/** What kind of adapter to construct. */
+export type StorageKind = 'memory' | 'flatfile' | 'sqlite';
 
 export interface MakeStorageOptions {
   /** Directory for the flatfile adapter. Defaults to './bgio-data'. */
   dir?: string;
+  /** Path for the SQLite database file. Defaults to
+   * './bgio-data/settlement.sqlite'. Use `':memory:'` for ephemeral tests.
+   * Read from `process.env.SQLITE_PATH` when called via `STORAGE_KIND` env. */
+  sqlitePath?: string;
 }
 
 /** Construct a bgio storage adapter (`Async`-shaped) for the given kind.
@@ -38,12 +45,11 @@ export interface MakeStorageOptions {
  * callers can pass the result straight into `Server({ db })` without
  * branching: bgio treats an undefined `db` as "use the built-in".
  *
- * If `'flatfile'` is requested but FlatFile fails to construct (e.g.
- * `node-persist` isn't installed in the current environment), we log a
- * warning and fall back to memory rather than crashing the boot — this
- * keeps tests + dev servers running on machines without the optional
- * persistence dep. Production deploys should ensure `node-persist` is
- * available so this fallback never silently triggers. */
+ * If `'flatfile'` or `'sqlite'` is requested but the underlying module
+ * fails to load (e.g. native dep not built in the current environment),
+ * we log a warning and fall back to memory rather than crashing the
+ * boot. Production deploys should ensure the relevant dep is available
+ * so this fallback never silently triggers. */
 export const makeStorage = (
   kind: StorageKind = 'memory',
   opts: MakeStorageOptions = {},
@@ -66,8 +72,25 @@ export const makeStorage = (
     }
   }
 
-  // Exhaustiveness — TypeScript will surface an `'sqlite'` branch here
-  // once StorageKind grows.
+  if (kind === 'sqlite') {
+    // The sqlite module loads `better-sqlite3` (a native dep) eagerly inside
+    // its constructor. If the dep isn't installed we want a console warning
+    // and a graceful fall-back to memory, not a crashed boot.
+    try {
+      return makeSqliteStorage({
+        path: opts.sqlitePath ?? process.env.SQLITE_PATH,
+      });
+    } catch (err) {
+      console.warn(
+        '[storage] SQLite init failed, falling back to in-memory:',
+        err instanceof Error ? err.message : err,
+      );
+      return undefined;
+    }
+  }
+
+  // Exhaustiveness — TypeScript will surface a new kind here if we extend
+  // StorageKind without updating this switch.
   const exhaustive: never = kind;
   throw new Error(`makeStorage: unknown kind '${String(exhaustive)}'`);
 };

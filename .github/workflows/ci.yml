@@ -48,6 +48,13 @@ jobs:
       - name: Build
         run: npm run build
 
+      # 13.4 — also exercise the explicit hot-seat build script so a PR
+      # that breaks the GH Pages deploy fails CI before merge. `build`
+      # and `build:hotseat` are aliases today, but pinning both keeps
+      # the Pages contract loud and visible.
+      - name: Build (hotseat)
+        run: npm run build:hotseat
+
       # Playwright smoke (12.5). The browser binary install is the slow
       # part; we cache `~/.cache/ms-playwright` keyed on the package-lock
       # so repeat runs skip the download.

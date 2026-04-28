@@ -36,6 +36,14 @@ npm run lint
 
 Requires Node 20+.
 
+## Two ways to play
+
+- **Demo (no save, no login)** at the GitHub Pages URL — hot-seat only,
+  state lives in the browser, nothing persists across reloads.
+- **Full experience with accounts and run history** requires the networked
+  server. See [`server/README.md`](server/README.md) for how to run it
+  locally or deploy your own copy to Render.
+
 ## Deploying to GitHub Pages
 
 A workflow at [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml) builds and

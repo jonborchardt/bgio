@@ -117,5 +117,13 @@ const isDirectInvocation = (() => {
 
 if (isDirectInvocation) {
   const port = Number(process.env.PORT ?? '8000');
-  void createServer({ port }).start(port);
+  // 13.3 — default storage kind comes from the environment. 'memory' is the
+  // safe default for tests / ad-hoc boots; production deploys (render.yaml)
+  // pin STORAGE_KIND=sqlite so match state survives restarts.
+  const envKind = process.env.STORAGE_KIND;
+  const storageKind: StorageKind | undefined =
+    envKind === 'memory' || envKind === 'flatfile' || envKind === 'sqlite'
+      ? envKind
+      : undefined;
+  void createServer({ port, storage: storageKind ?? 'memory' }).start(port);
 }

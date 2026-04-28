@@ -164,7 +164,7 @@ One row per sub-plan. Columns:
 
 | Sub-plan | Status | Owner | Branch | Updated | Blocked on | Notes |
 |---|---|---|---|---|---|---|
-| [13.1](13.1-static-build-modes.md) | pending |  |  |  | 10.2 | Touches `vite.config.ts`, `package.json`, `.github/workflows/deploy-pages.yml`. |
-| [13.2](13.2-server-deploy-target.md) | pending |  |  |  | 10.1, 10.4, 12.4 | Render. Touches `server/Dockerfile`, `.github/workflows/deploy-server.yml`. |
-| [13.3](13.3-database-choice.md) | pending |  |  |  | 10.4, 13.2 | SQLite via `better-sqlite3`. Heavy — flagged for possible split. |
-| [13.4](13.4-pages-deploy-keep-alive.md) | pending |  |  |  | 10.2, 12.4, 12.5, 13.1 | Touches `.github/workflows/deploy-pages.yml`. |
+| [13.1](13.1-static-build-modes.md) | done | claude | plan/13.1 | 2026-04-28 | 10.2 | Done. build:hotseat + build:networked via scripts/build-networked.mjs. |
+| [13.2](13.2-server-deploy-target.md) | done | claude | plan/13.2 | 2026-04-28 | 10.1, 10.4, 12.4 | Done. Render blueprint + deploy-server CI; Dockerfile multi-stage with native deps. |
+| [13.3](13.3-database-choice.md) | done | claude | plan/13.3 | 2026-04-28 | 10.4, 13.2 | Done. SqliteStorage Async impl + 2 migrations; native dep load is lazy. |
+| [13.4](13.4-pages-deploy-keep-alive.md) | done | claude | plan/13.4 | 2026-04-28 | 10.2, 12.4, 12.5, 13.1 | Done. deploy-pages uses build:hotseat; CI catches Pages-breakers. |
