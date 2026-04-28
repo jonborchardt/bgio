@@ -14,6 +14,7 @@
 import { Server } from 'boardgame.io/server';
 import { Settlement } from '../src/game/index.ts';
 import { makeStorage, type StorageKind } from './storage/index.ts';
+import { makeIdleWatcher, type IdleWatcher } from './idle/idleWatcher.ts';
 
 /** Result of `createServer` — exposes the bgio Server instance plus a
  * `port` Promise that resolves once the underlying Koa app is listening.
@@ -24,6 +25,10 @@ export interface CreatedServer {
   server: ReturnType<typeof Server>;
   /** Convenience wrapper: starts the server and resolves with the port. */
   start: (port?: number) => Promise<number>;
+  /** 10.9 — idle-takeover watcher. Started by `createServer` (no-op if
+   * no idle seats). Tests can stop it via `server.idleWatcher.stop()`
+   * before running an unrelated assertion. */
+  idleWatcher: IdleWatcher;
 }
 
 export interface CreateServerOptions {
@@ -69,6 +74,15 @@ export const createServer = (opts: CreateServerOptions = {}): CreatedServer => {
   // FlatFile / real adapters land in 10.4.
   const server = Server(serverConfig as Parameters<typeof Server>[0]);
 
+  // 10.9 — start the idle-takeover watcher. The watcher does nothing
+  // until `noteActivity()` registers a seat, and the seat-takeover
+  // module itself is a stub (see `server/idle/seatTakeover.ts`), so
+  // wiring it unconditionally is safe — it's a no-op for matches that
+  // don't go idle. The wiring lives here so the watcher is created in
+  // lockstep with the bgio Server it watches.
+  const idleWatcher = makeIdleWatcher(server);
+  idleWatcher.start();
+
   const start = async (port?: number): Promise<number> => {
     const requestedPort =
       port ?? opts.port ?? Number(process.env.PORT ?? '8000');
@@ -85,7 +99,7 @@ export const createServer = (opts: CreateServerOptions = {}): CreatedServer => {
     return requestedPort;
   };
 
-  return { server, start };
+  return { server, start, idleWatcher };
 };
 
 // CLI entrypoint. We compare argv[1] to this module's path so the bootstrap

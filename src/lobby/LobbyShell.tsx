@@ -30,6 +30,47 @@ import {
 } from '@mui/material';
 import { lobby } from './lobbyClient.ts';
 import { SeatPicker } from './SeatPicker.tsx';
+import { AuthForms } from './AuthForms.tsx';
+
+/** localStorage key for the persisted auth token + minimal user blob.
+ * 10.7 puts the token in its own slot rather than co-mingling with the
+ * `settlement.session` (10.6) key. */
+const AUTH_STORAGE_KEY = 'settlement.auth';
+
+interface AuthState {
+  token: string;
+  user: { id: string; username: string };
+}
+
+const loadAuth = (): AuthState | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<AuthState> | null;
+    if (
+      !parsed ||
+      typeof parsed.token !== 'string' ||
+      !parsed.user ||
+      typeof parsed.user.id !== 'string' ||
+      typeof parsed.user.username !== 'string'
+    ) {
+      return null;
+    }
+    return { token: parsed.token, user: parsed.user };
+  } catch {
+    return null;
+  }
+};
+
+const saveAuth = (state: AuthState): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Quota / storage errors are non-fatal; the user can re-login.
+  }
+};
 
 /** Per-match summary used for the lobby list. We narrow bgio's
  * `LobbyAPI.Match` to the fields we actually render. */
@@ -40,8 +81,14 @@ interface LobbyMatch {
 
 export interface LobbyShellProps {
   /** Fired once the player has joined a match. Parent uses these to
-   * mount the networked game `Client` (App.tsx) and persist creds (10.6). */
-  onSelect: (matchID: string, playerID: string, credentials: string) => void;
+   * mount the networked game `Client` (App.tsx) and persist creds (10.6).
+   * For spectator joins, `playerID` and `credentials` are both `null`
+   * (no seat, no per-seat token). */
+  onSelect: (
+    matchID: string,
+    playerID: string | null,
+    credentials: string | null,
+  ) => void;
   /** Default playerName the join call sends to bgio. Auth (10.7) will
    * eventually replace this with the logged-in account name. */
   defaultPlayerName?: string;
@@ -51,10 +98,13 @@ export function LobbyShell({
   onSelect,
   defaultPlayerName = 'Player',
 }: LobbyShellProps) {
+  const [auth, setAuth] = useState<AuthState | null>(() => loadAuth());
   const [matches, setMatches] = useState<LobbyMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [playerName, setPlayerName] = useState(defaultPlayerName);
+  const [playerName, setPlayerName] = useState(
+    () => loadAuth()?.user.username ?? defaultPlayerName,
+  );
   const [selected, setSelected] = useState<string | null>(null);
   const [numPlayers, setNumPlayers] = useState<1 | 2 | 3 | 4>(4);
 
@@ -81,8 +131,8 @@ export function LobbyShell({
   }, []);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    if (auth) void refresh();
+  }, [auth, refresh]);
 
   const onCreate = useCallback(async () => {
     setError(null);
@@ -111,6 +161,32 @@ export function LobbyShell({
     },
     [selected, playerName, onSelect],
   );
+
+  // 10.8 — Watch flow: clicking "Watch" mounts the game Client without
+  // a playerID/credentials. The lobby just hands the matchID up; App
+  // takes it from there.
+  const onWatch = useCallback(
+    (matchID: string) => {
+      onSelect(matchID, null, null);
+    },
+    [onSelect],
+  );
+
+  // Auth gate (10.7): until a token is in `auth`, render the login UI.
+  // Placed AFTER hooks so the hook order stays stable across renders
+  // (rules-of-hooks).
+  if (!auth) {
+    return (
+      <AuthForms
+        onLogin={(token, user) => {
+          const next: AuthState = { token, user };
+          saveAuth(next);
+          setPlayerName(user.username);
+          setAuth(next);
+        }}
+      />
+    );
+  }
 
   const selectedMatch = selected
     ? matches.find((m) => m.matchID === selected) ?? null
@@ -200,15 +276,32 @@ export function LobbyShell({
               const total = m.players.length;
               const isSelected = selected === m.matchID;
               return (
-                <Button
+                <Stack
                   key={m.matchID}
-                  variant={isSelected ? 'contained' : 'outlined'}
-                  onClick={() => setSelected(m.matchID)}
-                  sx={{ justifyContent: 'space-between', textTransform: 'none' }}
+                  direction="row"
+                  spacing={1}
+                  sx={{ alignItems: 'stretch' }}
                 >
-                  <Box component="span">{m.matchID}</Box>
-                  <Box component="span">{`${filled}/${total} joined`}</Box>
-                </Button>
+                  <Button
+                    variant={isSelected ? 'contained' : 'outlined'}
+                    onClick={() => setSelected(m.matchID)}
+                    sx={{
+                      flex: 1,
+                      justifyContent: 'space-between',
+                      textTransform: 'none',
+                    }}
+                  >
+                    <Box component="span">{m.matchID}</Box>
+                    <Box component="span">{`${filled}/${total} joined`}</Box>
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    onClick={() => onWatch(m.matchID)}
+                    aria-label={`Watch match ${m.matchID}`}
+                  >
+                    Watch
+                  </Button>
+                </Stack>
               );
             })
           )}

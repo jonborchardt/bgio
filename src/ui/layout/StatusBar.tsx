@@ -8,9 +8,17 @@ export interface StatusBarProps {
   phase: string | null;
   currentPlayer: string;
   round: number;
+  /** 10.8 — render a "Spectating" badge when the local connection is
+   * a non-seat spectator. */
+  spectating?: boolean;
 }
 
-export function StatusBar({ phase, currentPlayer, round }: StatusBarProps) {
+export function StatusBar({
+  phase,
+  currentPlayer,
+  round,
+  spectating = false,
+}: StatusBarProps) {
   return (
     <Paper
       elevation={0}
@@ -56,6 +64,22 @@ export function StatusBar({ phase, currentPlayer, round }: StatusBarProps) {
           </Typography>
           <Typography sx={{ fontWeight: 600 }}>{round}</Typography>
         </Stack>
+        {spectating ? (
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ alignItems: 'baseline', ml: 'auto' }}
+            aria-label="Spectator indicator"
+          >
+            <Typography
+              variant="caption"
+              sx={{ color: (t) => t.palette.status.muted, fontWeight: 600 }}
+            >
+              Mode
+            </Typography>
+            <Typography sx={{ fontWeight: 700 }}>Spectating</Typography>
+          </Stack>
+        ) : null}
       </Stack>
     </Paper>
   );

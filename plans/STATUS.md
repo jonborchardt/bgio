@@ -132,9 +132,9 @@ One row per sub-plan. Columns:
 | [10.4](10.4-storage.md) | done | claude | plan/10.4 | 2026-04-28 | 10.1 | Done. makeStorage('memory'|'flatfile'); SQLite deferred to 13.3. |
 | [10.5](10.5-chat.md) | done | claude | plan/10.5 | 2026-04-28 | 10.1, 10.2 | Done. ChatPane + ChatComposer reading bgio's built-in chat. |
 | [10.6](10.6-reconnect-and-credentials.md) | done | claude | plan/10.6 | 2026-04-28 | 10.2, 10.3 | Done. localStorage creds (24h TTL); App skips lobby when valid; spinner stub. |
-| [10.7](10.7-accounts.md) | pending |  |  |  | 10.1, 10.3, 10.4, 13.3, 08.5 |  |
-| [10.8](10.8-spectators.md) | pending |  |  |  | 02.4, 10.1, 10.3, 10.5, 10.7 | Touches `src/Board.tsx`. |
-| [10.9](10.9-idle-bot-takeover.md) | pending |  |  |  | 10.1, 10.7, 11.3, 11.4, 11.5, 11.6 |  |
+| [10.7](10.7-accounts.md) | done | claude | plan/10.7 | 2026-04-28 | 10.1, 10.3, 10.4, 13.3, 08.5 | Done. In-memory accounts/runs + scrypt hash + AuthForms; SQLite swap deferred. |
+| [10.8](10.8-spectators.md) | done | claude | plan/10.8 | 2026-04-28 | 02.4, 10.1, 10.3, 10.5, 10.7 | Done. spectatorClient + Watch button; Board hides actions when playerID===null. |
+| [10.9](10.9-idle-bot-takeover.md) | done | claude | plan/10.9 | 2026-04-28 | 10.1, 10.7, 11.3, 11.4, 11.5, 11.6 | Done. Watcher wired; grantBotControl/revokeBotControl stubs until 11.x. |
 
 ## 11 — AI / bots
 

@@ -65,8 +65,8 @@ export const getServerURL = (): string => {
  * no-arg-component). */
 export const networkedClientFactory = (
   matchID: string,
-  playerID: string,
-  credentials: string,
+  playerID: string | null,
+  credentials: string | null,
 ): ComponentType => {
   // Cast to ComponentType<Record<string, unknown>>: bgio types the rendered
   // component's props as `_ClientOpts`, which includes matchID/playerID/
@@ -79,12 +79,23 @@ export const networkedClientFactory = (
     debug: false,
   }) as unknown as ComponentType<{
     matchID?: string;
-    playerID?: string;
+    playerID?: string | null;
     credentials?: string;
   }>;
 
-  const Wrapped: ComponentType = () =>
-    createElement(NetworkedClient, { matchID, playerID, credentials });
+  // Spectator path (10.8): playerID null + credentials null. bgio's
+  // `playerView(G, ctx, null)` already redacts secret state for the
+  // null spectator; the Client just needs the matchID. We pass
+  // `playerID: null` explicitly so bgio routes the connection as a
+  // spectator and not as the implicit "first available seat".
+  const props: { matchID: string; playerID?: string | null; credentials?: string } = {
+    matchID,
+  };
+  if (playerID !== null) props.playerID = playerID;
+  else props.playerID = null;
+  if (credentials !== null) props.credentials = credentials;
+
+  const Wrapped: ComponentType = () => createElement(NetworkedClient, props);
   Wrapped.displayName = 'NetworkedSettlementClient';
   return Wrapped;
 };

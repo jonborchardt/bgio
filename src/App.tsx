@@ -55,7 +55,14 @@ const readMatchFromQuery = (): {
  * triple so a second join in the same session rebuilds the Client. */
 const NetworkedShell = () => {
   const [match, setMatch] = useState<
-    { matchID: string; playerID: string; credentials: string } | null
+    | {
+        matchID: string;
+        /** null when watching as a spectator (10.8). */
+        playerID: string | null;
+        /** null when watching as a spectator (10.8). */
+        credentials: string | null;
+      }
+    | null
   >(() => {
     // Run synchronously at first render: query-string override wins
     // (developer path), then persisted creds. We need this synchronous
@@ -93,13 +100,22 @@ const NetworkedShell = () => {
   }, [match]);
 
   // When the lobby reports a successful join, persist + switch.
-  const onSelect = (matchID: string, playerID: string, credentials: string) => {
-    saveCreds({
-      matchID,
-      playerID,
-      credentials,
-      serverUrl: getServerURL(),
-    });
+  // Spectator joins (10.8) come in with playerID === null and
+  // credentials === null — we don't persist those (they're not a
+  // committed seat) but still switch the view.
+  const onSelect = (
+    matchID: string,
+    playerID: string | null,
+    credentials: string | null,
+  ) => {
+    if (playerID !== null && credentials !== null) {
+      saveCreds({
+        matchID,
+        playerID,
+        credentials,
+        serverUrl: getServerURL(),
+      });
+    }
     setMatch({ matchID, playerID, credentials });
   };
 

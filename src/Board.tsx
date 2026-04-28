@@ -30,12 +30,22 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
   const gameOver = ctx.gameover !== undefined;
   const seats = Object.keys(G.roleAssignments).sort();
 
+  // 10.8 — spectator mode. `playerID === null` is bgio's "no seat,
+  // watching only" connection (02.4's `playerView(G, ctx, null)`
+  // redacts secret state). `undefined` happens under headless test
+  // Clients that don't bind a player; we treat that as "no local seat"
+  // for read-only purposes too (panels render summary view, no action
+  // buttons). We split the two:
+  //   - isSpectator: explicitly watching (null) — show "Spectating" tag.
+  //   - hasSeat: there is a local seat (defined and not null).
+  const isSpectator = playerID === null;
+  const hasSeat = playerID !== undefined && playerID !== null;
+
   // 09.1: a role's slot is expanded when the local seat holds it OR when
   // we're in a single-player game (hot-seat solo: everything visible).
-  const localRoles =
-    playerID !== undefined && playerID !== null
-      ? rolesAtSeat(G.roleAssignments, playerID)
-      : [];
+  const localRoles = hasSeat
+    ? rolesAtSeat(G.roleAssignments, playerID)
+    : [];
   const isSolo = ctx.numPlayers === 1;
   const expanded = (role: 'chief' | 'science' | 'domestic' | 'foreign') =>
     isSolo || localRoles.includes(role);
@@ -121,6 +131,7 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
             phase={ctx.phase ?? null}
             currentPlayer={ctx.currentPlayer}
             round={G.round}
+            spectating={isSpectator}
           />
         }
       />
@@ -137,15 +148,17 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
         />
       </Stack>
 
-      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-        <Button
-          variant="contained"
-          disabled={gameOver}
-          onClick={() => moves.pass()}
-        >
-          End my turn
-        </Button>
-      </Box>
+      {isSpectator ? null : (
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Button
+            variant="contained"
+            disabled={gameOver}
+            onClick={() => moves.pass()}
+          >
+            End my turn
+          </Button>
+        </Box>
+      )}
     </Box>
   );
 }
