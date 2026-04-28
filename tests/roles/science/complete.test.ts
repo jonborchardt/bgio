@@ -130,9 +130,11 @@ const buildState = (
     wallets,
     science: scienceState,
     foreign: {
+      hand: [],
+      inPlay: [],
       battleDeck: [],
       tradeDeck: [],
-      hand: [],
+      inFlight: { battle: null, committed: [] },
     },
     chief: { workers: 0, hand: [] },
     domestic: { hand: [], grid: {}, techHand: [] },

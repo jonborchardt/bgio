@@ -15,6 +15,7 @@ import { bagOf } from './resources/bag.ts';
 import { initialMat } from './resources/centerMat.ts';
 import { setupScience } from './roles/science/setup.ts';
 import { buildBattleDeck, buildTradeDeck } from './roles/foreign/decks.ts';
+import { UNITS } from '../data/index.ts';
 import { setupDomestic } from './roles/domestic/grid.ts';
 import { setupEvents } from './events/state.ts';
 import { fromBgio, type BgioRandomLike } from './random.ts';
@@ -84,11 +85,17 @@ export const setup = (context: { ctx: Ctx; random?: BgioRandomLike }): Settlemen
     // Science role: built above so we could derive `techsAlreadyUsedBy`.
     science,
     // Foreign role: Battle and Trade decks per game-design.md §Setup.Foreign.
-    // The hand starts empty; 07.4 fills it via flip-flow moves.
+    // The hand seeds with the level-0 Militia unit cards (07.2). UnitDef
+    // doesn't carry a `level` field yet, so per the 07.2 plan we treat the
+    // first 3 entries of `UNITS` as Militia. `inPlay` starts empty;
+    // `inFlight` has no flipped card yet — both fill in via the recruit /
+    // flip-flow moves.
     foreign: {
+      hand: [...UNITS.slice(0, 3)],
+      inPlay: [],
       battleDeck: buildBattleDeck(r),
       tradeDeck: buildTradeDeck(r),
-      hand: [],
+      inFlight: { battle: null, committed: [] },
     },
     // Domestic role (06.1): pile of buildings + empty placement grid.
     domestic: setupDomestic(techsAlreadyUsedBy),

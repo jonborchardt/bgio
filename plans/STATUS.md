@@ -94,7 +94,7 @@ One row per sub-plan. Columns:
 | Sub-plan | Status | Owner | Branch | Updated | Blocked on | Notes |
 |---|---|---|---|---|---|---|
 | [07.1](07.1-decks.md) | done | claude | plan/07.1 | 2026-04-28 | 01.2, 02.3, 02.4 | Done. battle+trade decks + redaction wiring. |
-| [07.2](07.2-units.md) | pending |  |  |  | 01.2, 03.4 | Soft dep on 06.3, 06.4. |
+| [07.2](07.2-units.md) | done | claude | plan/07.2 | 2026-04-28 | 01.2, 03.4 | Done. recruit/upkeep/release with Forge/Walls modifiers via parseBenefit. |
 | [07.3](07.3-battle-resolver.md) | pending |  |  |  | 01.2, 07.2 | Heavy — flagged for possible split. |
 | [07.4](07.4-flip-flow.md) | pending |  |  |  | 02.2, 03.3, 07.1, 07.2, 07.3 |  |
 | [07.5](07.5-trade-request.md) | pending |  |  |  | 02.2, 03.3, 07.4 |  |

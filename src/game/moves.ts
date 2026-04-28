@@ -14,6 +14,9 @@ import { chiefPlayGoldEvent } from './roles/chief/playGoldEvent.ts';
 import { sciencePlayBlueEvent } from './roles/science/playBlueEvent.ts';
 import { domesticPlayGreenEvent } from './roles/domestic/playGreenEvent.ts';
 import { foreignPlayRedEvent } from './roles/foreign/playRedEvent.ts';
+import { foreignRecruit } from './roles/foreign/recruit.ts';
+import { foreignUpkeep } from './roles/foreign/upkeep.ts';
+import { foreignReleaseUnit } from './roles/foreign/release.ts';
 import { scienceContribute } from './roles/science/contribute.ts';
 import { scienceComplete } from './roles/science/complete.ts';
 
@@ -51,6 +54,12 @@ export { scienceContribute, scienceComplete };
 // `src/game/events/playEventStub.ts`. Each only owns role-gating and
 // per-round bookkeeping until 08.3 wires the typed effect dispatcher.
 export { sciencePlayBlueEvent, domesticPlayGreenEvent, foreignPlayRedEvent };
+
+// Foreign role unit moves (07.2): recruit / upkeep / release. Stage gating
+// is enforced inside each move against `ctx.activePlayers?.[playerID] ===
+// 'foreignTurn'`, so the bgio-level stage config only has to authorize the
+// foreign seat in that stage.
+export { foreignRecruit, foreignUpkeep, foreignReleaseUnit };
 
 // ---------------------------------------------------------------------------
 // Test-only scaffolding.

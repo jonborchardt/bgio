@@ -11,15 +11,28 @@
 import type { RandomAPI } from '../../random.ts';
 import type { BattleCardDef, TradeCardDef } from '../../../data/decks.ts';
 import { BATTLE_CARDS, TRADE_CARDS } from '../../../data/decks.ts';
+import type { UnitDef } from '../../../data/schema.ts';
+import type { BattleInFlight, UnitInstance } from './types.ts';
 
 export interface ForeignState {
+  // The Foreign hand of unit cards available to recruit. Seeded with the
+  // level-0 Militia entries at setup (07.2) — until UnitDef carries a
+  // `level` field we treat the first 3 entries of `UNITS` as Militia.
+  hand: UnitDef[];
+  // Recruited units currently on the board, count-collapsed by `defID`
+  // (07.2). `foreignRecruit` increments the matching entry or appends a
+  // new one; `foreignReleaseUnit` decrements and removes at zero.
+  inPlay: UnitInstance[];
   // Top of the deck = index 0 (drawn first). Lowest `number` cards on top.
   battleDeck: BattleCardDef[];
   tradeDeck: TradeCardDef[];
-  // The Foreign hand. Detailed shape lands in 07.4 — for now the stable
-  // contract is "an array Foreign owns", so playerView can size-redact it
-  // alongside the decks.
-  hand: unknown[];
+  // Active battle card + the units committed to fight it. Empty at setup;
+  // the full flip-flow lands in 07.3 / 07.4.
+  inFlight: BattleInFlight;
+  // Set by `foreignUpkeep` once per `foreignTurn` stage so the move can't
+  // run a second time and double-charge. Cleared at the start of the next
+  // foreign stage by 02.2 / 07.x stage-entry plumbing.
+  _upkeepPaid?: boolean;
 }
 
 /**
