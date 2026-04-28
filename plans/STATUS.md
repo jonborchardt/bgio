@@ -116,11 +116,11 @@ One row per sub-plan. Columns:
 
 | Sub-plan | Status | Owner | Branch | Updated | Blocked on | Notes |
 |---|---|---|---|---|---|---|
-| [09.1](09.1-layout-shell.md) | pending |  |  |  | 01, 02 | Touches `src/Board.tsx`. |
-| [09.2](09.2-card-components.md) | pending |  |  |  | 01.2 | Soft dep on 09.3, 09.4. |
-| [09.3](09.3-resource-and-mat.md) | pending |  |  |  | 03 | Soft dep on 09.4. |
+| [09.1](09.1-layout-shell.md) | done | claude | plan/09.1 | 2026-04-28 | 01, 02 | Done. BoardShell + RoleSlot + StatusBar; Board.tsx wired through shell. |
+| [09.2](09.2-card-components.md) | done | claude | plan/09.2 | 2026-04-28 | 01.2 | Done. CardFrame + 5 typed cards under src/ui/cards/. |
+| [09.3](09.3-resource-and-mat.md) | done | claude | plan/09.3 | 2026-04-28 | 03 | Done. ResourceBag + ResourceChip + CenterMat + Circle + TradeRequestSlot. |
 | [09.4](09.4-theme-tokens.md) | done | claude | plan/09.4 | 2026-04-28 | 01.1, 03.1, 08.1 | Done. palette.{resource,role,tier,eventColor} groups via MUI augmentation. |
-| [09.5](09.5-deck-and-hand.md) | pending |  |  |  | 09.2 |  |
+| [09.5](09.5-deck-and-hand.md) | done | claude | plan/09.5 | 2026-04-28 | 09.2 | Done. Generic DeckStack<T> + Hand<T>. |
 
 ## 10 — Multiplayer infra
 

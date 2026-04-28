@@ -1,18 +1,45 @@
+// Board (04.5 + 09.1) — top-level board component.
+//
+// 09.1 retrofits the previous flat layout with `<BoardShell>`: chief along
+// the top, the three other role panels on the sides, the center mat in the
+// middle, and the status bar at the bottom. Each role panel is wrapped in a
+// `<RoleSlot>` whose `expanded` flag is true when the local seat holds that
+// role (or when `numPlayers === 1`, hot-seat solo).
+//
+// The role assignments header that used to live above the panels stays as a
+// small banner above the shell — it's useful regardless of which seat is
+// looking at the board.
+
 import { Box, Button, Paper, Stack, Typography } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
 import type { SettlementState } from './game/index.ts';
+import { rolesAtSeat } from './game/roles.ts';
 import { ChiefPanel } from './ui/chief/ChiefPanel.tsx';
 import { SciencePanel } from './ui/science/SciencePanel.tsx';
 import { DomesticPanel } from './ui/domestic/DomesticPanel.tsx';
 import { ForeignPanel } from './ui/foreign/ForeignPanel.tsx';
+import { BoardShell } from './ui/layout/BoardShell.tsx';
+import { RoleSlot } from './ui/layout/RoleSlot.tsx';
+import { StatusBar } from './ui/layout/StatusBar.tsx';
+import { CenterMat } from './ui/mat/CenterMat.tsx';
 
 export function SettlementBoard(props: BoardProps<SettlementState>) {
-  const { G, ctx, moves } = props;
+  const { G, ctx, moves, playerID } = props;
   const gameOver = ctx.gameover !== undefined;
   const seats = Object.keys(G.roleAssignments).sort();
 
+  // 09.1: a role's slot is expanded when the local seat holds it OR when
+  // we're in a single-player game (hot-seat solo: everything visible).
+  const localRoles =
+    playerID !== undefined && playerID !== null
+      ? rolesAtSeat(G.roleAssignments, playerID)
+      : [];
+  const isSolo = ctx.numPlayers === 1;
+  const expanded = (role: 'chief' | 'science' | 'domestic' | 'foreign') =>
+    isSolo || localRoles.includes(role);
+
   return (
-    <Box sx={{ width: 'min(100%, 36rem)', display: 'grid', gap: 3 }}>
+    <Box sx={{ width: 'min(100%, 60rem)', display: 'grid', gap: 3 }}>
       <Box component="header" sx={{ textAlign: 'center' }}>
         <Typography
           variant="h4"
@@ -65,10 +92,36 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
         })}
       </Stack>
 
-      <ChiefPanel {...props} />
-      <SciencePanel {...props} />
-      <DomesticPanel {...props} />
-      <ForeignPanel {...props} />
+      <BoardShell
+        chief={
+          <RoleSlot expanded={expanded('chief')}>
+            <ChiefPanel {...props} />
+          </RoleSlot>
+        }
+        science={
+          <RoleSlot expanded={expanded('science')}>
+            <SciencePanel {...props} />
+          </RoleSlot>
+        }
+        domestic={
+          <RoleSlot expanded={expanded('domestic')}>
+            <DomesticPanel {...props} />
+          </RoleSlot>
+        }
+        foreign={
+          <RoleSlot expanded={expanded('foreign')}>
+            <ForeignPanel {...props} />
+          </RoleSlot>
+        }
+        centerMat={<CenterMat {...props} />}
+        status={
+          <StatusBar
+            phase={ctx.phase ?? null}
+            currentPlayer={ctx.currentPlayer}
+            round={G.round}
+          />
+        }
+      />
 
       <Box sx={{ display: 'flex', justifyContent: 'center' }}>
         <Button
