@@ -25,5 +25,9 @@ export const setup = ({ ctx }: { ctx: Ctx }): SettlementState => {
     roleAssignments,
     round: 0,
     hands,
+    // Phase-progress flags — flipped by 04.2's chiefEndPhase move and the
+    // others-phase role stubs. Reset at the top of every `endOfRound` phase.
+    phaseDone: false,
+    othersDone: {},
   };
 };

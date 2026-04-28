@@ -4,7 +4,12 @@
 import type { Game } from 'boardgame.io';
 import type { SettlementState } from './types.ts';
 import { setup } from './setup.ts';
-import { pass } from './moves.ts';
+import {
+  pass,
+  __testSetPhaseDone,
+  __testSetOthersDone,
+} from './moves.ts';
+import { chiefPhase, othersPhase, endOfRound } from './phases/index.ts';
 
 export type {
   CenterMat,
@@ -19,8 +24,14 @@ export { assignRoles, rolesAtSeat, seatOfRole } from './roles.ts';
 export const Settlement: Game<SettlementState> = {
   name: 'settlement',
   setup,
-  moves: { pass },
-  // Until phases land in 02.1, every move ends the turn so `pass` cleanly
-  // hands control to the next seat.
+  // The `__test*` moves are a temporary scaffold so 02.1's tests can drive
+  // phase transitions before the real chief/others moves land. They will be
+  // removed once 04.2 ships `chiefEndPhase` and the others-phase role stubs.
+  moves: { pass, __testSetPhaseDone, __testSetOthersDone },
+  // Game-level default: every move ends the turn so `pass` cleanly cycles
+  // seats. Phase-level `turn` configs override this with their own
+  // `activePlayers` map (chief-only, others-only) — the cycling default
+  // here only affects fall-through behavior outside an active stage.
   turn: { minMoves: 1, maxMoves: 1 },
+  phases: { chiefPhase, othersPhase, endOfRound },
 };

@@ -41,7 +41,7 @@ One row per sub-plan. Columns:
 
 | Sub-plan | Status | Owner | Branch | Updated | Blocked on | Notes |
 |---|---|---|---|---|---|---|
-| [02.1](02.1-phase-skeleton.md) | pending |  |  |  | 01.1, 01.3 | Touches `src/game/phases/`. |
+| [02.1](02.1-phase-skeleton.md) | done | claude | plan/02.1 | 2026-04-27 | 01.1, 01.3 | Done. chief/others/endOfRound phases; phaseDone+othersDone flags. |
 | [02.2](02.2-stages-and-active-players.md) | pending |  |  |  | 02.1 |  |
 | [02.3](02.3-randomness.md) | pending |  |  |  | 02.1 | Touches `eslint.config.js`. |
 | [02.4](02.4-secret-state.md) | pending |  |  |  | 01.1 |  |

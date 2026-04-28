@@ -23,4 +23,10 @@ export interface SettlementState {
   // Private slices populated by 02.4; refined per role later.
   // Decks belong to whoever owns them and live under those players' hands.
   hands: Record<PlayerID, unknown>;
+
+  // Phase-progress flags consumed by 02.1's phase `endIf` checks. The real
+  // moves that flip these land in 04.2 (chiefEndPhase) and the others-phase
+  // role stubs; the optionality keeps existing tests/setups source-compatible.
+  phaseDone?: boolean;
+  othersDone?: Record<PlayerID, boolean>;
 }
