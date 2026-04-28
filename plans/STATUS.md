@@ -53,7 +53,7 @@ One row per sub-plan. Columns:
 |---|---|---|---|---|---|---|
 | [03.1](03.1-token-types.md) | done | claude | plan/03.1 | 2026-04-27 |  | Done. `src/game/resources/{types,bag}.ts` + tests. |
 | [03.2](03.2-bank.md) | done | claude | plan/03.2 | 2026-04-27 | 03.1 | Done. transfer/initialBank/totalResources; setup uses initialBank(). |
-| [03.3](03.3-center-mat.md) | pending |  |  |  | 03.1, 03.2, 02.5, 01.1 |  |
+| [03.3](03.3-center-mat.md) | done | claude | plan/03.3 | 2026-04-27 | 03.1, 03.2, 02.5, 01.1 | Done. CenterMat + per-non-chief circles + mat:sweep-leftovers hook. |
 | [03.4](03.4-moves.md) | pending |  |  |  | 01.1, 01.3, 02.1, 03.1, 03.2, 03.3 |  |
 
 ## 04 — Chief

@@ -42,7 +42,10 @@ describe('test helpers', () => {
     expect(G.bank.gold).toBe(3);
     expect(G.round).toBe(0);
     expect(Object.keys(G.hands).sort()).toEqual(['0', '1']);
-    expect(G.centerMat).toEqual({});
+    // 03.3: centerMat now has a circle per non-chief seat (2-player game →
+    // seat '1' is the only non-chief seat) and an empty trade-request slot.
+    expect(Object.keys(G.centerMat.circles)).toEqual(['1']);
+    expect(G.centerMat.tradeRequest).toBeNull();
   });
 
   it('runMoves with an unknown move leaves state unchanged', () => {

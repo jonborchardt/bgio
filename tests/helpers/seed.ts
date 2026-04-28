@@ -23,7 +23,7 @@ export const seedAfterChiefDistribution = (
 
   const base: SettlementState = {
     bank: freshBag(), // bank fully distributed → empty
-    centerMat: {}, // placeholder until 03.3 fills in the circles
+    centerMat: { circles: {}, tradeRequest: null }, // empty mat — tests that need circles set them via partial
     roleAssignments,
     round: 1, // post-distribution → past round 0 setup
     hands,

@@ -2,16 +2,17 @@
 // Pure types only — no runtime, no boardgame.io imports.
 
 import type { ResourceBag } from './resources/types.ts';
+// Type-only edge into `./resources/centerMat.ts`. That module imports
+// `PlayerID` / `Role` back from this file, but because both edges are
+// `import type`-only there is no runtime cycle — TypeScript erases them.
+import type { CenterMat } from './resources/centerMat.ts';
 
 export type Role = 'chief' | 'science' | 'domestic' | 'foreign';
 
 // boardgame.io identifies seats as string indices: '0', '1', '2', '3'.
 export type PlayerID = string;
 
-export type { ResourceBag };
-
-// Placeholder until 03.3 fills in the center-mat shape.
-export type CenterMat = Record<string, unknown>;
+export type { ResourceBag, CenterMat };
 
 export interface SettlementState {
   // Public, shared state.

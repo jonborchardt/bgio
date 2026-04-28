@@ -36,12 +36,13 @@ describe('bank', () => {
 
   describe('totalResources', () => {
     it('is invariant across a sequence of transfers between holders on G', () => {
-      // Park a second bag on G.centerMat so we have two holders to swap
-      // between. totalResources walks centerMat, so it'll be summed in.
+      // Park a second bag on G.centerMat (as a circle) so we have two
+      // holders to swap between. totalResources walks centerMat, so the
+      // circle's contents are summed in.
       const sideBag = bagOf({ wood: 4, stone: 1 });
       const G: SettlementState = {
         bank: bagOf({ gold: 3, wood: 2 }),
-        centerMat: { sideBag },
+        centerMat: { circles: { '1': sideBag }, tradeRequest: null },
         roleAssignments: {},
         round: 0,
         hands: {},
