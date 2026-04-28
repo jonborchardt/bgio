@@ -42,7 +42,7 @@ One row per sub-plan. Columns:
 | Sub-plan | Status | Owner | Branch | Updated | Blocked on | Notes |
 |---|---|---|---|---|---|---|
 | [02.1](02.1-phase-skeleton.md) | done | claude | plan/02.1 | 2026-04-27 | 01.1, 01.3 | Done. chief/others/endOfRound phases; phaseDone+othersDone flags. |
-| [02.2](02.2-stages-and-active-players.md) | pending |  |  |  | 02.1 |  |
+| [02.2](02.2-stages-and-active-players.md) | done | claude | plan/02.2 | 2026-04-27 | 02.1 | Done. STAGES + activePlayersForOthers + enter/exitEventStage. |
 | [02.3](02.3-randomness.md) | pending |  |  |  | 02.1 | Touches `eslint.config.js`. |
 | [02.4](02.4-secret-state.md) | pending |  |  |  | 01.1 |  |
 | [02.5](02.5-end-of-round.md) | pending |  |  |  | 02.1 |  |

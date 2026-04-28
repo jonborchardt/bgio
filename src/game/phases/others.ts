@@ -1,29 +1,26 @@
 // othersPhase — every non-chief seat acts (in parallel, eventually).
 //
-// Each non-chief seat sits in a placeholder `waiting` stage until 02.2
-// fleshes out the real per-role stage map. The phase ends once every
-// non-chief seat has set its `G.othersDone[seat]` flag.
+// 02.2 wires the real per-role stage map: each non-chief seat lands in
+// the stage matching its primary non-chief role (science/domestic/foreign);
+// the chief seat sits in `done`. The phase ends once every non-chief seat
+// has set its `G.othersDone[seat]` flag — the chief stage is `done` purely
+// to mark "no further action expected", not to gate the endIf.
 
 import type { PhaseConfig } from 'boardgame.io';
 import type { SettlementState } from '../types.ts';
 import { seatOfRole } from '../roles.ts';
+import { activePlayersForOthers } from './stages.ts';
 
 export const othersPhase: PhaseConfig<SettlementState> = {
   next: 'endOfRound',
 
   // bgio disallows `events.setActivePlayers` from a phase `onBegin`; the
   // canonical place to set per-phase active players is `turn.onBegin`.
-  // The map is rebuilt from the live role assignments so it adapts to
-  // whatever seating the setup produced.
+  // The stage map is rebuilt from the live role assignments so it adapts
+  // to whatever seating the setup produced.
   turn: {
     onBegin: ({ G, events }) => {
-      const chiefSeat = seatOfRole(G.roleAssignments, 'chief');
-      const value: Record<string, string> = {};
-      for (const seat of Object.keys(G.roleAssignments)) {
-        if (seat === chiefSeat) continue;
-        value[seat] = 'waiting';
-      }
-      events.setActivePlayers({ value });
+      events.setActivePlayers({ value: activePlayersForOthers(G.roleAssignments) });
     },
   },
 

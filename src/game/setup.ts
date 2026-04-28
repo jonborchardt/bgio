@@ -29,5 +29,9 @@ export const setup = ({ ctx }: { ctx: Ctx }): SettlementState => {
     // others-phase role stubs. Reset at the top of every `endOfRound` phase.
     phaseDone: false,
     othersDone: {},
+    // Per-seat stack for `enterEventStage`/`exitEventStage` (02.2). Lazy-
+    // initialized in `enterEventStage` too, but we seed an empty object so
+    // observers and tests can rely on the property being present.
+    _stageStack: {},
   };
 };

@@ -29,4 +29,11 @@ export interface SettlementState {
   // role stubs; the optionality keeps existing tests/setups source-compatible.
   phaseDone?: boolean;
   othersDone?: Record<PlayerID, boolean>;
+
+  // Per-seat stack of the previous stage(s) before the seat entered a
+  // short-lived `playingEvent` interrupt stage (02.2). Typed as `string[]`
+  // here rather than `StageName[]` to avoid a circular import with
+  // `./phases/stages.ts`; the runtime helpers in that file own the
+  // narrower `StageName` subtype.
+  _stageStack?: Record<PlayerID, string[]>;
 }
