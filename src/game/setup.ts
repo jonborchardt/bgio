@@ -18,6 +18,7 @@ import { buildBattleDeck, buildTradeDeck } from './roles/foreign/decks.ts';
 import { UNITS } from '../data/index.ts';
 import { setupDomestic } from './roles/domestic/grid.ts';
 import { setupEvents } from './events/state.ts';
+import { setupWanderDeck } from './opponent/wanderDeck.ts';
 import { fromBgio, type BgioRandomLike } from './random.ts';
 import { TURN_CAP_DEFAULT } from './endConditions.ts';
 
@@ -131,5 +132,9 @@ export const setup = (
     // Cross-cutting events (08.1): four decks (gold/blue/green/red) with
     // 4 cards dealt to the role-holding seat's hand per color.
     events: setupEvents(roleAssignments, r),
+    // 08.4 — opponent (wander deck). Shuffled at setup; the
+    // `opponent:wander-step` round-end hook flips one card per round end
+    // and dispatches its effects.
+    opponent: { wander: setupWanderDeck(r) },
   };
 };

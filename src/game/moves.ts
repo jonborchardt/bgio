@@ -29,6 +29,10 @@ import { chiefDecideTradeDiscard } from './roles/chief/decideTradeDiscard.ts';
 import { scienceContribute } from './roles/science/contribute.ts';
 import { scienceComplete } from './roles/science/complete.ts';
 import { eventResolve } from './events/resolveMove.ts';
+import { chiefPlayTech } from './roles/chief/playTech.ts';
+import { sciencePlayTech } from './roles/science/playTech.ts';
+import { domesticPlayTech } from './roles/domestic/playTech.ts';
+import { foreignPlayTech } from './roles/foreign/playTech.ts';
 
 export const pass: Move<SettlementState> = () => {
   // intentional no-op — bgio advances the turn after the move resolves.
@@ -72,6 +76,17 @@ export { sciencePlayBlueEvent, domesticPlayGreenEvent, foreignPlayRedEvent };
 // payload, and pops the seat back to the prior stage. Stage gating is
 // enforced inside the move (must be in `playingEvent`).
 export { eventResolve };
+
+// 08.6 — Per-role tech-play moves. Each gates on the caller holding the
+// matching role and on the named card existing in that role's tech-card
+// hand with non-empty `onPlayEffects`. All four share the
+// `playTechStub` factory under `tech/playTechStub.ts`.
+export {
+  chiefPlayTech,
+  sciencePlayTech,
+  domesticPlayTech,
+  foreignPlayTech,
+};
 
 // Foreign role unit moves (07.2): recruit / upkeep / release. Stage gating
 // is enforced inside each move against `ctx.activePlayers?.[playerID] ===

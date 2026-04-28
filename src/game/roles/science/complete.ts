@@ -8,16 +8,18 @@
 
 import type { Move } from 'boardgame.io';
 import { INVALID_MOVE } from 'boardgame.io/core';
-import type { SettlementState } from '../../types.ts';
+import type { SettlementState, PlayerID } from '../../types.ts';
 import type { TechnologyDef } from '../../../data/schema.ts';
 import { RESOURCES } from '../../resources/types.ts';
 import type { ResourceBag } from '../../resources/types.ts';
 import { canAfford } from '../../resources/bag.ts';
 import { transfer } from '../../resources/bank.ts';
-import { rolesAtSeat } from '../../roles.ts';
+import { rolesAtSeat, seatOfRole } from '../../roles.ts';
+import { applyTechOnAcquire } from '../../tech/effects.ts';
+import { fromBgio, type BgioRandomLike } from '../../random.ts';
 
 export const scienceComplete: Move<SettlementState> = (
-  { G, ctx, playerID },
+  { G, ctx, playerID, random },
   cardID: string,
 ) => {
   if (playerID === undefined || playerID === null) return INVALID_MOVE;
@@ -80,7 +82,29 @@ export const scienceComplete: Move<SettlementState> = (
   // by color. We push to the per-role slice on G — whichever seat holds
   // that role owns it (per the 1p/2p/3p/4p assignment table). Initialize
   // hand fields lazily because earlier setups may not have reserved them.
+  //
+  // 08.6 — `applyTechOnAcquire` fires for any tech that ships
+  // `onAcquireEffects`. V1 most don't, so this is a no-op for the bulk
+  // of distributions. We compute the receiving seat per color (so the
+  // dispatcher can credit the right wallet for awaiting-input effects)
+  // and pass an empty context object — the science seat is mid-stage,
+  // and threading bgio's `events` API + `returnTo` through here would
+  // require a bigger refactor. The dispatcher gracefully no-ops the
+  // stage push when `events` is unset (see 08.2's contract); awaiting-
+  // input effects record on `G._awaitingInput` for the seat regardless.
   const techStack: TechnologyDef[] = science.underCards[cardID] ?? [];
+  const fallbackRandom: BgioRandomLike = {
+    Shuffle: <T>(arr: T[]): T[] => [...arr],
+    Number: () => 0,
+  };
+  const r = fromBgio((random as BgioRandomLike | undefined) ?? fallbackRandom);
+  const trySeatOf = (role: 'chief' | 'science' | 'domestic' | 'foreign'): PlayerID | null => {
+    try {
+      return seatOfRole(G.roleAssignments, role);
+    } catch {
+      return null;
+    }
+  };
   switch (card.color) {
     case 'red': {
       // Foreign role. ForeignState.hand is currently typed as `unknown[]`;
@@ -96,8 +120,10 @@ export const scienceComplete: Move<SettlementState> = (
           'scienceComplete: G.foreign is undefined; cannot deliver red tech cards',
         );
       }
+      const recipient = trySeatOf('foreign');
       for (const tech of techStack) {
         (G.foreign.hand as unknown as TechnologyDef[]).push(tech);
+        if (recipient !== null) applyTechOnAcquire(G, ctx, r, recipient, tech);
       }
       break;
     }
@@ -110,7 +136,11 @@ export const scienceComplete: Move<SettlementState> = (
       } else if (G.chief.hand === undefined) {
         G.chief.hand = [];
       }
+      const recipient = trySeatOf('chief');
       G.chief.hand!.push(...techStack);
+      if (recipient !== null) {
+        for (const tech of techStack) applyTechOnAcquire(G, ctx, r, recipient, tech);
+      }
       break;
     }
     case 'green': {
@@ -125,12 +155,23 @@ export const scienceComplete: Move<SettlementState> = (
       } else if (G.domestic.techHand === undefined) {
         G.domestic.techHand = [];
       }
+      const recipient = trySeatOf('domestic');
       G.domestic.techHand!.push(...techStack);
+      if (recipient !== null) {
+        for (const tech of techStack) applyTechOnAcquire(G, ctx, r, recipient, tech);
+      }
       break;
     }
     case 'blue': {
       // Science role. ScienceState.hand was added in 05.3.
       science.hand.push(...techStack);
+      // Recipient is the science seat (== playerID under the role-gate
+      // above, but resolve via the role table to stay symmetric with
+      // the other branches).
+      const recipient = trySeatOf('science');
+      if (recipient !== null) {
+        for (const tech of techStack) applyTechOnAcquire(G, ctx, r, recipient, tech);
+      }
       break;
     }
     default: {

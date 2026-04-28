@@ -190,9 +190,32 @@ export const playerViewFor = (
     };
   }
 
+  // 08.4 — opponent wander deck. The deck order is hidden from EVERY
+  // viewer (including the chief seat) — there's no role that "owns" the
+  // opponent's hand. `currentlyApplied` and `discard` stay visible so
+  // observers can see what just hit the village. Only the `deck`
+  // field's order is opaque; its length is preserved so the UI can show
+  // the remaining-card count.
+  let opponent = G.opponent;
+  if (opponent !== undefined) {
+    opponent = {
+      ...opponent,
+      wander: {
+        ...opponent.wander,
+        deck: redactDeckOrder(opponent.wander.deck),
+      },
+    };
+  }
+
   // Only allocate a new top-level object if anything actually changed.
-  if (hands === G.hands && foreign === G.foreign) return { ...G };
-  return { ...G, hands, foreign };
+  if (
+    hands === G.hands &&
+    foreign === G.foreign &&
+    opponent === G.opponent
+  ) {
+    return { ...G };
+  }
+  return { ...G, hands, foreign, opponent };
 };
 
 /**

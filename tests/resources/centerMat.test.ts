@@ -218,12 +218,18 @@ describe('round-end sweep hook (mat:sweep-leftovers)', () => {
     expect(G.centerMat.tradeRequest).toBe(req);
   });
 
-  it('full client round-cycle leaves circles empty and bank unchanged when no tokens are placed', () => {
+  it('full client round-cycle leaves circles empty when no tokens are placed', () => {
     // Belt-and-suspenders: drive an actual round through the engine to
-    // confirm the hook fires (and is a no-op) when bgio runs `endOfRound`.
+    // confirm the mat-sweep hook fires (and is a no-op) when bgio runs
+    // `endOfRound`.
+    //
+    // The 08.4 wander hook also runs during `endOfRound` and may credit
+    // the bank with a positive resource bonus from the freshly-drawn
+    // wander card. That's expected and not what this test is asserting —
+    // we only check that the *mat* sweep hook didn't move tokens around
+    // (circles stay empty when nothing was placed).
     const client = makeClient({ numPlayers: 4 });
     const before = client.getState()!.G;
-    const bankBefore = { ...before.bank };
     const chiefSeat = seatOfRole(before.roleAssignments, 'chief');
     const others = Object.keys(before.roleAssignments).filter(
       (s) => s !== chiefSeat,
@@ -239,7 +245,6 @@ describe('round-end sweep hook (mat:sweep-leftovers)', () => {
     const after = client.getState()!;
     expect(after.ctx.phase).toBe('chiefPhase');
     expect(after.G.round).toBe(before.round + 1);
-    expect(after.G.bank).toEqual(bankBefore);
     for (const seat of others) {
       expect(after.G.centerMat.circles[seat]).toEqual(bagOf({}));
     }
