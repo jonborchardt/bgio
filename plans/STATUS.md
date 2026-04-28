@@ -32,7 +32,7 @@ One row per sub-plan. Columns:
 | Sub-plan | Status | Owner | Branch | Updated | Blocked on | Notes |
 |---|---|---|---|---|---|---|
 | [01.1](01.1-state-shape.md) | done | claude | plan/01.1 | 2026-04-27 |  | Done. `src/game/{types,roles,index}.ts` + `tests/roles.test.ts`. |
-| [01.2](01.2-data-loaders.md) | pending |  |  |  |  | Touches `src/data/`. |
+| [01.2](01.2-data-loaders.md) | done | claude | plan/01.2 | 2026-04-27 |  | Done. `src/data/{schema,index}.ts` + `tests/data.test.ts`. |
 | [01.3](01.3-game-skeleton.md) | pending |  |  |  | 01.1, 01.2 | Touches `src/App.tsx`, `src/Board.tsx`, `index.html`. |
 | [01.4](01.4-test-harness.md) | pending |  |  |  | 01.3 | Touches `tests/helpers/`. |
 | [01.5](01.5-claude-md-refresh.md) | pending |  |  |  | 01.1, 01.2, 01.3, 01.4 | Touches `CLAUDE.md`. |
