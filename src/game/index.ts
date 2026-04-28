@@ -7,6 +7,7 @@ import { setup } from './setup.ts';
 import {
   pass,
   pullFromMat,
+  chiefDistribute,
   __testSetPhaseDone,
   __testSetOthersDone,
 } from './moves.ts';
@@ -29,7 +30,13 @@ export const Settlement: Game<SettlementState> = {
   // The `__test*` moves are a temporary scaffold so 02.1's tests can drive
   // phase transitions before the real chief/others moves land. They will be
   // removed once 04.2 ships `chiefEndPhase` and the others-phase role stubs.
-  moves: { pass, pullFromMat, __testSetPhaseDone, __testSetOthersDone },
+  moves: {
+    pass,
+    pullFromMat,
+    chiefDistribute,
+    __testSetPhaseDone,
+    __testSetOthersDone,
+  },
   // Game-level default: every move ends the turn so `pass` cleanly cycles
   // seats. Phase-level `turn` configs override this with their own
   // `activePlayers` map (chief-only, others-only) — the cycling default

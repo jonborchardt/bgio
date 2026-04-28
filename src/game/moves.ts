@@ -7,6 +7,7 @@
 import type { Move } from 'boardgame.io';
 import type { PlayerID, SettlementState } from './types.ts';
 import { pullFromMat } from './resources/moves.ts';
+import { chiefDistribute } from './roles/chief/distribute.ts';
 
 export const pass: Move<SettlementState> = () => {
   // intentional no-op — bgio advances the turn after the move resolves.
@@ -16,6 +17,11 @@ export const pass: Move<SettlementState> = () => {
 // only has to know about this one file. Stage/phase gating for `pullFromMat`
 // happens at the bgio config layer (see plan 02.x), not here.
 export { pullFromMat };
+
+// Chief role moves. Phase gating is enforced inside each move against
+// `ctx.phase === 'chiefPhase'`, so the bgio-level stage/phase config only
+// has to authorize the chief seat in chiefPhase.
+export { chiefDistribute };
 
 // ---------------------------------------------------------------------------
 // Test-only scaffolding.
