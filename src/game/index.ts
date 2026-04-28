@@ -37,6 +37,7 @@ import {
 import { chiefPhase, othersPhase, endOfRound } from './phases/index.ts';
 import { playerView } from './playerView.ts';
 import { endIf } from './endConditions.ts';
+import { enumerate } from './ai/enumerate.ts';
 
 export type {
   CenterMat,
@@ -95,4 +96,10 @@ export const Settlement: Game<SettlementState> = {
   // sets `ctx.gameover` to that value (a `GameOutcome`). The wrapper here
   // adapts the bgio shape to our pure 2-arg `endIf`.
   endIf: ({ G, ctx }) => endIf(G, ctx),
+  // 11.2 — bgio's `RandomBot` / `MCTSBot` call `Game.ai.enumerate(G, ctx,
+  // playerID)` to learn the legal move surface at a given state. Our
+  // enumerator inspects the phase / stage and returns a bounded list of
+  // plausible candidates; move bodies still own real legality via
+  // `INVALID_MOVE`.
+  ai: { enumerate },
 };

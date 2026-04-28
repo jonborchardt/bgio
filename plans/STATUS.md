@@ -140,8 +140,8 @@ One row per sub-plan. Columns:
 
 | Sub-plan | Status | Owner | Branch | Updated | Blocked on | Notes |
 |---|---|---|---|---|---|---|
-| [11.1](11.1-random-fuzzer.md) | pending |  |  |  | 01-08 | More landed = better coverage. |
-| [11.2](11.2-mcts-baseline.md) | pending |  |  |  | 01-08 |  |
+| [11.1](11.1-random-fuzzer.md) | done | claude | plan/11.1 | 2026-04-28 | 01-08 | Done. RandomBot fuzz + invariant assertions. |
+| [11.2](11.2-mcts-baseline.md) | done | claude | plan/11.2 | 2026-04-28 | 01-08 | Done. enumerate() wired on Settlement.ai; MCTSBot smoke construct. |
 | [11.3](11.3-chief-bot.md) | pending |  |  |  | 04, 11.2 |  |
 | [11.4](11.4-science-bot.md) | pending |  |  |  | 05, 11.2 |  |
 | [11.5](11.5-domestic-bot.md) | pending |  |  |  | 06, 11.2 |  |
