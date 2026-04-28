@@ -18,6 +18,9 @@ import type { ScienceState } from './roles/science/setup.ts';
 // runtime cycle with `./roles/foreign/decks.ts`, which imports `RandomAPI`
 // back from this package.
 import type { ForeignState } from './roles/foreign/decks.ts';
+// Same trick for the Domestic role state (06.1) — `./roles/domestic/types.ts`
+// re-imports `PlayerID` from this file at the type level only.
+import type { DomesticState } from './roles/domestic/types.ts';
 // Same trick for the cross-cutting events state (08.x) — type-only edge so
 // there is no runtime cycle with `./events/state.ts`, which imports
 // `RandomAPI` and `registerRoundEndHook` back from this package.
@@ -28,7 +31,14 @@ export type Role = 'chief' | 'science' | 'domestic' | 'foreign';
 // boardgame.io identifies seats as string indices: '0', '1', '2', '3'.
 export type PlayerID = string;
 
-export type { ResourceBag, CenterMat, ScienceState, ForeignState, EventsState };
+export type {
+  ResourceBag,
+  CenterMat,
+  ScienceState,
+  ForeignState,
+  EventsState,
+  DomesticState,
+};
 
 export interface SettlementState {
   // Public, shared state.
@@ -111,14 +121,14 @@ export interface SettlementState {
     hand?: TechnologyDef[];
   };
 
-  // Domestic role state. The full shape lands in 06.1 (hand + grid). 04.3's
-  // `chiefPlaceWorker` reads `domestic.grid` defensively as a stub until
-  // then; the `Record<string, { id; worker }>` shape here is the simplest
-  // thing that lets the stub validate cells. 06.1 will redefine this.
-  // 05.3 adds the optional `hand` slot: green-color technology cards
-  // distributed by `scienceComplete` land here.
-  domestic?: {
-    grid: Record<string, { id: string; worker: { ownerSeat: PlayerID } | null }>;
-    hand?: TechnologyDef[];
-  };
+  // Domestic role state — the full shape lands in 06.1 (hand of buildings
+  // + placed-building grid). 05.3's `scienceComplete` distributes green-
+  // color tech cards to the Domestic seat; those go into the optional
+  // `techHand` slot inside `DomesticState` (renamed from `hand` so the
+  // 06.1 plan's `hand: BuildingDef[]` slot stays unambiguous). 04.3's
+  // `chiefPlaceWorker` stub still reads `domestic.grid[key].worker` — the
+  // new `DomesticBuilding` shape is a superset of the previous stub shape
+  // (it adds `defID` + `upgrades` alongside the existing `worker` field),
+  // so the stub keeps working unchanged.
+  domestic?: DomesticState;
 }

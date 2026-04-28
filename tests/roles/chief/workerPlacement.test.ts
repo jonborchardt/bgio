@@ -7,9 +7,10 @@
 // keeps the test independent of bgio's stage/phase wiring — a real client
 // isn't needed because the move's validations don't depend on stage state.
 //
-// Grid-cell shape note: the stub uses
-//   `Record<\`${x},${y}\`, { id; worker: { ownerSeat } | null }>`
-// per the plan; 06.1 will redefine this on the real domestic slice.
+// Grid-cell shape note: 06.1 redefined the cell as `DomesticBuilding`
+//   `{ defID: string; upgrades: number; worker: { ownerSeat } | null }`.
+// The stub still only reads `cell.worker`, but the test fixtures match
+// the real shape so they typecheck against `SettlementState.domestic`.
 
 import { describe, expect, it } from 'vitest';
 import type { Ctx } from 'boardgame.io';
@@ -80,8 +81,9 @@ describe('chiefPlaceWorker (04.3 stub)', () => {
       _features: { workersEnabled: true },
       chief: { workers: 2 },
       domestic: {
+        hand: [],
         grid: {
-          '0,0': { id: 'farm', worker: null },
+          '0,0': { defID: 'farm', upgrades: 0, worker: null },
         },
       },
     });
@@ -91,7 +93,8 @@ describe('chiefPlaceWorker (04.3 stub)', () => {
     expect(result).toBeUndefined();
     expect(G.chief?.workers).toBe(1);
     expect(G.domestic?.grid['0,0']).toEqual({
-      id: 'farm',
+      defID: 'farm',
+      upgrades: 0,
       worker: { ownerSeat: '0' },
     });
   });
@@ -101,9 +104,10 @@ describe('chiefPlaceWorker (04.3 stub)', () => {
       _features: { workersEnabled: true },
       chief: { workers: 2 },
       domestic: {
+        hand: [],
         // Only (0,0) exists — (1,1) does not.
         grid: {
-          '0,0': { id: 'farm', worker: null },
+          '0,0': { defID: 'farm', upgrades: 0, worker: null },
         },
       },
     });
@@ -120,8 +124,9 @@ describe('chiefPlaceWorker (04.3 stub)', () => {
       _features: { workersEnabled: true },
       chief: { workers: 0 },
       domestic: {
+        hand: [],
         grid: {
-          '0,0': { id: 'farm', worker: null },
+          '0,0': { defID: 'farm', upgrades: 0, worker: null },
         },
       },
     });

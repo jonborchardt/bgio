@@ -135,7 +135,7 @@ const buildState = (
       hand: [],
     },
     chief: { workers: 0, hand: [] },
-    domestic: { grid: {}, hand: [] },
+    domestic: { hand: [], grid: {}, techHand: [] },
   };
 };
 
@@ -211,11 +211,13 @@ describe('scienceComplete (05.3)', () => {
     callComplete(G, scienceSeat, ctxScienceTurn(scienceSeat), 'gold-0');
     expect(G.chief!.hand).toHaveLength(4);
 
-    // Green completion → domestic hand.
+    // Green completion → domestic techHand (06.1 renamed the Domestic
+    // tech slot from `hand` to `techHand` so the building-card hand can
+    // own the unqualified `hand` slot).
     G.science!.perRoundCompletions = 0;
     G.science!.paid['green-0'] = bagOf({ gold: 1 });
     callComplete(G, scienceSeat, ctxScienceTurn(scienceSeat), 'green-0');
-    expect(G.domestic!.hand).toHaveLength(4);
+    expect(G.domestic!.techHand).toHaveLength(4);
   });
 
   it('completing with paid < cost is INVALID_MOVE; state unchanged', () => {
@@ -313,7 +315,7 @@ describe('scienceComplete (05.3)', () => {
       const scienceSeat = seatHoldingRole(3, 'science');
       expect(seatHoldingRole(3, 'domestic')).toBe('1');
       callComplete(G, scienceSeat, ctxScienceTurn(scienceSeat), 'green-0');
-      expect(G.domestic!.hand).toHaveLength(4);
+      expect(G.domestic!.techHand).toHaveLength(4);
     }
 
     // 4-player: each role on its own seat.

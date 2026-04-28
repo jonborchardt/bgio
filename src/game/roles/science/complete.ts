@@ -115,13 +115,17 @@ export const scienceComplete: Move<SettlementState> = (
     }
     case 'green': {
       // Domestic role. Older fixtures (pre-06.1) may have no domestic
-      // slice at all — initialize a minimal shell with an empty grid.
+      // slice at all — initialize a minimal shell with an empty hand of
+      // buildings, an empty placed-buildings grid, and an empty techHand
+      // ready to receive these green tech cards. The Domestic role's
+      // building hand and tech hand are separate slots (see 06.1's
+      // `DomesticState`); green tech cards go onto `techHand`.
       if (G.domestic === undefined) {
-        G.domestic = { grid: {}, hand: [] };
-      } else if (G.domestic.hand === undefined) {
-        G.domestic.hand = [];
+        G.domestic = { hand: [], grid: {}, techHand: [] };
+      } else if (G.domestic.techHand === undefined) {
+        G.domestic.techHand = [];
       }
-      G.domestic.hand!.push(...techStack);
+      G.domestic.techHand!.push(...techStack);
       break;
     }
     case 'blue': {

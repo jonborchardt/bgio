@@ -80,7 +80,7 @@ One row per sub-plan. Columns:
 
 | Sub-plan | Status | Owner | Branch | Updated | Blocked on | Notes |
 |---|---|---|---|---|---|---|
-| [06.1](06.1-hand-and-grid.md) | pending |  |  |  | 01.2, 02.5, 05.1 |  |
+| [06.1](06.1-hand-and-grid.md) | done | claude | plan/06.1 | 2026-04-28 | 01.2, 02.5, 05.1 | Done. DomesticState (hand+techHand+grid), placement legality, setupDomestic. |
 | [06.2](06.2-buy-and-upgrade.md) | pending |  |  |  | 01.2, 03.4, 06.1 |  |
 | [06.3](06.3-benefit-parser.md) | done | claude | plan/06.3 | 2026-04-28 | 01.2, 03.1 | Done. parseBenefit handles all 17 BUILDINGS strings + accepts defence spelling. |
 | [06.4](06.4-produce-move.md) | pending |  |  |  | 01.2, 03.2, 06.1, 06.3, 02.5 |  |
