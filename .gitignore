@@ -10,7 +10,6 @@ coverage/
 .nx/
 .playwright-mcp/
 generated/
-plans/
 playwright-report
 test-results
 
