@@ -6,6 +6,10 @@ import type { ResourceBag } from './resources/types.ts';
 // `PlayerID` / `Role` back from this file, but because both edges are
 // `import type`-only there is no runtime cycle — TypeScript erases them.
 import type { CenterMat } from './resources/centerMat.ts';
+// Type-only edge for the canonical TechnologyDef shape — referenced from
+// the per-role hand fields (chief/domestic) populated by `scienceComplete`
+// in 05.3 when a science card's underlying tech cards are distributed.
+import type { TechnologyDef } from '../data/schema.ts';
 // Same trick for the Science role state — type-only edge so there is no
 // runtime cycle with `./roles/science/setup.ts`, which imports `RandomAPI`
 // and `registerRoundEndHook` back from this package.
@@ -99,16 +103,22 @@ export interface SettlementState {
 
   // Chief-role-specific runtime state — worker token reserve, etc. Filled
   // out incrementally as chief features land (04.3 introduces `workers`).
-  // Optional so existing tests / fixtures stay clean.
+  // 05.3 adds the optional `hand` slot: the Chief receives gold-color
+  // technology cards distributed by `scienceComplete`. Optional so existing
+  // tests / fixtures stay clean.
   chief?: {
     workers: number;
+    hand?: TechnologyDef[];
   };
 
   // Domestic role state. The full shape lands in 06.1 (hand + grid). 04.3's
   // `chiefPlaceWorker` reads `domestic.grid` defensively as a stub until
   // then; the `Record<string, { id; worker }>` shape here is the simplest
   // thing that lets the stub validate cells. 06.1 will redefine this.
+  // 05.3 adds the optional `hand` slot: green-color technology cards
+  // distributed by `scienceComplete` land here.
   domestic?: {
     grid: Record<string, { id: string; worker: { ownerSeat: PlayerID } | null }>;
+    hand?: TechnologyDef[];
   };
 }

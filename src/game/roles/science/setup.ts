@@ -40,6 +40,9 @@ export interface ScienceState {
   // How many science cards have been completed in the current round; reset
   // by the `science:reset-completions` hook at endOfRound.onBegin.
   perRoundCompletions: number;
+  // The Science role's tech-card hand — populated by `scienceComplete` (05.3)
+  // when a blue-color science card resolves. Starts empty.
+  hand: TechnologyDef[];
 }
 
 const COLOR_TO_BRANCH: Record<ScienceColor, string> = {
@@ -152,6 +155,7 @@ export const setupScience = (random: RandomAPI): ScienceState => {
     paid,
     completed: [],
     perRoundCompletions: 0,
+    hand: [],
   };
 };
 

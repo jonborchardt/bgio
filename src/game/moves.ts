@@ -12,6 +12,7 @@ import { chiefEndPhase } from './roles/chief/endPhase.ts';
 import { chiefPlaceWorker } from './roles/chief/workerPlacement.ts';
 import { chiefPlayGoldEvent } from './roles/chief/playGoldEvent.ts';
 import { scienceContribute } from './roles/science/contribute.ts';
+import { scienceComplete } from './roles/science/complete.ts';
 
 export const pass: Move<SettlementState> = () => {
   // intentional no-op — bgio advances the turn after the move resolves.
@@ -35,11 +36,12 @@ export {
   chiefPlayGoldEvent,
 };
 
-// Science role moves (05.2). The Science seat drives them inside the
-// `scienceTurn` stage of `othersPhase`; gating is enforced inside each move
-// against `ctx.activePlayers?.[playerID]` so the bgio-level stage config
-// only has to authorize the science seat in that stage.
-export { scienceContribute };
+// Science role moves (05.2 contribute, 05.3 complete). The Science seat
+// drives both inside the `scienceTurn` stage of `othersPhase`; gating is
+// enforced inside each move against `ctx.activePlayers?.[playerID]` so the
+// bgio-level stage config only has to authorize the science seat in that
+// stage.
+export { scienceContribute, scienceComplete };
 
 // ---------------------------------------------------------------------------
 // Test-only scaffolding.
