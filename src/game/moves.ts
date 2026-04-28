@@ -11,6 +11,9 @@ import { chiefDistribute } from './roles/chief/distribute.ts';
 import { chiefEndPhase } from './roles/chief/endPhase.ts';
 import { chiefPlaceWorker } from './roles/chief/workerPlacement.ts';
 import { chiefPlayGoldEvent } from './roles/chief/playGoldEvent.ts';
+import { sciencePlayBlueEvent } from './roles/science/playBlueEvent.ts';
+import { domesticPlayGreenEvent } from './roles/domestic/playGreenEvent.ts';
+import { foreignPlayRedEvent } from './roles/foreign/playRedEvent.ts';
 import { scienceContribute } from './roles/science/contribute.ts';
 import { scienceComplete } from './roles/science/complete.ts';
 
@@ -42,6 +45,12 @@ export {
 // bgio-level stage config only has to authorize the science seat in that
 // stage.
 export { scienceContribute, scienceComplete };
+
+// Per-color event-card stubs (05.4 / 06.6 / 07.6). Near-clones of 04.4
+// chiefPlayGoldEvent — they share the `playEventStub` factory in
+// `src/game/events/playEventStub.ts`. Each only owns role-gating and
+// per-round bookkeeping until 08.3 wires the typed effect dispatcher.
+export { sciencePlayBlueEvent, domesticPlayGreenEvent, foreignPlayRedEvent };
 
 // ---------------------------------------------------------------------------
 // Test-only scaffolding.

@@ -73,7 +73,7 @@ One row per sub-plan. Columns:
 | [05.1](05.1-grid-setup.md) | done | claude | plan/05.1 | 2026-04-28 | 01.2, 02.3, 02.5, 03 | Done. 3x3 grid + 4 techs/cell + reset-completions hook. |
 | [05.2](05.2-contribute-move.md) | done | claude | plan/05.2 | 2026-04-28 | 01.1, 02.1, 02.2, 03.4, 05.1 | Done. Lowest-first column rule + capped-at-cost transfer. |
 | [05.3](05.3-complete-move.md) | done | claude | plan/05.3 | 2026-04-28 | 01.1, 02.5, 03.2, 05.1, 05.2 | Done. distributes 4 tech cards by color to chief/science/domestic/foreign hands. |
-| [05.4](05.4-event-stub.md) | pending |  |  |  | 01.1, 02.1, 02.2 | Soft dep on 08. |
+| [05.4](05.4-event-stub.md) | done | claude | plan/05.4 | 2026-04-28 | 01.1, 02.1, 02.2 | Done. sciencePlayBlueEvent stub via shared playEventStub helper. |
 | [05.5](05.5-panel.md) | pending |  |  |  | 05.1, 05.2, 05.3 | Touches `src/Board.tsx`. Soft dep on 09.2. |
 
 ## 06 — Domestic
@@ -85,7 +85,7 @@ One row per sub-plan. Columns:
 | [06.3](06.3-benefit-parser.md) | done | claude | plan/06.3 | 2026-04-28 | 01.2, 03.1 | Done. parseBenefit handles all 17 BUILDINGS strings + accepts defence spelling. |
 | [06.4](06.4-produce-move.md) | pending |  |  |  | 01.2, 03.2, 06.1, 06.3, 02.5 |  |
 | [06.5](06.5-adjacency-rules.md) | pending |  |  |  | 03.1, 06.1, 06.4 |  |
-| [06.6](06.6-event-stub.md) | pending |  |  |  | 01.1, 02.1, 02.2 | Soft dep on 08. |
+| [06.6](06.6-event-stub.md) | done | claude | plan/06.6 | 2026-04-28 | 01.1, 02.1, 02.2 | Done. domesticPlayGreenEvent stub via shared playEventStub helper. |
 | [06.7](06.7-panel.md) | pending |  |  |  | 06.1, 06.2, 06.4 | Touches `src/Board.tsx`. Soft deps on 09.2, 09.4. |
 | [06.8](06.8-adjacency-content.md) | pending |  |  |  | 01.2, 06.5 | AI-assisted authoring. |
 
@@ -98,7 +98,7 @@ One row per sub-plan. Columns:
 | [07.3](07.3-battle-resolver.md) | pending |  |  |  | 01.2, 07.2 | Heavy — flagged for possible split. |
 | [07.4](07.4-flip-flow.md) | pending |  |  |  | 02.2, 03.3, 07.1, 07.2, 07.3 |  |
 | [07.5](07.5-trade-request.md) | pending |  |  |  | 02.2, 03.3, 07.4 |  |
-| [07.6](07.6-event-stub.md) | pending |  |  |  | 01.1, 02.1, 02.2 | Soft dep on 08. |
+| [07.6](07.6-event-stub.md) | done | claude | plan/07.6 | 2026-04-28 | 01.1, 02.1, 02.2 | Done. foreignPlayRedEvent stub via shared playEventStub helper. |
 | [07.7](07.7-panel.md) | pending |  |  |  | 07.1, 07.2, 07.3, 07.4 | Touches `src/Board.tsx`. Soft deps on 09.2, 09.5. |
 
 ## 08 — Cross-cutting
