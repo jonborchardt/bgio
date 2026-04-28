@@ -119,7 +119,7 @@ One row per sub-plan. Columns:
 | [09.1](09.1-layout-shell.md) | pending |  |  |  | 01, 02 | Touches `src/Board.tsx`. |
 | [09.2](09.2-card-components.md) | pending |  |  |  | 01.2 | Soft dep on 09.3, 09.4. |
 | [09.3](09.3-resource-and-mat.md) | pending |  |  |  | 03 | Soft dep on 09.4. |
-| [09.4](09.4-theme-tokens.md) | pending |  |  |  | 01.1, 03.1, 08.1 | Touches `src/theme.ts`. |
+| [09.4](09.4-theme-tokens.md) | done | claude | plan/09.4 | 2026-04-28 | 01.1, 03.1, 08.1 | Done. palette.{resource,role,tier,eventColor} groups via MUI augmentation. |
 | [09.5](09.5-deck-and-hand.md) | pending |  |  |  | 09.2 |  |
 
 ## 10 — Multiplayer infra
