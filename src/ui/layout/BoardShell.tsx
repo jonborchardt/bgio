@@ -34,6 +34,7 @@ export function BoardShell({
   return (
     <Box
       aria-label="Board shell"
+      data-testid="board-shell"
       sx={{
         display: 'grid',
         gap: 2,

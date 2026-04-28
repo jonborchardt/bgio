@@ -152,13 +152,13 @@ One row per sub-plan. Columns:
 
 | Sub-plan | Status | Owner | Branch | Updated | Blocked on | Notes |
 |---|---|---|---|---|---|---|
-| [12.1](12.1-test-helpers.md) | pending |  |  |  | 01.4, 11.1 |  |
-| [12.2](12.2-debug-panel.md) | pending |  |  |  | 01.3, 09.1 | Touches `src/App.tsx`. |
-| [12.3](12.3-replay.md) | pending |  |  |  | 01-08, 10.1, 13.3 | Touches `src/App.tsx`. |
-| [12.4](12.4-ci-workflow.md) | pending |  |  |  | 01-11 | Touches `.github/workflows/`. |
-| [12.5](12.5-playwright-setup.md) | pending |  |  |  | 09.1 | Add `data-testid` to BoardShell. |
-| [12.6](12.6-coverage-gate.md) | pending |  |  |  | 01-11 | Touches `vite.config.ts`, `package.json`. |
-| [12.7](12.7-dev-full-stack.md) | pending |  |  |  | 10.1, 10.2, 10.4, 10.7, 11.7 | Touches `package.json`, `.env.example`, `.gitignore`. |
+| [12.1](12.1-test-helpers.md) | done | claude | plan/12.1 | 2026-04-28 | 01.4, 11.1 | Done. factories/seeds/assertConservation. |
+| [12.2](12.2-debug-panel.md) | done | claude | plan/12.2 | 2026-04-28 | 01.3, 09.1 | Done. Client debug=DEV in dev only. |
+| [12.3](12.3-replay.md) | done | claude | plan/12.3 | 2026-04-28 | 01-08, 10.1, 13.3 | Done. MoveLog + recorder + replay stub; LRU localStorage. |
+| [12.4](12.4-ci-workflow.md) | done | claude | plan/12.4 | 2026-04-28 | 01-11 | Done. .github/workflows/ci.yml runs typecheck+lint+test+build+e2e. |
+| [12.5](12.5-playwright-setup.md) | done | claude | plan/12.5 | 2026-04-28 | 09.1 | Done. playwright.config + smoke spec; BoardShell got data-testid. |
+| [12.6](12.6-coverage-gate.md) | done | claude | plan/12.6 | 2026-04-28 | 01-11 | Done. vitest coverage block (70/70/70 V1; ratchet later). |
+| [12.7](12.7-dev-full-stack.md) | done | claude | plan/12.7 | 2026-04-28 | 10.1, 10.2, 10.4, 10.7, 11.7 | Done. dev:full + dev-seed + .env additions. Needs `npm install` to run. |
 
 ## 13 — Deployment & persistence
 

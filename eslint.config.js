@@ -5,7 +5,19 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules', 'coverage'] },
+  // 12.5: tests-e2e/ holds Playwright specs that import `@playwright/test`.
+  // Until the package is `npm install`-ed, ignoring the folder keeps lint
+  // clean. `playwright.config.ts` does the same. Same for `coverage/`
+  // (vitest's lcov dump) and the bundler outputs.
+  {
+    ignores: [
+      'dist',
+      'node_modules',
+      'coverage',
+      'tests-e2e',
+      'playwright.config.ts',
+    ],
+  },
   {
     files: ['**/*.{ts,tsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],

@@ -16,6 +16,21 @@ import {
   type SessionCreds,
 } from './lobby/credentials.ts';
 
+/** Whether to show bgio's built-in Debug panel (12.2).
+ *
+ * bgio's React `Client` ships with a slide-out debug panel — turning it on
+ * in dev gives developers access to the move log, RNG state, and a
+ * "set state" affordance with no extra code from us. Production builds
+ * keep it disabled so end users don't see it.
+ *
+ * `import.meta.env.DEV` is Vite's standard build-mode flag (true in
+ * `vite dev`, false in `vite build`). We read it through `unknown` so a
+ * headless test harness that doesn't preprocess `import.meta` (e.g. raw
+ * Node) tolerates the access — Vitest sets it to `true` under `jsdom`,
+ * which is what we want for in-test rendering. */
+const debugEnabled: boolean =
+  (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true;
+
 /** The hot-seat client — single tab driving all seats. This is the GH Pages
  * default and the fallback whenever networked mode is selected but we don't
  * yet have lobby-provided match coordinates. */
@@ -23,7 +38,7 @@ const HotSeatApp = Client({
   game: Settlement,
   board: SettlementBoard,
   numPlayers: 4,
-  debug: false,
+  debug: debugEnabled,
 });
 
 /** Read `?matchID=...&playerID=...&credentials=...` from the page URL.

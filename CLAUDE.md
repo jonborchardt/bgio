@@ -197,6 +197,7 @@ peer deps). Do not introduce a parallel styling system.
 ```bash
 npm run dev               # Vite dev server (HMR) — hot-seat client
 npm run server:dev        # bgio Koa server (server/) for the networked build
+npm run dev:full          # one-command bootstrap: server + client (concurrently)
 npm run build             # tsc -b && vite build → dist/ (default = hot-seat)
 npm run build:hotseat     # explicit hot-seat build (Local transport)
 npm run build:networked   # networked build (SocketIO transport, talks to server/)

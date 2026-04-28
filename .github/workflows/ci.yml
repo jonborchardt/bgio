@@ -1,0 +1,66 @@
+# 12.4 — Continuous integration.
+#
+# Runs every gate on every PR (and on push to main): typecheck, lint,
+# unit + fuzz tests, build, and the Playwright smoke spec from 12.5.
+# `deploy-pages.yml` separately handles the GH Pages deploy on main.
+#
+# We deliberately keep this one job: the gates are fast individually
+# and fanning out across multiple jobs trades clarity for marginal
+# wall-clock gains.
+
+name: ci
+
+on:
+  pull_request: {}
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # Playwright smoke (12.5). The browser binary install is the slow
+      # part; we cache `~/.cache/ms-playwright` keyed on the package-lock
+      # so repeat runs skip the download.
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npm run e2e:install
+
+      - name: E2E smoke
+        run: npm run e2e:smoke
