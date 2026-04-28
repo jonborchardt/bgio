@@ -126,8 +126,8 @@ One row per sub-plan. Columns:
 
 | Sub-plan | Status | Owner | Branch | Updated | Blocked on | Notes |
 |---|---|---|---|---|---|---|
-| [10.1](10.1-server-package.md) | pending |  |  |  | 01.3 | Touches `server/`, `package.json`, `tsconfig.app.json`. |
-| [10.2](10.2-transport-and-client-modes.md) | pending |  |  |  | 01.3, 10.1 | Touches `src/App.tsx`, `vite.config.ts`. |
+| [10.1](10.1-server-package.md) | done | claude | plan/10.1 | 2026-04-28 | 01.3 | Done. createServer() at server/index.ts; tsx scripts; Dockerfile placeholder. |
+| [10.2](10.2-transport-and-client-modes.md) | done | claude | plan/10.2 | 2026-04-28 | 01.3, 10.1 | Done. detectMode + networkedClientFactory; App selects hot-seat vs networked. |
 | [10.3](10.3-lobby.md) | pending |  |  |  | 10.1, 10.2 | Heavy — flagged for possible split. Soft dep on 09.4. |
 | [10.4](10.4-storage.md) | pending |  |  |  | 10.1 | Heavy — flagged for possible split. |
 | [10.5](10.5-chat.md) | pending |  |  |  | 10.1, 10.2 | Touches `src/Board.tsx`. |
