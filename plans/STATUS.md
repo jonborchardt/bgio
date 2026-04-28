@@ -34,7 +34,7 @@ One row per sub-plan. Columns:
 | [01.1](01.1-state-shape.md) | done | claude | plan/01.1 | 2026-04-27 |  | Done. `src/game/{types,roles,index}.ts` + `tests/roles.test.ts`. |
 | [01.2](01.2-data-loaders.md) | done | claude | plan/01.2 | 2026-04-27 |  | Done. `src/data/{schema,index}.ts` + `tests/data.test.ts`. |
 | [01.3](01.3-game-skeleton.md) | done | claude | plan/01.3 | 2026-04-27 | 01.1, 01.2 | Done. Settlement game with `pass` move; SettlementBoard stub. |
-| [01.4](01.4-test-harness.md) | pending |  |  |  | 01.3 | Touches `tests/helpers/`. |
+| [01.4](01.4-test-harness.md) | done | claude | plan/01.4 | 2026-04-27 | 01.3 | Done. tests/helpers/{makeClient,runMoves,seed}.ts. |
 | [01.5](01.5-claude-md-refresh.md) | pending |  |  |  | 01.1, 01.2, 01.3, 01.4 | Touches `CLAUDE.md`. |
 
 ## 02 — Engine
