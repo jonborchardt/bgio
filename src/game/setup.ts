@@ -8,7 +8,7 @@
 import type { Ctx } from 'boardgame.io';
 import type { PlayerID, SettlementState } from './types.ts';
 import { assignRoles } from './roles.ts';
-import { bagOf } from './resources/bag.ts';
+import { initialBank } from './resources/bank.ts';
 
 export const setup = ({ ctx }: { ctx: Ctx }): SettlementState => {
   const numPlayers = ctx.numPlayers as 1 | 2 | 3 | 4;
@@ -20,7 +20,7 @@ export const setup = ({ ctx }: { ctx: Ctx }): SettlementState => {
   }
 
   return {
-    bank: bagOf({ gold: 3 }),
+    bank: initialBank(),
     centerMat: {},
     roleAssignments,
     round: 0,
