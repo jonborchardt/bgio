@@ -61,7 +61,7 @@ One row per sub-plan. Columns:
 | Sub-plan | Status | Owner | Branch | Updated | Blocked on | Notes |
 |---|---|---|---|---|---|---|
 | [04.1](04.1-distribute-move.md) | done | claude | plan/04.1 | 2026-04-28 | 01.1, 02.1, 03.1, 03.2, 03.3 | Done. chiefDistribute(target, amounts) bank->circle. |
-| [04.2](04.2-end-phase.md) | pending |  |  |  | 02.1, 02.2 |  |
+| [04.2](04.2-end-phase.md) | done | claude | plan/04.2 | 2026-04-28 | 02.1, 02.2 | Done. chiefEndPhase flips phaseDone, bgio transitions to othersPhase. |
 | [04.3](04.3-worker-placement-stub.md) | pending |  |  |  | 01.1, 02.1, 04.2 | Soft dep on 06.1; works without it. |
 | [04.4](04.4-gold-event-stub.md) | pending |  |  |  | 01.1, 02.1, 02.2 | Soft dep on 08; short-circuits until then. |
 | [04.5](04.5-panel.md) | pending |  |  |  | 04.1, 04.2 | Touches `src/Board.tsx`. Soft dep on 09.4. |

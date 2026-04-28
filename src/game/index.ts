@@ -8,6 +8,7 @@ import {
   pass,
   pullFromMat,
   chiefDistribute,
+  chiefEndPhase,
   __testSetPhaseDone,
   __testSetOthersDone,
 } from './moves.ts';
@@ -34,6 +35,7 @@ export const Settlement: Game<SettlementState> = {
     pass,
     pullFromMat,
     chiefDistribute,
+    chiefEndPhase,
     __testSetPhaseDone,
     __testSetOthersDone,
   },
