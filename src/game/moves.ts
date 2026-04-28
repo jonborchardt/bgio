@@ -15,6 +15,7 @@ import { sciencePlayBlueEvent } from './roles/science/playBlueEvent.ts';
 import { domesticPlayGreenEvent } from './roles/domestic/playGreenEvent.ts';
 import { domesticBuyBuilding } from './roles/domestic/buy.ts';
 import { domesticUpgradeBuilding } from './roles/domestic/upgrade.ts';
+import { domesticProduce } from './roles/domestic/produce.ts';
 import { foreignPlayRedEvent } from './roles/foreign/playRedEvent.ts';
 import { foreignRecruit } from './roles/foreign/recruit.ts';
 import { foreignUpkeep } from './roles/foreign/upkeep.ts';
@@ -63,11 +64,13 @@ export { sciencePlayBlueEvent, domesticPlayGreenEvent, foreignPlayRedEvent };
 // foreign seat in that stage.
 export { foreignRecruit, foreignUpkeep, foreignReleaseUnit };
 
-// Domestic role moves (06.2 buy / upgrade). Stage gating is enforced inside
-// each move against `ctx.activePlayers?.[playerID] === 'domesticTurn'`, so
-// the bgio-level stage config only has to authorize the domestic seat in
-// that stage.
-export { domesticBuyBuilding, domesticUpgradeBuilding };
+// Domestic role moves (06.2 buy / upgrade, 06.4 produce). Stage gating is
+// enforced inside each move against `ctx.activePlayers?.[playerID] ===
+// 'domesticTurn'`, so the bgio-level stage config only has to authorize the
+// domestic seat in that stage. `domesticProduce` is once-per-round and
+// idempotent via `G.domestic.producedThisRound`, cleared by the
+// `domestic:reset-produced` round-end hook registered in `produce.ts`.
+export { domesticBuyBuilding, domesticUpgradeBuilding, domesticProduce };
 
 // ---------------------------------------------------------------------------
 // Test-only scaffolding.

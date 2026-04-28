@@ -54,4 +54,9 @@ export interface DomesticState {
   techHand?: TechnologyDef[];
   // Placed-buildings map, keyed by `cellKey(x, y) === \`${x},${y}\``.
   grid: Record<string, DomesticBuilding>;
+  // Idempotency latch for `domesticProduce` (06.4): once produce runs in a
+  // round, this is set to `true` so subsequent calls return INVALID_MOVE.
+  // Cleared by the `domestic:reset-produced` round-end hook registered in
+  // `produce.ts`. Optional so older fixtures stay source-compatible.
+  producedThisRound?: boolean;
 }

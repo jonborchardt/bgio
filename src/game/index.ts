@@ -21,6 +21,7 @@ import {
   scienceComplete,
   domesticBuyBuilding,
   domesticUpgradeBuilding,
+  domesticProduce,
   __testSetPhaseDone,
   __testSetOthersDone,
 } from './moves.ts';
@@ -60,6 +61,7 @@ export const Settlement: Game<SettlementState> = {
     scienceComplete,
     domesticBuyBuilding,
     domesticUpgradeBuilding,
+    domesticProduce,
     __testSetPhaseDone,
     __testSetOthersDone,
   },
