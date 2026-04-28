@@ -15,6 +15,7 @@ import { bagOf } from './resources/bag.ts';
 import { initialMat } from './resources/centerMat.ts';
 import { setupScience } from './roles/science/setup.ts';
 import { buildBattleDeck, buildTradeDeck } from './roles/foreign/decks.ts';
+import { setupEvents } from './events/state.ts';
 import { fromBgio, type BgioRandomLike } from './random.ts';
 
 // bgio passes its plugin APIs alongside `ctx`. We accept the shape loosely
@@ -76,5 +77,8 @@ export const setup = (context: { ctx: Ctx; random?: BgioRandomLike }): Settlemen
       tradeDeck: buildTradeDeck(r),
       hand: [],
     },
+    // Cross-cutting events (08.1): four decks (gold/blue/green/red) with
+    // 4 cards dealt to the role-holding seat's hand per color.
+    events: setupEvents(roleAssignments, r),
   };
 };

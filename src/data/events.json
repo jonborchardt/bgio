@@ -1,0 +1,98 @@
+[
+  {
+    "id": "evt-gold-001",
+    "color": "gold",
+    "name": "Bounty",
+    "effects": [{ "kind": "gainGold", "amount": 1 }]
+  },
+  {
+    "id": "evt-gold-002",
+    "color": "gold",
+    "name": "Tax Levy",
+    "effects": [{ "kind": "gainGold", "amount": 2 }]
+  },
+  {
+    "id": "evt-gold-003",
+    "color": "gold",
+    "name": "Royal Treasury",
+    "effects": [{ "kind": "gainGold", "amount": 3 }]
+  },
+  {
+    "id": "evt-gold-004",
+    "color": "gold",
+    "name": "Tribute",
+    "effects": [{ "kind": "gainGold", "amount": 1 }]
+  },
+  {
+    "id": "evt-blue-001",
+    "color": "blue",
+    "name": "Insight",
+    "effects": [{ "kind": "gainScience", "amount": 1 }]
+  },
+  {
+    "id": "evt-blue-002",
+    "color": "blue",
+    "name": "Discovery",
+    "effects": [{ "kind": "gainScience", "amount": 2 }]
+  },
+  {
+    "id": "evt-blue-003",
+    "color": "blue",
+    "name": "Library Boon",
+    "effects": [{ "kind": "gainScience", "amount": 1 }]
+  },
+  {
+    "id": "evt-blue-004",
+    "color": "blue",
+    "name": "Eureka",
+    "effects": [{ "kind": "gainScience", "amount": 3 }]
+  },
+  {
+    "id": "evt-green-001",
+    "color": "green",
+    "name": "Harvest",
+    "effects": [{ "kind": "gainFood", "amount": 1 }]
+  },
+  {
+    "id": "evt-green-002",
+    "color": "green",
+    "name": "Bountiful Crop",
+    "effects": [{ "kind": "gainFood", "amount": 2 }]
+  },
+  {
+    "id": "evt-green-003",
+    "color": "green",
+    "name": "Festival",
+    "effects": [{ "kind": "gainHappiness", "amount": 1 }]
+  },
+  {
+    "id": "evt-green-004",
+    "color": "green",
+    "name": "Settlement",
+    "effects": [{ "kind": "gainProduction", "amount": 1 }]
+  },
+  {
+    "id": "evt-red-001",
+    "color": "red",
+    "name": "Skirmish",
+    "effects": [{ "kind": "gainAttack", "amount": 1 }]
+  },
+  {
+    "id": "evt-red-002",
+    "color": "red",
+    "name": "Raid",
+    "effects": [{ "kind": "gainAttack", "amount": 2 }]
+  },
+  {
+    "id": "evt-red-003",
+    "color": "red",
+    "name": "Fortify",
+    "effects": [{ "kind": "gainDefense", "amount": 1 }]
+  },
+  {
+    "id": "evt-red-004",
+    "color": "red",
+    "name": "Border Patrol",
+    "effects": [{ "kind": "gainDefense", "amount": 2 }]
+  }
+]

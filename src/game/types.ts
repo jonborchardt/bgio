@@ -14,13 +14,17 @@ import type { ScienceState } from './roles/science/setup.ts';
 // runtime cycle with `./roles/foreign/decks.ts`, which imports `RandomAPI`
 // back from this package.
 import type { ForeignState } from './roles/foreign/decks.ts';
+// Same trick for the cross-cutting events state (08.x) — type-only edge so
+// there is no runtime cycle with `./events/state.ts`, which imports
+// `RandomAPI` and `registerRoundEndHook` back from this package.
+import type { EventsState } from './events/state.ts';
 
 export type Role = 'chief' | 'science' | 'domestic' | 'foreign';
 
 // boardgame.io identifies seats as string indices: '0', '1', '2', '3'.
 export type PlayerID = string;
 
-export type { ResourceBag, CenterMat, ScienceState, ForeignState };
+export type { ResourceBag, CenterMat, ScienceState, ForeignState, EventsState };
 
 export interface SettlementState {
   // Public, shared state.
@@ -66,4 +70,10 @@ export interface SettlementState {
   // Optional so older test fixtures that pre-date 07.1 remain source-
   // compatible; moves and the playerView redactor must guard for `undefined`.
   foreign?: ForeignState;
+
+  // Cross-cutting events state (08.x): per-color decks, per-seat hands /
+  // used / playedThisRound. Built at setup by 08.1. Optional so older test
+  // fixtures that pre-date 08.1 remain source-compatible; moves and hooks
+  // that touch it must guard.
+  events?: EventsState;
 }
