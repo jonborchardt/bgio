@@ -1,0 +1,19 @@
+[
+  { "name": "Granary", "cost": 10, "benefit": "2 food", "note": "" },
+  { "name": "Barracks", "cost": 13, "benefit": "attack +1", "note": "" },
+  { "name": "Library", "cost": 13, "benefit": "2 science", "note": "" },
+  { "name": "Walls", "cost": 13, "benefit": "decrease unit maintenance by 2", "note": "" },
+  { "name": "Mill", "cost": 13, "benefit": "2 food and 1 production", "note": "" },
+  { "name": "Fight Circle", "cost": 17, "benefit": "+2 Happiness", "note": "" },
+  { "name": "Forge", "cost": 20, "benefit": "units cost 1 less", "note": "" },
+  { "name": "Market", "cost": 20, "benefit": "2 gold", "note": "" },
+  { "name": "Mint", "cost": 20, "benefit": "2 gold", "note": "" },
+  { "name": "Workshop", "cost": 20, "benefit": "2 production", "note": "" },
+  { "name": "Armory", "cost": 27, "benefit": "defence +2", "note": "" },
+  { "name": "Bank", "cost": 33, "benefit": "4 gold", "note": "" },
+  { "name": "Tower", "cost": 33, "benefit": "decrease unit maintenance by 4", "note": "" },
+  { "name": "Windmill", "cost": 42, "benefit": "2 production", "note": "" },
+  { "name": "School", "cost": 50, "benefit": "3 science", "note": "" },
+  { "name": "Factory", "cost": 60, "benefit": "4 production", "note": "" },
+  { "name": "Hospital", "cost": 60, "benefit": "5 food", "note": "" }
+]
