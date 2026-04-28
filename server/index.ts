@@ -13,6 +13,7 @@
 
 import { Server } from 'boardgame.io/server';
 import { Settlement } from '../src/game/index.ts';
+import { makeStorage, type StorageKind } from './storage/index.ts';
 
 /** Result of `createServer` — exposes the bgio Server instance plus a
  * `port` Promise that resolves once the underlying Koa app is listening.
@@ -28,8 +29,17 @@ export interface CreatedServer {
 export interface CreateServerOptions {
   /** TCP port. Defaults to `PORT` env var or 8000. Pass 0 to let the OS pick. */
   port?: number;
-  /** Storage adapter (an `Async`-shaped object). Default = bgio in-memory. */
-  storage?: unknown;
+  /** Storage adapter. Either:
+   *
+   *   - a `StorageKind` string (`'memory'` | `'flatfile'`) routed through
+   *     `makeStorage(...)` (10.4), or
+   *   - a pre-built bgio `Async`-shaped object (advanced callers + tests
+   *     that want to inspect the instance directly).
+   *
+   * Default = bgio in-memory. */
+  storage?: StorageKind | unknown;
+  /** Optional `MakeStorageOptions` (e.g. `{ dir }`) when `storage` is a string. */
+  storageOpts?: { dir?: string };
 }
 
 /**
@@ -44,7 +54,14 @@ export const createServer = (opts: CreateServerOptions = {}): CreatedServer => {
     games: [Settlement],
   };
   if (opts.storage !== undefined) {
-    serverConfig.db = opts.storage;
+    // String → run through the 10.4 factory; non-string → assume the caller
+    // already built an Async-shaped adapter and pass it through verbatim.
+    if (typeof opts.storage === 'string') {
+      const built = makeStorage(opts.storage as StorageKind, opts.storageOpts);
+      if (built !== undefined) serverConfig.db = built;
+    } else {
+      serverConfig.db = opts.storage;
+    }
   }
 
   // bgio's Server() accepts `{ games, db?, ... }`. The default storage is

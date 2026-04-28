@@ -128,10 +128,10 @@ One row per sub-plan. Columns:
 |---|---|---|---|---|---|---|
 | [10.1](10.1-server-package.md) | done | claude | plan/10.1 | 2026-04-28 | 01.3 | Done. createServer() at server/index.ts; tsx scripts; Dockerfile placeholder. |
 | [10.2](10.2-transport-and-client-modes.md) | done | claude | plan/10.2 | 2026-04-28 | 01.3, 10.1 | Done. detectMode + networkedClientFactory; App selects hot-seat vs networked. |
-| [10.3](10.3-lobby.md) | pending |  |  |  | 10.1, 10.2 | Heavy — flagged for possible split. Soft dep on 09.4. |
-| [10.4](10.4-storage.md) | pending |  |  |  | 10.1 | Heavy — flagged for possible split. |
-| [10.5](10.5-chat.md) | pending |  |  |  | 10.1, 10.2 | Touches `src/Board.tsx`. |
-| [10.6](10.6-reconnect-and-credentials.md) | pending |  |  |  | 10.2, 10.3 | Touches `src/App.tsx`, `src/lobby/`. |
+| [10.3](10.3-lobby.md) | done | claude | plan/10.3 | 2026-04-28 | 10.1, 10.2 | Done. LobbyShell + SeatPicker on LobbyClient REST; minimal MUI lobby UI. |
+| [10.4](10.4-storage.md) | done | claude | plan/10.4 | 2026-04-28 | 10.1 | Done. makeStorage('memory'|'flatfile'); SQLite deferred to 13.3. |
+| [10.5](10.5-chat.md) | done | claude | plan/10.5 | 2026-04-28 | 10.1, 10.2 | Done. ChatPane + ChatComposer reading bgio's built-in chat. |
+| [10.6](10.6-reconnect-and-credentials.md) | done | claude | plan/10.6 | 2026-04-28 | 10.2, 10.3 | Done. localStorage creds (24h TTL); App skips lobby when valid; spinner stub. |
 | [10.7](10.7-accounts.md) | pending |  |  |  | 10.1, 10.3, 10.4, 13.3, 08.5 |  |
 | [10.8](10.8-spectators.md) | pending |  |  |  | 02.4, 10.1, 10.3, 10.5, 10.7 | Touches `src/Board.tsx`. |
 | [10.9](10.9-idle-bot-takeover.md) | pending |  |  |  | 10.1, 10.7, 11.3, 11.4, 11.5, 11.6 |  |

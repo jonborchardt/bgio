@@ -1,8 +1,20 @@
-import type { ComponentType } from 'react';
+import { useEffect, useMemo, useState, type ComponentType } from 'react';
+import { CircularProgress, Stack, Typography } from '@mui/material';
 import { Client } from 'boardgame.io/react';
 import { Settlement } from './game/index.ts';
 import { SettlementBoard } from './Board.tsx';
-import { detectMode, networkedClientFactory } from './clientMode.ts';
+import {
+  detectMode,
+  getServerURL,
+  networkedClientFactory,
+} from './clientMode.ts';
+import { LobbyShell } from './lobby/LobbyShell.tsx';
+import {
+  clearCreds,
+  loadCreds,
+  saveCreds,
+  type SessionCreds,
+} from './lobby/credentials.ts';
 
 /** The hot-seat client — single tab driving all seats. This is the GH Pages
  * default and the fallback whenever networked mode is selected but we don't
@@ -16,11 +28,9 @@ const HotSeatApp = Client({
 
 /** Read `?matchID=...&playerID=...&credentials=...` from the page URL.
  *
- * This is a placeholder until 10.3 wires the real lobby. Until then, a
- * developer can bypass the lobby by supplying the three params directly
- * (e.g. after creating a match via the server REST endpoints). If any of
- * the three are missing we fall back to hot-seat so the existing UX never
- * breaks. */
+ * This is the developer-bypass path that survived 10.3 — supplying the
+ * three params directly skips the lobby. If any are missing we fall
+ * through to the normal lobby / hot-seat flow. */
 const readMatchFromQuery = (): {
   matchID: string;
   playerID: string;
@@ -35,23 +45,107 @@ const readMatchFromQuery = (): {
   return { matchID, playerID, credentials };
 };
 
-const pickApp = (): ComponentType => {
-  if (detectMode() === 'networked') {
-    const match = readMatchFromQuery();
-    if (match) {
-      return networkedClientFactory(
-        match.matchID,
-        match.playerID,
-        match.credentials,
+/** Networked-mode shell: at mount, decide between
+ *   (a) restore from persisted creds (10.6 reconnect),
+ *   (b) developer query-string override, or
+ *   (c) show the LobbyShell.
+ *
+ * Once a match is picked we mount a freshly-built networked Client.
+ * `useMemo` keys the factory on the (matchID, playerID, credentials)
+ * triple so a second join in the same session rebuilds the Client. */
+const NetworkedShell = () => {
+  const [match, setMatch] = useState<
+    { matchID: string; playerID: string; credentials: string } | null
+  >(() => {
+    // Run synchronously at first render: query-string override wins
+    // (developer path), then persisted creds. We need this synchronous
+    // to avoid a flash of the lobby UI when there's a valid session.
+    const fromQuery = readMatchFromQuery();
+    if (fromQuery) return fromQuery;
+    const saved = loadCreds();
+    if (saved) {
+      return {
+        matchID: saved.matchID,
+        playerID: saved.playerID,
+        credentials: saved.credentials,
+      };
+    }
+    return null;
+  });
+
+  // 10.6 server-down spinner. V1 is intentionally minimal: when we have
+  // creds but haven't mounted yet we just show "Connecting…". The plan
+  // calls for a retry-with-backoff loop at intervals of 1s, 2s, 5s, 15s,
+  // 30s, 60s with a manual "retry now" button — implementing that lives
+  // alongside the real probe endpoint, which we haven't wired yet
+  // (Settlement's GET /games/:name/:matchID is the bgio default; bolting
+  // in fetch + AbortController + retry timers belongs in a follow-up).
+  // The it.todo at the bottom of credentials.test.ts pins the work.
+  const [connecting] = useState(false);
+
+  const NetworkedApp = useMemo<ComponentType | null>(() => {
+    if (!match) return null;
+    return networkedClientFactory(
+      match.matchID,
+      match.playerID,
+      match.credentials,
+    );
+  }, [match]);
+
+  // When the lobby reports a successful join, persist + switch.
+  const onSelect = (matchID: string, playerID: string, credentials: string) => {
+    saveCreds({
+      matchID,
+      playerID,
+      credentials,
+      serverUrl: getServerURL(),
+    });
+    setMatch({ matchID, playerID, credentials });
+  };
+
+  // If the user clears their session (e.g. via a future "leave match"
+  // button), we drop the persisted creds. Hooked here for symmetry with
+  // saveCreds; no UI yet exposes it.
+  useEffect(() => {
+    if (match === null) {
+      clearCreds();
+    }
+  }, [match]);
+
+  if (NetworkedApp) {
+    if (connecting) {
+      return (
+        <Stack spacing={1} sx={{ alignItems: 'center' }}>
+          <CircularProgress size={20} />
+          <Typography variant="body2">Connecting…</Typography>
+        </Stack>
       );
     }
-    // No match coords yet — fall back to hot-seat so the page still
-    // renders something useful. 10.3 will replace this branch with a
-    // proper lobby UI.
+    return <NetworkedApp />;
   }
-  return HotSeatApp as unknown as ComponentType;
+
+  return <LobbyShell onSelect={onSelect} />;
 };
 
-const App = pickApp();
+const Networked: ComponentType = NetworkedShell;
+
+/** Top-level App: pick networked vs hot-seat once at mount. The mode is
+ * a build-time setting (`VITE_CLIENT_MODE`), so a re-evaluation on every
+ * render would only burn CPU. */
+const App: ComponentType = () => {
+  const mode = detectMode();
+  if (mode === 'networked') {
+    return <Networked />;
+  }
+  // Hot-seat: legacy GH Pages path. The bgio React Client returns a
+  // class component whose props are all optional in this mode.
+  const HotSeat = HotSeatApp as unknown as ComponentType;
+  return <HotSeat />;
+};
 
 export default App;
+
+// `SessionCreds` is re-exported here only so consumers that import App
+// can treat the session-shape as a public API surface. The real shape
+// lives in `./lobby/credentials.ts`.
+export type { SessionCreds };

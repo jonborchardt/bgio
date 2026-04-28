@@ -22,6 +22,8 @@ import { BoardShell } from './ui/layout/BoardShell.tsx';
 import { RoleSlot } from './ui/layout/RoleSlot.tsx';
 import { StatusBar } from './ui/layout/StatusBar.tsx';
 import { CenterMat } from './ui/mat/CenterMat.tsx';
+import { ChatPane } from './ui/chat/ChatPane.tsx';
+import { ChatComposer } from './ui/chat/ChatComposer.tsx';
 
 export function SettlementBoard(props: BoardProps<SettlementState>) {
   const { G, ctx, moves, playerID } = props;
@@ -122,6 +124,18 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
           />
         }
       />
+
+      {/* 10.5: chat lives below the StatusBar as a sibling of BoardShell.
+          `chatMessages` and `sendChatMessage` are bgio-Client-provided
+          props (see boardgame.io's BoardProps definition); they're
+          undefined under the headless test Client, so we tolerate that. */}
+      <Stack component="section" aria-label="Chat" spacing={1}>
+        <ChatPane chatMessages={props.chatMessages ?? []} />
+        <ChatComposer
+          onSend={(t) => props.sendChatMessage?.({ text: t, ts: Date.now() })}
+          disabled={props.sendChatMessage === undefined}
+        />
+      </Stack>
 
       <Box sx={{ display: 'flex', justifyContent: 'center' }}>
         <Button
