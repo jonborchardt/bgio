@@ -95,7 +95,7 @@ One row per sub-plan. Columns:
 |---|---|---|---|---|---|---|
 | [07.1](07.1-decks.md) | done | claude | plan/07.1 | 2026-04-28 | 01.2, 02.3, 02.4 | Done. battle+trade decks + redaction wiring. |
 | [07.2](07.2-units.md) | done | claude | plan/07.2 | 2026-04-28 | 01.2, 03.4 | Done. recruit/upkeep/release with Forge/Walls modifiers via parseBenefit. |
-| [07.3](07.3-battle-resolver.md) | pending |  |  |  | 01.2, 07.2 | Heavy — flagged for possible split. |
+| [07.3](07.3-battle-resolver.md) | done | claude | plan/07.3 | 2026-04-28 | 01.2, 07.2 | Done. Pure resolver; V1 abilities (focus/splash/armor/heal/singleUse). |
 | [07.4](07.4-flip-flow.md) | pending |  |  |  | 02.2, 03.3, 07.1, 07.2, 07.3 |  |
 | [07.5](07.5-trade-request.md) | pending |  |  |  | 02.2, 03.3, 07.4 |  |
 | [07.6](07.6-event-stub.md) | done | claude | plan/07.6 | 2026-04-28 | 01.1, 02.1, 02.2 | Done. foreignPlayRedEvent stub via shared playEventStub helper. |
