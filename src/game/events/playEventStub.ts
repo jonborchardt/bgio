@@ -1,19 +1,18 @@
-// Shared "play one event card of <color>" stub factory for the three role
-// stubs that mirror 04.4 chiefPlayGoldEvent (05.4 sciencePlayBlueEvent,
-// 06.6 domesticPlayGreenEvent, 07.6 foreignPlayRedEvent).
+// Shared "play one event card of <color>" factory for the four role
+// event-play moves: 04.4 chiefPlayGoldEvent, 05.4 sciencePlayBlueEvent,
+// 06.6 domesticPlayGreenEvent, 07.6 foreignPlayRedEvent.
 //
-// Why a factory rather than three near-identical 70-line files: each of
-// 05.4 / 06.6 / 07.6 differs from the others only in (role, color, flag
-// key). All five pieces of logic are identical — caller-seat check, role
-// check, `G.events` presence check, hand-id lookup, per-round flag, and
-// the `cycleAdvance` bookkeeping call. Centralizing keeps the stubs in
-// lockstep so when 08.3's effect dispatcher lands it touches one file.
+// Why a factory rather than four near-identical files: each only differs
+// in (role, color, flag key). All five pieces of logic are identical —
+// caller-seat check, role check, `G.events` presence check, hand-id
+// lookup, per-round flag, the `cycleAdvance` bookkeeping call, and
+// (08.3) the dispatch into `events/dispatcher.ts`. Centralizing keeps
+// the moves in lockstep.
 //
 // 04.4 chiefPlayGoldEvent intentionally keeps its own hand-rolled file
 // because it landed first and its module-level docs spell out the gating
-// contract that this helper formalizes. The two are behaviorally
-// identical — see chiefPlayGoldEvent.ts and the parity tests under
-// tests/roles/<role>/play<Color>Event.test.ts.
+// contract. The two are behaviorally identical — see chiefPlayGoldEvent.ts
+// and the parity tests under tests/roles/<role>/play<Color>Event.test.ts.
 //
 // Validations (in order):
 //   1. caller has a defined playerID
@@ -23,13 +22,17 @@
 //   5. `G._eventPlayedThisRound?.[flagKey] !== true`
 //
 // On success: lazy-init `G._eventPlayedThisRound`, set the role's flag,
-// advance the per-seat color cycle with the played card id.
+// advance the per-seat color cycle with the played card id, then call
+// the typed effect dispatcher (08.2) to apply / queue the card's effects.
 
 import type { Move } from 'boardgame.io';
 import { INVALID_MOVE } from 'boardgame.io/core';
 import type { SettlementState, Role } from '../types.ts';
 import { rolesAtSeat } from '../roles.ts';
 import { cycleAdvance, type EventColor } from './state.ts';
+import { dispatch } from './dispatcher.ts';
+import { fromBgio, type BgioRandomLike } from '../random.ts';
+import type { StageEvents, StageName } from '../phases/stages.ts';
 
 // Type alias for the per-role flag keys on `_eventPlayedThisRound`.
 // Lifted from `SettlementState` so a typo here would be a compile error.
@@ -42,7 +45,7 @@ export const playEventStub = (
   color: EventColor,
   flagKey: EventPlayedFlagKey,
 ): Move<SettlementState> => {
-  return ({ G, playerID }, cardID: string) => {
+  return ({ G, ctx, playerID, random, events }, cardID: string) => {
     // bgio passes the acting seat as a top-level `playerID`. Spectator /
     // unauthenticated calls arrive as `undefined`.
     if (playerID === undefined || playerID === null) return INVALID_MOVE;
@@ -69,7 +72,10 @@ export const playEventStub = (
     // One event of this color per round.
     if (G._eventPlayedThisRound?.[flagKey] === true) return INVALID_MOVE;
 
-    // All checks passed — bookkeeping. Effect dispatch lands in 08.3.
+    // Resolve the played card so we can hand it to the dispatcher.
+    const card = hand.find((c) => c.id === cardID)!;
+
+    // All checks passed — bookkeeping.
     if (!G._eventPlayedThisRound) G._eventPlayedThisRound = {};
     G._eventPlayedThisRound[flagKey] = true;
 
@@ -78,5 +84,28 @@ export const playEventStub = (
     // is `used`, which resets after a full cycle so the same cards
     // become legal again.
     cycleAdvance(G.events, color, playerID, cardID);
+
+    // 08.3 — dispatch effects. `random` may be missing in headless test
+    // call sites that drive the move directly; fall back to a tiny
+    // identity stub so the dispatcher (which currently doesn't need
+    // randomness for any of the V1 effect kinds) can still run.
+    const fallbackRandom: BgioRandomLike = {
+      Shuffle: <T>(arr: T[]): T[] => [...arr],
+      Number: () => 0,
+    };
+    const r = fromBgio((random as BgioRandomLike | undefined) ?? fallbackRandom);
+
+    // The seat's current stage — used by `awaitInput`-shaped effects so
+    // `exitEventStage` can pop back to it. Loose-typed because some test
+    // ctx stubs lack `activePlayers`.
+    const returnTo = (
+      ctx as unknown as { activePlayers?: Record<string, string> }
+    )?.activePlayers?.[playerID];
+
+    dispatch(G, ctx, r, card, undefined, {
+      playerID,
+      events: events as StageEvents | undefined,
+      returnTo: returnTo as StageName | undefined,
+    });
   };
 };

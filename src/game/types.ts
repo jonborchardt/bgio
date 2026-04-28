@@ -25,6 +25,10 @@ import type { DomesticState } from './roles/domestic/types.ts';
 // there is no runtime cycle with `./events/state.ts`, which imports
 // `RandomAPI` and `registerRoundEndHook` back from this package.
 import type { EventsState } from './events/state.ts';
+// Type-only edge into 08.2's typed `EventEffect` union — used by the
+// modifier stack and the awaiting-input map below. `./events/effects.ts`
+// has no runtime imports back from this file.
+import type { EventEffect } from './events/effects.ts';
 
 export type Role = 'chief' | 'science' | 'domestic' | 'foreign';
 
@@ -128,6 +132,21 @@ export interface SettlementState {
     domestic?: boolean;
     foreign?: boolean;
   };
+
+  // 08.2 — modifier stack pushed by the event-effect dispatcher. Effects
+  // that condition a *subsequent* move (e.g. `doubleScience`, `forbidBuy`)
+  // push themselves here on dispatch; the move consults
+  // `hasModifierActive(...)` and calls `consumeModifier(...)` after
+  // applying. Optional so test fixtures and pre-08.2 setups stay clean.
+  _modifiers?: EventEffect[];
+
+  // 08.2 — per-seat "awaiting follow-up input" map. The dispatcher stashes
+  // an effect here when it can't apply immediately (e.g.
+  // `swapTwoScienceCards` needs the seat to pick which two cards). The
+  // follow-up `eventResolve(payload)` move (08.3) reads this slot, applies
+  // the effect with the payload, and clears the entry. Optional for the
+  // same reason as `_modifiers`.
+  _awaitingInput?: Record<PlayerID, EventEffect>;
 
   // 07.5 — set by `placeOrInterruptTrade` when a Foreign-flipped trade
   // card lands on top of an already-occupied `centerMat.tradeRequest` slot.

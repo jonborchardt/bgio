@@ -106,8 +106,8 @@ One row per sub-plan. Columns:
 | Sub-plan | Status | Owner | Branch | Updated | Blocked on | Notes |
 |---|---|---|---|---|---|---|
 | [08.1](08.1-event-deck-shape.md) | done | claude | plan/08.1 | 2026-04-28 | 01.1, 01.2, 02.5 | Done. EventsState + setupEvents + cycleAdvance + reset hook. |
-| [08.2](08.2-event-dispatcher.md) | pending |  |  |  | 01, 02, 08.1 | Heavy — flagged for possible split (per effect kind). |
-| [08.3](08.3-event-moves.md) | pending |  |  |  | 04.4, 05.4, 06.6, 07.6, 08.1, 08.2 |  |
+| [08.2](08.2-event-dispatcher.md) | done | claude | plan/08.2 | 2026-04-28 | 01, 02, 08.1 | Done. dispatch + hasModifier/consumeModifier + 9 effect kinds. |
+| [08.3](08.3-event-moves.md) | done | claude | plan/08.3 | 2026-04-28 | 04.4, 05.4, 06.6, 07.6, 08.1, 08.2 | Done. play*Event stubs now dispatch + eventResolve for awaitInput. |
 | [08.4](08.4-wander-deck.md) | pending |  |  |  | 01.2, 02.4, 02.5, 08.2 |  |
 | [08.5](08.5-end-conditions.md) | done | claude | plan/08.5 | 2026-04-28 | 01.1, 02.1, 07 | Done. endIf with win/timeUp; settlementsJoined+turnCap on G. |
 | [08.6](08.6-tech-card-content.md) | pending |  |  |  | 01.2, 05.3, 08.2 | AI-assisted authoring. Per-role PlayTech moves. |

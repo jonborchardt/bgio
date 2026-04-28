@@ -28,6 +28,7 @@ import { foreignAssignDamage } from './roles/foreign/assignDamage.ts';
 import { chiefDecideTradeDiscard } from './roles/chief/decideTradeDiscard.ts';
 import { scienceContribute } from './roles/science/contribute.ts';
 import { scienceComplete } from './roles/science/complete.ts';
+import { eventResolve } from './events/resolveMove.ts';
 
 export const pass: Move<SettlementState> = () => {
   // intentional no-op — bgio advances the turn after the move resolves.
@@ -59,11 +60,18 @@ export {
 // stage.
 export { scienceContribute, scienceComplete };
 
-// Per-color event-card stubs (05.4 / 06.6 / 07.6). Near-clones of 04.4
+// Per-color event-card moves (05.4 / 06.6 / 07.6). Near-clones of 04.4
 // chiefPlayGoldEvent — they share the `playEventStub` factory in
-// `src/game/events/playEventStub.ts`. Each only owns role-gating and
-// per-round bookkeeping until 08.3 wires the typed effect dispatcher.
+// `src/game/events/playEventStub.ts`. Each owns role-gating, per-round
+// bookkeeping, and (08.3) effect dispatch via the typed dispatcher.
 export { sciencePlayBlueEvent, domesticPlayGreenEvent, foreignPlayRedEvent };
+
+// 08.3 — `eventResolve` is the follow-up move for play*Event-dispatched
+// `awaitInput` effects (e.g. `swapTwoScienceCards`). It reads the parked
+// effect from `G._awaitingInput[playerID]`, applies it with the supplied
+// payload, and pops the seat back to the prior stage. Stage gating is
+// enforced inside the move (must be in `playingEvent`).
+export { eventResolve };
 
 // Foreign role unit moves (07.2): recruit / upkeep / release. Stage gating
 // is enforced inside each move against `ctx.activePlayers?.[playerID] ===

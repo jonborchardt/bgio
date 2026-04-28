@@ -26,6 +26,7 @@ import {
   domesticBuyBuilding,
   domesticUpgradeBuilding,
   domesticProduce,
+  eventResolve,
   __testSetPhaseDone,
   __testSetOthersDone,
 } from './moves.ts';
@@ -71,6 +72,7 @@ export const Settlement: Game<SettlementState> = {
     domesticBuyBuilding,
     domesticUpgradeBuilding,
     domesticProduce,
+    eventResolve,
     __testSetPhaseDone,
     __testSetOthersDone,
   },
