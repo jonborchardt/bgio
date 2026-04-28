@@ -76,4 +76,28 @@ export interface SettlementState {
   // fixtures that pre-date 08.1 remain source-compatible; moves and hooks
   // that touch it must guard.
   events?: EventsState;
+
+  // Feature-flag bag toggled by later slices' `setup` once the
+  // corresponding state shape exists. Used by stub moves that need to
+  // short-circuit until the real implementation lands. Optional so older
+  // fixtures stay source-compatible.
+  // - `workersEnabled` (04.3): set true by 06.1 once `domestic.grid` exists.
+  _features?: {
+    workersEnabled?: boolean;
+  };
+
+  // Chief-role-specific runtime state — worker token reserve, etc. Filled
+  // out incrementally as chief features land (04.3 introduces `workers`).
+  // Optional so existing tests / fixtures stay clean.
+  chief?: {
+    workers: number;
+  };
+
+  // Domestic role state. The full shape lands in 06.1 (hand + grid). 04.3's
+  // `chiefPlaceWorker` reads `domestic.grid` defensively as a stub until
+  // then; the `Record<string, { id; worker }>` shape here is the simplest
+  // thing that lets the stub validate cells. 06.1 will redefine this.
+  domestic?: {
+    grid: Record<string, { id: string; worker: { ownerSeat: PlayerID } | null }>;
+  };
 }
