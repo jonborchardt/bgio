@@ -10,13 +10,17 @@ import type { CenterMat } from './resources/centerMat.ts';
 // runtime cycle with `./roles/science/setup.ts`, which imports `RandomAPI`
 // and `registerRoundEndHook` back from this package.
 import type { ScienceState } from './roles/science/setup.ts';
+// Same trick for the Foreign role state — type-only edge so there is no
+// runtime cycle with `./roles/foreign/decks.ts`, which imports `RandomAPI`
+// back from this package.
+import type { ForeignState } from './roles/foreign/decks.ts';
 
 export type Role = 'chief' | 'science' | 'domestic' | 'foreign';
 
 // boardgame.io identifies seats as string indices: '0', '1', '2', '3'.
 export type PlayerID = string;
 
-export type { ResourceBag, CenterMat, ScienceState };
+export type { ResourceBag, CenterMat, ScienceState, ForeignState };
 
 export interface SettlementState {
   // Public, shared state.
@@ -56,4 +60,10 @@ export interface SettlementState {
   // clears at endOfRound. Optional so older test fixtures that pre-date 05.1
   // remain source-compatible; hooks and moves that touch it must guard.
   science?: ScienceState;
+
+  // Foreign role state — Battle and Trade decks (top-of-deck = lowest number)
+  // plus the Foreign hand. Built at setup by 07.1; refined by 07.2-07.4.
+  // Optional so older test fixtures that pre-date 07.1 remain source-
+  // compatible; moves and the playerView redactor must guard for `undefined`.
+  foreign?: ForeignState;
 }

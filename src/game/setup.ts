@@ -14,6 +14,7 @@ import { initialBank } from './resources/bank.ts';
 import { bagOf } from './resources/bag.ts';
 import { initialMat } from './resources/centerMat.ts';
 import { setupScience } from './roles/science/setup.ts';
+import { buildBattleDeck, buildTradeDeck } from './roles/foreign/decks.ts';
 import { fromBgio, type BgioRandomLike } from './random.ts';
 
 // bgio passes its plugin APIs alongside `ctx`. We accept the shape loosely
@@ -68,5 +69,12 @@ export const setup = (context: { ctx: Ctx; random?: BgioRandomLike }): Settlemen
     _stageStack: {},
     // Science role: build the initial 3×3 grid + per-cell tech stacks.
     science: setupScience(r),
+    // Foreign role: Battle and Trade decks per game-design.md §Setup.Foreign.
+    // The hand starts empty; 07.4 fills it via flip-flow moves.
+    foreign: {
+      battleDeck: buildBattleDeck(r),
+      tradeDeck: buildTradeDeck(r),
+      hand: [],
+    },
   };
 };

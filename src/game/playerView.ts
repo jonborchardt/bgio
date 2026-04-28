@@ -177,9 +177,22 @@ export const playerViewFor = (
   // redact here today; if 05.x introduces a private science slice this is
   // the place to add it.
 
+  // 07.1 stores the real Battle / Trade decks at G.foreign. Their order is
+  // secret to anyone who doesn't hold the Foreign role (including
+  // spectators); only the deck *length* leaks. Mirror the hand-side
+  // redaction by replacing each card with `null` while preserving length.
+  let foreign = G.foreign;
+  if (!has('foreign') && foreign !== undefined) {
+    foreign = {
+      ...foreign,
+      battleDeck: redactDeckOrder(foreign.battleDeck),
+      tradeDeck: redactDeckOrder(foreign.tradeDeck),
+    };
+  }
+
   // Only allocate a new top-level object if anything actually changed.
-  if (hands === G.hands) return { ...G };
-  return { ...G, hands };
+  if (hands === G.hands && foreign === G.foreign) return { ...G };
+  return { ...G, hands, foreign };
 };
 
 /**
