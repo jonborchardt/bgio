@@ -71,7 +71,7 @@ One row per sub-plan. Columns:
 | Sub-plan | Status | Owner | Branch | Updated | Blocked on | Notes |
 |---|---|---|---|---|---|---|
 | [05.1](05.1-grid-setup.md) | done | claude | plan/05.1 | 2026-04-28 | 01.2, 02.3, 02.5, 03 | Done. 3x3 grid + 4 techs/cell + reset-completions hook. |
-| [05.2](05.2-contribute-move.md) | pending |  |  |  | 01.1, 02.1, 02.2, 03.4, 05.1 |  |
+| [05.2](05.2-contribute-move.md) | done | claude | plan/05.2 | 2026-04-28 | 01.1, 02.1, 02.2, 03.4, 05.1 | Done. Lowest-first column rule + capped-at-cost transfer. |
 | [05.3](05.3-complete-move.md) | pending |  |  |  | 01.1, 02.5, 03.2, 05.1, 05.2 |  |
 | [05.4](05.4-event-stub.md) | pending |  |  |  | 01.1, 02.1, 02.2 | Soft dep on 08. |
 | [05.5](05.5-panel.md) | pending |  |  |  | 05.1, 05.2, 05.3 | Touches `src/Board.tsx`. Soft dep on 09.2. |
