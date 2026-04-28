@@ -10,6 +10,7 @@ import {
   __testSetOthersDone,
 } from './moves.ts';
 import { chiefPhase, othersPhase, endOfRound } from './phases/index.ts';
+import { playerView } from './playerView.ts';
 
 export type {
   CenterMat,
@@ -34,4 +35,5 @@ export const Settlement: Game<SettlementState> = {
   // here only affects fall-through behavior outside an active stage.
   turn: { minMoves: 1, maxMoves: 1 },
   phases: { chiefPhase, othersPhase, endOfRound },
+  playerView,
 };
