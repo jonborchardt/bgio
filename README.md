@@ -1,5 +1,9 @@
 # bgio
 
+> **Status: work in progress.** This repo is being re-aimed at a game called
+> **Settlement**. The Card Sweep starter described below is in the process of
+> being replaced; see [`plans/`](plans/) for the active execution plan.
+
 A minimal **[boardgame.io](https://boardgame.io/)** + **React** + **TypeScript** + **Vite** starter,
 ready to deploy to GitHub Pages.
 

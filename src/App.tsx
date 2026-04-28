@@ -1,11 +1,11 @@
 import { Client } from 'boardgame.io/react';
-import { CardSweep } from './game.ts';
-import { CardSweepBoard } from './Board.tsx';
+import { Settlement } from './game/index.ts';
+import { SettlementBoard } from './Board.tsx';
 
 const App = Client({
-  game: CardSweep,
-  board: CardSweepBoard,
-  numPlayers: 2,
+  game: Settlement,
+  board: SettlementBoard,
+  numPlayers: 4,
   debug: false,
 });
 
