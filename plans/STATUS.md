@@ -51,7 +51,7 @@ One row per sub-plan. Columns:
 
 | Sub-plan | Status | Owner | Branch | Updated | Blocked on | Notes |
 |---|---|---|---|---|---|---|
-| [03.1](03.1-token-types.md) | pending |  |  |  |  |  |
+| [03.1](03.1-token-types.md) | done | claude | plan/03.1 | 2026-04-27 |  | Done. `src/game/resources/{types,bag}.ts` + tests. |
 | [03.2](03.2-bank.md) | pending |  |  |  | 03.1 |  |
 | [03.3](03.3-center-mat.md) | pending |  |  |  | 03.1, 03.2, 02.5, 01.1 |  |
 | [03.4](03.4-moves.md) | pending |  |  |  | 01.1, 01.3, 02.1, 03.1, 03.2, 03.3 |  |
