@@ -84,10 +84,10 @@ One row per sub-plan. Columns:
 | [06.2](06.2-buy-and-upgrade.md) | done | claude | plan/06.2 | 2026-04-28 | 01.2, 03.4, 06.1 | Done. domesticBuyBuilding + domesticUpgradeBuilding (V1 50% delta). |
 | [06.3](06.3-benefit-parser.md) | done | claude | plan/06.3 | 2026-04-28 | 01.2, 03.1 | Done. parseBenefit handles all 17 BUILDINGS strings + accepts defence spelling. |
 | [06.4](06.4-produce-move.md) | done | claude | plan/06.4 | 2026-04-28 | 01.2, 03.2, 06.1, 06.3, 02.5 | Done. Sums building yields, doubles for workers, idempotent via producedThisRound. |
-| [06.5](06.5-adjacency-rules.md) | pending |  |  |  | 03.1, 06.1, 06.4 |  |
+| [06.5](06.5-adjacency-rules.md) | done | claude | plan/06.5 | 2026-04-28 | 03.1, 06.1, 06.4 | Done. yieldAdjacencyBonus + registry; produce consults it. |
 | [06.6](06.6-event-stub.md) | done | claude | plan/06.6 | 2026-04-28 | 01.1, 02.1, 02.2 | Done. domesticPlayGreenEvent stub via shared playEventStub helper. |
 | [06.7](06.7-panel.md) | pending |  |  |  | 06.1, 06.2, 06.4 | Touches `src/Board.tsx`. Soft deps on 09.2, 09.4. |
-| [06.8](06.8-adjacency-content.md) | pending |  |  |  | 01.2, 06.5 | AI-assisted authoring. |
+| [06.8](06.8-adjacency-content.md) | done | claude | plan/06.8 | 2026-04-28 | 01.2, 06.5 | Done. 12 hand-authored rules in src/data/adjacency.json. |
 
 ## 07 — Foreign
 

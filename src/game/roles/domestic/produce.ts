@@ -30,6 +30,7 @@ import { EMPTY_BAG } from '../../resources/types.ts';
 import type { ResourceBag } from '../../resources/types.ts';
 import { registerRoundEndHook } from '../../hooks.ts';
 import { parseBenefit, type BenefitYield } from './parseBenefit.ts';
+import { adjacencyRules, yieldAdjacencyBonus } from './adjacency.ts';
 
 export const domesticProduce: Move<SettlementState> = ({ G, ctx, playerID }) => {
   // bgio passes the acting seat as a top-level `playerID` on the move args.
@@ -74,6 +75,10 @@ export const domesticProduce: Move<SettlementState> = ({ G, ctx, playerID }) => 
       runningYield = add(runningYield, parsed.resources);
     }
   }
+
+  // 06.5: layer in the adjacency-bonus bag. Pure helper; reads the live
+  // module-level registry so 06.8's content (and tests) flow through.
+  runningYield = add(runningYield, yieldAdjacencyBonus(domestic.grid, adjacencyRules));
 
   // Deposit straight into the bank — there's no source bag to debit (the
   // resources are conjured out of the production model). 06.4 plan calls

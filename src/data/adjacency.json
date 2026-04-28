@@ -1,0 +1,74 @@
+[
+  {
+    "defID": "Mill",
+    "whenAdjacentTo": "Granary",
+    "bonus": { "food": 1 },
+    "flavor": "A mill grinds finer when its grain pile is next door."
+  },
+  {
+    "defID": "Hospital",
+    "whenAdjacentTo": "Granary",
+    "bonus": { "food": 1 },
+    "flavor": "Patients heal faster when the larder is across the courtyard."
+  },
+  {
+    "defID": "Windmill",
+    "whenAdjacentTo": "Mill",
+    "bonus": { "production": 1 },
+    "flavor": "Wind-driven sails reinforce the water mill's output."
+  },
+  {
+    "defID": "Workshop",
+    "whenAdjacentTo": "Forge",
+    "bonus": { "production": 1 },
+    "flavor": "Forge sparks feed the workshop's tooling."
+  },
+  {
+    "defID": "Factory",
+    "whenAdjacentTo": "Workshop",
+    "bonus": { "production": 1 },
+    "flavor": "Workshop prototypes scale cleanly into the factory line."
+  },
+  {
+    "defID": "Library",
+    "whenAdjacentTo": "School",
+    "bonus": { "science": 1 },
+    "flavor": "Students cycling through the stacks copy faster."
+  },
+  {
+    "defID": "School",
+    "whenAdjacentTo": "Library",
+    "bonus": { "science": 1 },
+    "flavor": "Reference shelves a door away cut research time."
+  },
+  {
+    "defID": "Market",
+    "whenAdjacentTo": "Mint",
+    "bonus": { "gold": 1 },
+    "flavor": "Fresh-struck coin moves quickly through a busy market."
+  },
+  {
+    "defID": "Bank",
+    "whenAdjacentTo": "Market",
+    "bonus": { "gold": 1 },
+    "flavor": "Merchants prefer banking where they shop."
+  },
+  {
+    "defID": "Mint",
+    "whenAdjacentTo": "Bank",
+    "bonus": { "gold": 1 },
+    "flavor": "The mint and the vault share a courier."
+  },
+  {
+    "defID": "Fight Circle",
+    "whenAdjacentTo": "*",
+    "bonus": { "happiness": 1 },
+    "flavor": "Any neighborhood with a fight circle has something to cheer for."
+  },
+  {
+    "defID": "Forge",
+    "whenAdjacentTo": "Barracks",
+    "bonus": { "production": 1 },
+    "flavor": "Soldiers requisition tools straight from the next-door forge."
+  }
+]
