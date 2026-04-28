@@ -45,7 +45,7 @@ One row per sub-plan. Columns:
 | [02.2](02.2-stages-and-active-players.md) | done | claude | plan/02.2 | 2026-04-27 | 02.1 | Done. STAGES + activePlayersForOthers + enter/exitEventStage. |
 | [02.3](02.3-randomness.md) | pending |  |  |  | 02.1 | Touches `eslint.config.js`. |
 | [02.4](02.4-secret-state.md) | pending |  |  |  | 01.1 |  |
-| [02.5](02.5-end-of-round.md) | pending |  |  |  | 02.1 |  |
+| [02.5](02.5-end-of-round.md) | done | claude | plan/02.5 | 2026-04-27 | 02.1 | Done. registerRoundEndHook + runRoundEndHooks; endOfRound consumes registry. |
 
 ## 03 — Resources
 
