@@ -238,6 +238,34 @@ the symbol alone and don't propagate the codename into copy.
 
 ## Deployment
 
-`.github/workflows/deploy-pages.yml` is a single-job-then-deploy workflow that runs on push to
-`main` and on manual dispatch. The repo's GitHub Pages source must be set to "GitHub Actions" in
-repo settings the first time.
+The hot-seat build deploys to GitHub Pages via
+`.github/workflows/deploy-pages.yml` (single-job-then-deploy, runs on push to `main` and on
+manual dispatch). The repo's GitHub Pages source must be set to "GitHub Actions" in repo
+settings the first time.
+
+The networked build deploys to Render as a Docker web service via `render.yaml` and
+`.github/workflows/deploy-server.yml` (push-triggered build validation; Render auto-deploys
+from the repo). Free-tier sleeps after ~15 min idle; the 10.6 reconnect spinner covers the
+wake window. Persistent disk at `/data` holds the SQLite DB.
+
+**Pre-deploy on a fresh host:** `npm install` so `better-sqlite3` (native build),
+`@playwright/test`, `@vitest/coverage-v8`, and `concurrently` resolve. The Dockerfile already
+installs Python 3 / make / g++ for the SQLite native compile.
+
+## Known V1 caveats / open follow-ups
+
+- **Hot-seat playability.** The default build mounts `Client({...})` with no `playerID`, so
+  every role panel returns null and the GH Pages demo is currently un-playable from the UI.
+  Stage 14 (especially 14.1 + 14.2) is the unblocker. See
+  [plans/14-playtest-followups.md](plans/14-playtest-followups.md) for the packed
+  hot-seat playtest log + 11 sub-plans.
+- **`__test*` moves** are gated behind `NODE_ENV=test` (review fix #1). Production builds ship
+  no scaffolding to flip `G.othersDone[seat]`; 14.2 ships real `<role>SeatDone` moves so the
+  round loop is reachable.
+- **Auth + accounts are in-memory.** The plan calls for SQLite-backed users / runs (10.7
+  follow-up); the V1 server boots with a Map-backed `accounts.ts`. The /auth REST routes are
+  mounted; rate-limit + body cap landed in review fix #10.
+- **In-flight content gaps:** events.json migrated to typed `gainResource` shape (review fix
+  ride-along). Tech / wander / event content is a starter set; balancing comes after Stage 14.
+- **Networked playtest is unverified end-to-end.** 14.11 schedules the two-tab playtest;
+  it's a read-only sub-plan that produces a follow-up plan-input file.

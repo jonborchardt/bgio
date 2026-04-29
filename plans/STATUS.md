@@ -195,11 +195,11 @@ A multi-agent review of the unpushed branch surfaced 10 correctness
 
 ## 14 — Playtest follow-ups
 
-Driven by [../notes/playtest-2026-04-29.md](../notes/playtest-2026-04-29.md).
-Stage 14 closes the gaps that the 2026-04-29 hot-seat playtest
-surfaced — the headline being that the default build has no playable
-action surface because every role panel returns null when no
-`playerID` is set.
+Driven by the 2026-04-29 hot-seat playtest packed inside
+[14-playtest-followups.md](14-playtest-followups.md). Stage 14 closes
+the gaps the playtest surfaced — the headline being that the default
+build has no playable action surface because every role panel returns
+null when no `playerID` is set.
 
 | Sub-plan | Status | Owner | Branch | Updated | Blocked on | Notes |
 |---|---|---|---|---|---|---|

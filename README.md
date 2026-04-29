@@ -1,91 +1,127 @@
-# bgio
+# Settlement (codename)
 
-> **Status: work in progress.** This repo is being re-aimed at a game called
-> **Settlement**. The Card Sweep starter described below is in the process of
-> being replaced; see [`plans/`](plans/) for the active execution plan.
+A four-role co-op-ish strategy game built on **[boardgame.io](https://boardgame.io/)** +
+**React** + **TypeScript** + **Vite**, with a sibling **Koa** server under `server/` for
+networked play.
 
-A minimal **[boardgame.io](https://boardgame.io/)** + **React** + **TypeScript** + **Vite** starter,
-ready to deploy to GitHub Pages.
+> **Status: V1 engine + UI scaffolding complete; UI not yet end-to-end playable.**
+> Stages 01-13 of the [`plans/`](plans/) execution tree are all `done` (449 tests, typecheck
+> + lint clean, coverage 83/75/91, Playwright smoke green). Stage 14 (driven by the
+> 2026-04-29 hot-seat playtest) addresses the unblockers that make the demo actually
+> playable from the browser — see [`plans/14-playtest-followups.md`](plans/14-playtest-followups.md).
 
-It ships with **Card Sweep**, a tiny two-player hot-seat card game so you can see all the moving
-parts wired up end-to-end: game logic, board component, client, tests, and CI.
+## Two ways to play (intended)
 
-## Card Sweep
+- **Preview / demo at the GitHub Pages URL** — hot-seat, single-tab, no save, no login.
+  *Currently not playable end-to-end:* the default build mounts the bgio React client
+  with no `playerID`, so every role panel returns null. Stage 14.1 (seat picker) +
+  14.2 (per-role "I'm done" buttons) are the unblockers. Track in
+  [`plans/14-playtest-followups.md`](plans/14-playtest-followups.md).
+- **Full experience with accounts and run history** runs against the networked Render
+  deploy. See [`server/README.md`](server/README.md) for env vars + Render setup.
 
-Nine face-up cards (values 1–9) sit on the table. Players alternate picking one card per turn; the
-card's value is added to that player's score. When every card has been taken, the higher score
-wins.
+For a local full-stack loop while developing:
 
-The whole game is two files:
-
-- [`src/game.ts`](src/game.ts) — pure game definition (`setup`, `moves`, `endIf`).
-- [`src/Board.tsx`](src/Board.tsx) — a React component that renders state and dispatches moves.
-
-`src/App.tsx` glues them together with `Client({ game, board })` from `boardgame.io/react`.
+```bash
+npm install
+npm run dev:full   # boots server (:8000) + client (:5179) via concurrently
+```
 
 ## Getting started
 
 ```bash
-npm install
-npm run dev      # Vite dev server with HMR
-npm run build    # type-check + production build into dist/
-npm run preview  # serve the built bundle locally
-npm test         # vitest
+npm install         # required - includes native better-sqlite3 build
+npm run dev         # Vite dev server (hot-seat client) on :5179
+npm run server:dev  # bgio Koa server on :8000
+npm run dev:full    # one command for both above
+
+npm run build       # tsc -b + vite build → dist/ (default = hot-seat)
+npm run build:hotseat
+npm run build:networked  # SocketIO transport, talks to VITE_SERVER_URL
+
+npm test
+npm run test:coverage    # gate: 80 lines / 85 functions / 70 branches
+npm run e2e:smoke        # Playwright smoke
+npm run typecheck
 npm run lint
 ```
 
-Requires Node 20+.
+Requires Node 20+. `npm install` builds `better-sqlite3` natively; on bare hosts you need
+Python 3 / make / a C++ toolchain. The Dockerfile installs them automatically.
 
-## Two ways to play
-
-- **Demo (no save, no login)** at the GitHub Pages URL — hot-seat only,
-  state lives in the browser, nothing persists across reloads.
-- **Full experience with accounts and run history** requires the networked
-  server. See [`server/README.md`](server/README.md) for how to run it
-  locally or deploy your own copy to Render.
-
-## Deploying to GitHub Pages
-
-A workflow at [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml) builds and
-publishes `dist/` to GitHub Pages on every push to `main`.
-
-To enable it on a fresh repo:
-
-1. Push this repo to GitHub.
-2. **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-3. Push to `main` (or run the workflow manually) — the workflow installs, tests, builds, and
-   deploys.
-
-The Vite config uses `base: './'`, so the built site works regardless of the repo name or whether
-it's served from a project page (`username.github.io/repo`) or a custom domain.
-
-## Project layout
+## Layout
 
 ```
 .
-├── index.html              # Vite entry — loads src/main.tsx
+├── index.html
 ├── src/
-│   ├── main.tsx            # React root
-│   ├── App.tsx             # boardgame.io React Client
-│   ├── Board.tsx           # Board component (BoardProps<CardSweepState>)
-│   ├── game.ts             # Game<CardSweepState> definition
-│   └── styles.css
-├── tests/
-│   └── game.test.ts        # headless game-logic tests via boardgame.io/client
-├── .github/workflows/
-│   └── deploy-pages.yml
-├── vite.config.ts          # Vite + Vitest config
-├── tsconfig.json           # project references → app + node configs
-├── tsconfig.app.json
-├── tsconfig.node.json
-└── eslint.config.js
+│   ├── main.tsx               # React root
+│   ├── App.tsx                # picks hot-seat vs networked client at boot
+│   ├── Board.tsx              # board shell + role-panel host
+│   ├── clientMode.ts          # detectMode, getServerURL, networkedClientFactory
+│   ├── theme.ts               # MUI palette + role / resource / tier / event tokens
+│   ├── game/                  # bgio Game definition (engine, no React)
+│   │   ├── index.ts           # Settlement export
+│   │   ├── types.ts           # SettlementState, role / phase / stage enums
+│   │   ├── setup.ts moves.ts random.ts hooks.ts playerView.ts endConditions.ts
+│   │   ├── roles.ts           # assignRoles / seatOfRole / rolesAtSeat
+│   │   ├── phases/            # chief / others / endOfRound / stages
+│   │   ├── resources/         # bag / bank / centerMat / moves / types
+│   │   ├── events/            # event deck, dispatcher, eventResolve
+│   │   ├── opponent/          # wander deck
+│   │   ├── tech/              # tech-card effects
+│   │   ├── ai/                # enumerate + per-role bot heuristics
+│   │   └── roles/{chief,science,domestic,foreign}/  # per-role moves
+│   ├── data/                  # JSON + typed loaders (BUILDINGS / UNITS / TECHNOLOGIES / EVENT_CARDS / WANDER_CARDS / ADJACENCY_RULES / SCIENCE_CARDS / battle / trade decks)
+│   ├── ui/                    # MUI panels + cards + chat + chrome
+│   │   ├── layout/            # BoardShell, RoleSlot, StatusBar
+│   │   ├── chief/ science/ domestic/ foreign/   # per-role panels
+│   │   ├── cards/ resources/ mat/ deck/ hand/ chat/
+│   │   └── ...
+│   ├── lobby/                 # LobbyShell + SeatPicker + AuthForms + soloConfig + creds
+│   └── replay/                # MoveLog + recorder + replay view
+├── server/
+│   ├── index.ts               # Koa Server + auth routes + idle watcher
+│   ├── auth/{accounts,passwordHash,middleware,routes}.ts
+│   ├── runs/runs.ts
+│   ├── idle/{idleWatcher,seatTakeover}.ts
+│   ├── storage/{index,sqlite}.ts + migrations/
+│   ├── README.md              # Render deploy notes
+│   └── Dockerfile
+├── tests/                     # mirror of src/
+│   ├── helpers/{makeClient,runMoves,seed,factories,seeds}.ts
+│   └── ...
+├── tests-e2e/smoke.spec.ts    # Playwright
+├── plans/                     # execution playbook + 88 sub-plans
+│   ├── EXECUTION.md STATUS.md README.md
+│   ├── 01.* ... 13.* (done)
+│   └── 14.* (post-V1 playtest follow-ups)
+├── scripts/                   # dev-seed.ts, build-networked.mjs
+├── .github/workflows/         # ci.yml, deploy-pages.yml, deploy-server.yml
+├── render.yaml                # Render blueprint (free-tier docker + persistent disk)
+├── vite.config.ts             # Vite + Vitest config (port 5179 strict)
+├── playwright.config.ts
+└── eslint.config.js           # bans Math.random in src/
 ```
 
-## Replacing Card Sweep with your own game
+## Plans
 
-1. Edit `src/game.ts` — change `CardSweepState`, `setup`, `moves`, and `endIf`.
-2. Edit `src/Board.tsx` — render whatever your state needs and call `moves.<yourMove>(...)`.
-3. Update `tests/game.test.ts` to cover your moves.
+Every change in `src/` was driven by a sub-plan under [`plans/`](plans/). The execution
+playbook lives in [`plans/EXECUTION.md`](plans/EXECUTION.md); the live status of every
+sub-plan is in [`plans/STATUS.md`](plans/STATUS.md).
 
-For multiplayer over the network, swap `boardgame.io/react`'s `Client` for `Lobby` /
-`SocketIO` — see the [boardgame.io docs](https://boardgame.io/documentation/).
+The 2026-04-29 hot-seat playtest log is packed into
+[`plans/14-playtest-followups.md`](plans/14-playtest-followups.md); the 11 stage-14
+sub-plans address each finding in priority order, with 14.1 + 14.2 as the unblockers.
+
+## Deploying
+
+- **Hot-seat (GH Pages):** push to `main` → `.github/workflows/deploy-pages.yml` builds
+  the hot-seat bundle and deploys. Settings → Pages → Source: GitHub Actions, the first
+  time.
+- **Networked (Render):** `render.yaml` describes a docker web service with a 1 GB
+  persistent disk for the SQLite DB. `.github/workflows/deploy-server.yml` validates the
+  server build on each push; Render auto-deploys from the repo. Free-tier sleeps after
+  ~15 min idle (~30s wake); the lobby reconnect spinner covers it.
+
+The Vite config uses `base: './'`, so the built site works regardless of the repo name.
