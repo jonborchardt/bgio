@@ -10,9 +10,10 @@
 // small banner above the shell — it's useful regardless of which seat is
 // looking at the board.
 
+import { useContext } from 'react';
 import { Box, Button, Paper, Stack, Typography } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
-import type { SettlementState } from './game/index.ts';
+import type { PlayerID, SettlementState } from './game/index.ts';
 import { rolesAtSeat } from './game/roles.ts';
 import { ChiefPanel } from './ui/chief/ChiefPanel.tsx';
 import { SciencePanel } from './ui/science/SciencePanel.tsx';
@@ -20,6 +21,8 @@ import { DomesticPanel } from './ui/domestic/DomesticPanel.tsx';
 import { ForeignPanel } from './ui/foreign/ForeignPanel.tsx';
 import { BoardShell } from './ui/layout/BoardShell.tsx';
 import { RoleSlot } from './ui/layout/RoleSlot.tsx';
+import { SeatPicker } from './ui/layout/SeatPicker.tsx';
+import { SeatPickerContext } from './ui/layout/SeatPickerContext.ts';
 import { StatusBar } from './ui/layout/StatusBar.tsx';
 import { CenterMat } from './ui/mat/CenterMat.tsx';
 import { ChatPane } from './ui/chat/ChatPane.tsx';
@@ -29,6 +32,12 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
   const { G, ctx, moves, playerID } = props;
   const gameOver = ctx.gameover !== undefined;
   const seats = Object.keys(G.roleAssignments).sort();
+
+  // 14.1 — App.tsx owns the hot-seat seat state and exposes a setter
+  // through `SeatPickerContext`. In networked mode the provider is
+  // absent (the lobby is the authority on which seat you hold), so
+  // the picker falls back to its read-only badge.
+  const seatCtx = useContext(SeatPickerContext);
 
   // 10.8 — spectator mode. `playerID === null` is bgio's "no seat,
   // watching only" connection (02.4's `playerView(G, ctx, null)`
@@ -72,6 +81,23 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
             : `Player ${Number(ctx.currentPlayer) + 1}'s turn`}
         </Typography>
       </Box>
+
+      {/* 14.1 — Seat picker. In hot-seat we expose a tab strip so the
+          single-tab user can switch which seat they're driving (without
+          this every non-chief role panel returns null). In networked
+          mode the lobby is the authority on `playerID`, so we render a
+          read-only "You are Player N" badge. Spectators (`playerID ===
+          null`) get nothing — they have no seat to mirror. */}
+      {playerID !== undefined && playerID !== null ? (
+        <SeatPicker
+          numPlayers={ctx.numPlayers as 1 | 2 | 3 | 4}
+          current={playerID as PlayerID}
+          roleAssignments={G.roleAssignments}
+          onChange={
+            seatCtx ? (seat: PlayerID) => seatCtx.setSeat(seat) : undefined
+          }
+        />
+      ) : null}
 
       <Stack component="section" spacing={1.5} aria-label="Role assignments">
         {seats.map((seat) => {

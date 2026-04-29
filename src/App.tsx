@@ -15,6 +15,8 @@ import {
   saveCreds,
   type SessionCreds,
 } from './lobby/credentials.ts';
+import { SeatPickerContext } from './ui/layout/SeatPickerContext.ts';
+import type { PlayerID } from './game/index.ts';
 
 /** Whether to show bgio's built-in Debug panel (12.2).
  *
@@ -33,13 +35,19 @@ const debugEnabled: boolean =
 
 /** The hot-seat client — single tab driving all seats. This is the GH Pages
  * default and the fallback whenever networked mode is selected but we don't
- * yet have lobby-provided match coordinates. */
+ * yet have lobby-provided match coordinates.
+ *
+ * 14.1: the actual seat the user is driving is controlled at runtime by
+ * the `playerID` prop on the rendered component (bgio's React Client
+ * calls `client.updatePlayerID()` whenever that prop changes). The
+ * `<HotSeatShell>` wrapper below seeds it to `'0'` on first render so
+ * the chief panel shows immediately rather than spectator mode. */
 const HotSeatApp = Client({
   game: Settlement,
   board: SettlementBoard,
   numPlayers: 4,
   debug: debugEnabled,
-});
+}) as unknown as ComponentType<{ playerID?: string }>;
 
 /** Read `?matchID=...&playerID=...&credentials=...` from the page URL.
  *
@@ -169,6 +177,25 @@ const NetworkedShell = () => {
 
 const Networked: ComponentType = NetworkedShell;
 
+/** Hot-seat shell (14.1) — owns the "which seat is driving right now"
+ * React state and provides it down to the SeatPicker via context.
+ *
+ * Why React state + context (rather than a module-level setter or a
+ * ref to bgio's internal client): the bgio React Client class component
+ * already calls `client.updatePlayerID()` whenever its `playerID` prop
+ * changes, so passing the state value as a prop is the canonical way
+ * to drive the swap. The SeatPicker lives inside the bgio Board and
+ * cannot reach App's setter via plain props (bgio doesn't forward
+ * extra props to the board), so a React Context is the seam. */
+const HotSeatShell: ComponentType = () => {
+  const [seat, setSeat] = useState<PlayerID>('0');
+  return (
+    <SeatPickerContext.Provider value={{ setSeat }}>
+      <HotSeatApp playerID={seat} />
+    </SeatPickerContext.Provider>
+  );
+};
+
 /** Top-level App: pick networked vs hot-seat once at mount. The mode is
  * a build-time setting (`VITE_CLIENT_MODE`), so a re-evaluation on every
  * render would only burn CPU. */
@@ -177,10 +204,7 @@ const App: ComponentType = () => {
   if (mode === 'networked') {
     return <Networked />;
   }
-  // Hot-seat: legacy GH Pages path. The bgio React Client returns a
-  // class component whose props are all optional in this mode.
-  const HotSeat = HotSeatApp as unknown as ComponentType;
-  return <HotSeat />;
+  return <HotSeatShell />;
 };
 
 export default App;
