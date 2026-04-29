@@ -359,19 +359,24 @@ const enumerateForeignAwaitingDamage = (
   const foreign = G.foreign;
   if (foreign === undefined) return [];
 
-  // V1: a single auto-allocation candidate. Build a naive 1-damage-per-row
-  // plan from the committed unit list — the resolver re-derives HP from
-  // each unit's defense and rejects under-allocations, so for a real
-  // damage assignment we'd need richer enumeration. For MCTS smoke
-  // purposes this suffices: bot tries the auto-plan and the move rejects
-  // with INVALID_MOVE if it doesn't fully resolve, which collapses the
-  // branch.
-  const allocations = foreign.inFlight.committed.map((u, i) => ({
-    sourceIdx: i,
-    targetIdx: 0,
-    amount: u.count,
-  }));
-  return [{ move: 'foreignAssignDamage', args: [allocations] }];
+  // V1: a single auto-allocation candidate. The DamageAllocation
+  // shape (07.3 battleResolver) is `{ byUnit: Record<defID, number> }`,
+  // not `{ sourceIdx, targetIdx, amount }`. The resolver consumes
+  // one allocation per incoming-damage event from enemy → player, so
+  // the simplest plan that doesn't deadlock the bot is "absorb the
+  // first hit by piling damage onto the lowest-HP committed unit".
+  // The resolver rejects under-allocations with `outcome: 'mid'` and
+  // assignDamage converts that to INVALID_MOVE, which is fine — MCTS
+  // collapses the branch and the foreignBot heuristic picks up next.
+  if (foreign.inFlight.committed.length === 0) return [];
+  const first = foreign.inFlight.committed[0];
+  if (first === undefined) return [];
+  return [
+    {
+      move: 'foreignAssignDamage',
+      args: [[{ byUnit: { [first.defID]: 1 } }]],
+    },
+  ];
 };
 
 /**
