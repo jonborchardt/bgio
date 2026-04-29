@@ -196,7 +196,7 @@ peer deps). Do not introduce a parallel styling system.
 
 ```bash
 npm run dev               # Vite dev server (HMR) — hot-seat client
-npm run server:dev        # bgio Koa server (server/) for the networked build
+npm run server:dev        # vite-node server/start.ts — bgio Koa server for networked
 npm run dev:full          # one-command bootstrap: server + client (concurrently)
 npm run build             # tsc -b && vite build → dist/ (default = hot-seat)
 npm run build:hotseat     # explicit hot-seat build (Local transport)
@@ -254,18 +254,25 @@ installs Python 3 / make / g++ for the SQLite native compile.
 
 ## Known V1 caveats / open follow-ups
 
-- **Hot-seat playability.** The default build mounts `Client({...})` with no `playerID`, so
-  every role panel returns null and the GH Pages demo is currently un-playable from the UI.
-  Stage 14 (especially 14.1 + 14.2) is the unblocker. See
-  [plans/14-playtest-followups.md](plans/14-playtest-followups.md) for the packed
-  hot-seat playtest log + 11 sub-plans.
-- **`__test*` moves** are gated behind `NODE_ENV=test` (review fix #1). Production builds ship
-  no scaffolding to flip `G.othersDone[seat]`; 14.2 ships real `<role>SeatDone` moves so the
-  round loop is reachable.
+- **Hot-seat is now single-tab playable end-to-end** (post-14.1 + 14.2 + 14.12 + 14.13 +
+  14.16). The seat picker tab strip lets the local viewer drive any seat, the role panels
+  ship real "End my turn" moves, the header reflects the active seat (not just
+  `ctx.currentPlayer`), and the CenterMat shows whenever the chief panel isn't actually
+  rendering.
+- **Server runner is `vite-node`, not `tsx`.** 14.14 swapped it because tsx 4.x mis-resolves
+  bgio subpath imports (`boardgame.io/server`, `/core`, …). `npm run dev:server` now points at
+  `server/start.ts`, a thin wrapper that always boots — no ambient-detection block. The
+  Render Dockerfile uses the same runner.
+- **`__test*` moves** are gated behind `NODE_ENV=test` (review fix #1). Production builds
+  ship `<role>SeatDone` moves (14.2) and `chiefEndPhase` (04.2) — no test scaffolding leaks
+  into prod.
 - **Auth + accounts are in-memory.** The plan calls for SQLite-backed users / runs (10.7
-  follow-up); the V1 server boots with a Map-backed `accounts.ts`. The /auth REST routes are
-  mounted; rate-limit + body cap landed in review fix #10.
-- **In-flight content gaps:** events.json migrated to typed `gainResource` shape (review fix
-  ride-along). Tech / wander / event content is a starter set; balancing comes after Stage 14.
-- **Networked playtest is unverified end-to-end.** 14.11 schedules the two-tab playtest;
-  it's a read-only sub-plan that produces a follow-up plan-input file.
+  follow-up); the V1 server boots with a Map-backed `accounts.ts`. The /auth REST routes
+  are mounted; rate-limit + body cap landed in review fix #10.
+- **In-flight content gaps:** events.json migrated to typed `gainResource` shape (review
+  fix ride-along). Tech / wander / event content is a starter set; balancing comes after
+  Stage 14.
+- **Networked playtest is still unverified end-to-end** in production-like conditions.
+  14.11 produced a static findings file ([plans/14.11-networked-playtest-findings.md](plans/14.11-networked-playtest-findings.md));
+  the live two-tab run is now unblocked by 14.14 but hasn't been driven through. See the
+  resume steps in that file.

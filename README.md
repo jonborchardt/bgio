@@ -5,12 +5,16 @@ A four-role co-op-ish strategy game built on **[boardgame.io](https://boardgame.
 networked play.
 
 > **Status: V1 engine + UI scaffolding complete; hot-seat single-tab end-to-end playable.**
-> Stages 01-13 are `done` (471+ tests, typecheck + lint clean, Playwright smoke green).
-> Stage 14 (post-V1 playtest follow-ups) is in progress: 14.1 (seat picker), 14.2 (per-role
-> "End my turn" moves), 14.3 (mode tag + center-mat dedup), 14.5 (game-over banner), 14.6
-> (phase hints), 14.7 (chat hidden in hot-seat), 14.8 (favicon), 14.9 (this README pass),
-> and 14.12 (active-seat header) all landed; see
-> [`plans/14-playtest-followups.md`](plans/14-playtest-followups.md) for the rest.
+> Stages 01-13 are `done` (490+ tests, typecheck + lint clean, Playwright smoke green).
+> Stage 14 is now complete except for the live networked two-tab playtest (14.11 has a
+> static findings file; live run unblocked by 14.14 but not yet driven through). 14.1
+> (seat picker), 14.2 (per-role "End my turn" moves), 14.3 (mode tag + center-mat dedup),
+> 14.4 (multi-resource CircleEditor), 14.5 (game-over banner), 14.6 (phase hints), 14.7
+> (chat hidden in hot-seat), 14.8 (favicon), 14.9 (this README pass), 14.10 (real foreign
+> assign-damage UI), 14.12 (active-seat header), 14.13 (role-panel done state), 14.14
+> (vite-node server runner), 14.15 (dialog reset key), and 14.16 (CenterMat gate fix) all
+> landed; see [`plans/14-playtest-followups.md`](plans/14-playtest-followups.md) for the
+> per-finding lineage.
 
 ## Two ways to play
 
@@ -33,7 +37,7 @@ npm run dev:full   # boots server (:8000) + client (:5179) via concurrently
 ```bash
 npm install         # required - includes native better-sqlite3 build
 npm run dev         # Vite dev server (hot-seat client) on :5179
-npm run server:dev  # bgio Koa server on :8000
+npm run server:dev  # vite-node server/start.ts — bgio Koa server on :8000
 npm run dev:full    # one command for both above
 
 npm run build       # tsc -b + vite build → dist/ (default = hot-seat)
