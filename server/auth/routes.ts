@@ -10,8 +10,64 @@
 // scrypt via `./passwordHash.ts`. Errors return JSON `{ error: string }` with
 // HTTP 4xx/5xx; success returns the same `LoginResult` / `AuthUser` shape the
 // browser-side `src/lobby/authClient.ts` expects.
+//
+// V1 abuse mitigations:
+//   - Body cap of 64 KiB on POST. Anything larger gets a 413 and is
+//     drained without parsing — without this an attacker can spew
+//     gigabytes into readJsonBody() before JSON.parse fails.
+//   - Per-IP token bucket. Each remote address gets BUCKET_CAPACITY
+//     attempts; the bucket refills at BUCKET_REFILL_PER_SEC. Login
+//     and register share the bucket because brute-force on one
+//     drains the same accounts table either way.
 
 import { register, login, verify } from './accounts.ts';
+
+/** Hard cap on auth-endpoint POST body size. 64 KiB is generous for
+ * a {username, password} pair (max realistic ~100 bytes) while still
+ * catching multi-MB DOS payloads. */
+const MAX_BODY_BYTES = 64 * 1024;
+
+/** Token-bucket per remote IP, applied on POST endpoints only.
+ * GET /auth/verify is read-only and rate-limited implicitly by the
+ * client's session lifecycle. */
+const BUCKET_CAPACITY = 10;
+const BUCKET_REFILL_PER_SEC = 1 / 6; // 10 attempts per minute, sustained.
+
+interface BucketRow {
+  /** Tokens remaining. Decrements on each request. */
+  tokens: number;
+  /** Last refill time in epoch ms. */
+  lastRefill: number;
+}
+
+const buckets = new Map<string, BucketRow>();
+
+/** Charge one token from `ip`'s bucket; returns true if the request
+ * is allowed and false if the bucket was empty. Refills before
+ * charging so a long quiet period is forgiven. */
+const consumeToken = (ip: string): boolean => {
+  const now = Date.now();
+  let row = buckets.get(ip);
+  if (!row) {
+    row = { tokens: BUCKET_CAPACITY, lastRefill: now };
+    buckets.set(ip, row);
+  } else {
+    const elapsedSec = (now - row.lastRefill) / 1000;
+    const refill = elapsedSec * BUCKET_REFILL_PER_SEC;
+    if (refill >= 1) {
+      row.tokens = Math.min(BUCKET_CAPACITY, row.tokens + Math.floor(refill));
+      row.lastRefill = now;
+    }
+  }
+  if (row.tokens <= 0) return false;
+  row.tokens -= 1;
+  return true;
+};
+
+/** Test helper — wipe the per-IP rate-limit table. */
+export const __resetAuthRateLimitForTest = (): void => {
+  buckets.clear();
+};
 
 interface KoaCtx {
   request: { method: string; url: string; headers: Record<string, string | string[] | undefined>; req: NodeJS.ReadableStream };
@@ -23,6 +79,7 @@ interface KoaCtx {
   method: string;
   headers: Record<string, string | string[] | undefined>;
   req: NodeJS.ReadableStream;
+  ip?: string;
   set: (key: string, value: string) => void;
 }
 
@@ -30,26 +87,43 @@ interface KoaApp {
   use: (mw: (ctx: KoaCtx, next: () => Promise<void>) => Promise<void> | void) => unknown;
 }
 
+/** Streams `req` into a Buffer with a hard byte cap. Returns
+ * `{ ok: true, body }` on success or `{ ok: false }` if the cap
+ * was exceeded — in the latter case the request body is fully
+ * drained but ignored so the connection can close cleanly. */
 const readJsonBody = async (
   req: NodeJS.ReadableStream,
-): Promise<Record<string, unknown>> => {
+): Promise<
+  | { ok: true; body: Record<string, unknown> }
+  | { ok: false; reason: 'too-large' }
+> => {
   const chunks: Buffer[] = [];
+  let total = 0;
+  let exceeded = false;
   await new Promise<void>((resolve, reject) => {
     req.on('data', (chunk: Buffer | string) => {
-      chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+      const buf = typeof chunk === 'string' ? Buffer.from(chunk) : chunk;
+      total += buf.length;
+      if (total > MAX_BODY_BYTES) {
+        exceeded = true;
+        // Don't accumulate further; just drain.
+        return;
+      }
+      chunks.push(buf);
     });
     req.on('end', () => resolve());
     req.on('error', (err: Error) => reject(err));
   });
-  if (chunks.length === 0) return {};
+  if (exceeded) return { ok: false, reason: 'too-large' };
+  if (chunks.length === 0) return { ok: true, body: {} };
   const text = Buffer.concat(chunks).toString('utf8');
-  if (!text) return {};
+  if (!text) return { ok: true, body: {} };
   try {
     const parsed = JSON.parse(text) as unknown;
-    if (parsed === null || typeof parsed !== 'object') return {};
-    return parsed as Record<string, unknown>;
+    if (parsed === null || typeof parsed !== 'object') return { ok: true, body: {} };
+    return { ok: true, body: parsed as Record<string, unknown> };
   } catch {
-    return {};
+    return { ok: true, body: {} };
   }
 };
 
@@ -100,8 +174,24 @@ export const mountAuthRoutes = (app: KoaApp): void => {
     ctx.set('access-control-allow-origin', '*');
 
     try {
+      // Per-IP rate limit applied to POST endpoints (writes).
+      // GET /auth/verify is exempt — clients hit it once per page
+      // load to refresh creds and refusing to verify a known token
+      // would lock the user out.
+      if (ctx.method === 'POST') {
+        const ip = ctx.ip ?? 'unknown';
+        if (!consumeToken(ip)) {
+          send(ctx, 429, { error: 'too many auth attempts; try again shortly' });
+          return;
+        }
+      }
       if (ctx.method === 'POST' && path === '/auth/register') {
-        const body = await readJsonBody(ctx.req);
+        const result = await readJsonBody(ctx.req);
+        if (!result.ok) {
+          send(ctx, 413, { error: 'request body too large' });
+          return;
+        }
+        const body = result.body;
         const username = typeof body.username === 'string' ? body.username : '';
         const password = typeof body.password === 'string' ? body.password : '';
         const user = await register(username, password);
@@ -109,11 +199,16 @@ export const mountAuthRoutes = (app: KoaApp): void => {
         return;
       }
       if (ctx.method === 'POST' && path === '/auth/login') {
-        const body = await readJsonBody(ctx.req);
+        const result = await readJsonBody(ctx.req);
+        if (!result.ok) {
+          send(ctx, 413, { error: 'request body too large' });
+          return;
+        }
+        const body = result.body;
         const username = typeof body.username === 'string' ? body.username : '';
         const password = typeof body.password === 'string' ? body.password : '';
-        const result = await login(username, password);
-        send(ctx, 200, result);
+        const loginResult = await login(username, password);
+        send(ctx, 200, loginResult);
         return;
       }
       if (ctx.method === 'GET' && path === '/auth/verify') {
