@@ -23,6 +23,7 @@ import { DomesticPanel } from './ui/domestic/DomesticPanel.tsx';
 import { ForeignPanel } from './ui/foreign/ForeignPanel.tsx';
 import { BoardShell } from './ui/layout/BoardShell.tsx';
 import { GameOverBanner } from './ui/layout/GameOverBanner.tsx';
+import { PhaseHint } from './ui/layout/PhaseHint.tsx';
 import { RoleSlot } from './ui/layout/RoleSlot.tsx';
 import { SeatPicker } from './ui/layout/SeatPicker.tsx';
 import { SeatPickerContext } from './ui/layout/SeatPickerContext.ts';
@@ -202,12 +203,25 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
         }
         centerMat={showCenterMat ? <CenterMat {...props} /> : null}
         status={
-          <StatusBar
-            phase={ctx.phase ?? null}
-            currentPlayer={ctx.currentPlayer}
-            round={G.round}
-            mode={statusMode}
-          />
+          <Box>
+            <StatusBar
+              phase={ctx.phase ?? null}
+              currentPlayer={ctx.currentPlayer}
+              round={G.round}
+              mode={statusMode}
+            />
+            {/* 14.6 — one-line "what you can do now" hint. */}
+            <Box sx={{ mt: 0.5 }}>
+              <PhaseHint
+                phase={ctx.phase ?? null}
+                stage={
+                  hasSeat ? ctx.activePlayers?.[playerID] : undefined
+                }
+                rolesAtSeat={localRoles}
+                isSpectator={isSpectator}
+              />
+            </Box>
+          </Box>
         }
       />
 
