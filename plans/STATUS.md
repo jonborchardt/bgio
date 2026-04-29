@@ -212,7 +212,7 @@ null when no `playerID` is set.
 | [14.7](14.7-hot-seat-hide-chat.md) | done | claude | plan/14.7-hot-seat-hide-chat | 2026-04-28 | 10.2, 10.5 | Done. ChatPane + ChatComposer gated on clientMode === 'networked'. |
 | [14.8](14.8-favicon.md) | done | claude | plan/14.8-favicon | 2026-04-28 |  | Done. public/favicon.svg + index.html link. |
 | [14.9](14.9-readme-demo-claim.md) | done | claude | plan/14.9-readme-demo-claim | 2026-04-28 | 13.4, 14.1, 14.2 | Done. README updated to reflect hot-seat single-tab playable + landed 14.x line items. |
-| [14.10](14.10-foreign-assign-damage-dialog.md) | pending |  |  |  | 07.3, 07.4, 07.7 | Real per-round absorber UI. |
+| [14.10](14.10-foreign-assign-damage-dialog.md) | done | claude | plan/14.10-foreign-assign-damage-dialog | 2026-04-29 | 07.3, 07.4, 07.7 | Done. allocator.ts (discoverIncomingEvents + greedy) + per-event stepper UI in AssignDamageDialog. |
 | [14.11](14.11-networked-playtest.md) | pending |  |  |  | 10.x, 12.7, 13.3, 14.1, 14.2 | E2E networked playtest; produces a notes file. |
 | [14.12](14.12-active-seat-header.md) | done | claude | plan/14.12-active-seat-header | 2026-04-28 | 09.1, 14.1 | Done. pickActiveSeat helper + Board header derive from ctx.activePlayers; falls back to currentPlayer when null/empty. |
 | [14.13](14.13-role-panel-done-state.md) | done | claude | plan/14.13-role-panel-done-state | 2026-04-28 | 14.2, 09.1, 09.4 | Done. Role panels read G.othersDone[seat] and relabel End-my-turn to "Turn ended" while disabling. |

@@ -153,6 +153,7 @@ export function BattlePanel({
         <AssignDamageDialog
           open={dialogOpen}
           inPlay={inPlay}
+          inFlight={inFlight}
           onSubmit={handleSubmit}
           onCancel={() => setDialogOpen(false)}
         />
