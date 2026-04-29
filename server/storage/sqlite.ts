@@ -149,6 +149,7 @@ export class SqliteStorage {
     deleteMatch: BetterSqliteStatement;
     deleteLog: BetterSqliteStatement;
     insertLogEntry: BetterSqliteStatement;
+    nextLogIdx: BetterSqliteStatement;
     selectLog: BetterSqliteStatement;
     listMatchIDs: BetterSqliteStatement;
   };
@@ -200,8 +201,15 @@ export class SqliteStorage {
       ),
       deleteMatch: this.db.prepare(`DELETE FROM matches WHERE id = ?`),
       deleteLog: this.db.prepare(`DELETE FROM log WHERE match_id = ?`),
+      // Plain INSERT (not INSERT OR REPLACE) so an idx collision fails
+      // loudly instead of silently overwriting an earlier log row.
+      // Combined with the MAX-based nextIdx query below this is also
+      // O(1) per append rather than O(n) the prior SELECT-and-count was.
       insertLogEntry: this.db.prepare(
-        `INSERT OR REPLACE INTO log (match_id, idx, entry) VALUES (?, ?, ?)`,
+        `INSERT INTO log (match_id, idx, entry) VALUES (?, ?, ?)`,
+      ),
+      nextLogIdx: this.db.prepare(
+        `SELECT COALESCE(MAX(idx), -1) + 1 AS next FROM log WHERE match_id = ?`,
       ),
       selectLog: this.db.prepare(
         `SELECT entry FROM log WHERE match_id = ? ORDER BY idx ASC`,
@@ -251,16 +259,23 @@ export class SqliteStorage {
     const apply = this.db.transaction((s: unknown, log: unknown[] | undefined) => {
       this.stmts.updateState.run(JSON.stringify(s), now, matchID);
       if (log && log.length > 0) {
-        // bgio passes the *new* log entries each call; we append them
-        // starting at the next free index.
-        const existing = (this.stmts.selectLog.all(matchID) as { entry: string }[])
-          .length;
+        // bgio passes the *new* log entries each call. We compute the
+        // next free idx via MAX(idx)+1 inside the same transaction so
+        // a concurrent setState (better-sqlite3 is sync per
+        // connection, but transactions interleave across connections)
+        // can't collide. The earlier implementation was
+        // SELECT-and-count of the entire log per call (O(n) per
+        // append → O(n²) over a match) combined with INSERT OR
+        // REPLACE which silently overwrote any clash.
+        const row = this.stmts.nextLogIdx.get(matchID) as { next: number };
+        let nextIdx = row.next;
         for (let i = 0; i < log.length; i += 1) {
           this.stmts.insertLogEntry.run(
             matchID,
-            existing + i,
+            nextIdx,
             JSON.stringify(log[i]),
           );
+          nextIdx += 1;
         }
       }
     });
