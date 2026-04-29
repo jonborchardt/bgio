@@ -168,3 +168,49 @@ One row per sub-plan. Columns:
 | [13.2](13.2-server-deploy-target.md) | done | claude | plan/13.2 | 2026-04-28 | 10.1, 10.4, 12.4 | Done. Render blueprint + deploy-server CI; Dockerfile multi-stage with native deps. |
 | [13.3](13.3-database-choice.md) | done | claude | plan/13.3 | 2026-04-28 | 10.4, 13.2 | Done. SqliteStorage Async impl + 2 migrations; native dep load is lazy. |
 | [13.4](13.4-pages-deploy-keep-alive.md) | done | claude | plan/13.4 | 2026-04-28 | 10.2, 12.4, 12.5, 13.1 | Done. deploy-pages uses build:hotseat; CI catches Pages-breakers. |
+
+## Stage 01-13 summary
+
+All 77 sub-plans across stages 01-13 are `done`. 449 tests pass,
+typecheck and lint clean, coverage 83/75/91 (gate 80/85/70),
+Playwright smoke green.
+
+## Post-V1 review fixes (post-stage-13, 2026-04-28)
+
+A multi-agent review of the unpushed branch surfaced 10 correctness
+/ security issues. All fixed and committed:
+
+| # | Commit | Fix |
+|---|---|---|
+| 1 | `df35acb` | Gate `__test*` moves behind `NODE_ENV=test` |
+| 2 | `4ce01bd` | playerView redacts every documented private slice |
+| 3 | `a62b2a1` | Reject negative / non-integer amounts in resource moves |
+| 4 | `4ac3ccb` | Round-end hooks reset `_upkeepPaid` + `_eventPlayedThisRound` |
+| 5 | `38caf36` | Gate `?matchID` query-string creds path behind `DEV` |
+| 6 | `2831673` | Reconcile `SettlementSetupData`; plumb solo + startingBank |
+| 7 | `bd69eb4` | `enumerate` uses correct `DamageAllocation` shape |
+| 8 | `bd8cade` | Thread bgio Server through seatTakeover; drop module state |
+| 9 | `27bca5f` | sqlite log append uses `MAX(idx)+1` + plain `INSERT` |
+| 10 | `ddbd175` | Body cap + per-IP token bucket on `/auth/*` writes |
+
+## 14 — Playtest follow-ups
+
+Driven by [../notes/playtest-2026-04-29.md](../notes/playtest-2026-04-29.md).
+Stage 14 closes the gaps that the 2026-04-29 hot-seat playtest
+surfaced — the headline being that the default build has no playable
+action surface because every role panel returns null when no
+`playerID` is set.
+
+| Sub-plan | Status | Owner | Branch | Updated | Blocked on | Notes |
+|---|---|---|---|---|---|---|
+| [14.1](14.1-hot-seat-seat-picker.md) | pending |  |  |  | 04.5, 05.5, 06.7, 07.7 | Sticky tab strip; calls `client.updatePlayerID`. Unblocker. |
+| [14.2](14.2-role-done-buttons.md) | pending |  |  |  | 02.1, 02.2, 04.5, 05.5, 06.7, 07.7 | Real `<role>SeatDone` moves + per-panel buttons. Unblocker. |
+| [14.3](14.3-mode-status-cleanup.md) | pending |  |  |  | 09.1, 09.3, 10.2, 04.5, 14.1 | Mode label + CenterMat dedup. |
+| [14.4](14.4-circle-editor-multi-resource.md) | pending |  |  |  | 03.1, 04.1, 04.5, 09.4 | Per-non-zero-resource rows in CircleEditor. |
+| [14.5](14.5-game-over-banner.md) | pending |  |  |  | 08.5, 09.1 | Reads `ctx.gameover`; sticky win/timeUp banner. |
+| [14.6](14.6-phase-hints.md) | pending |  |  |  | 09.1, 14.1 | One-line "what you can do now" hint. |
+| [14.7](14.7-hot-seat-hide-chat.md) | pending |  |  |  | 10.2, 10.5 | Hide chat in hot-seat (no transport). |
+| [14.8](14.8-favicon.md) | pending |  |  |  |  | Silence the favicon 404. |
+| [14.9](14.9-readme-demo-claim.md) | pending |  |  |  | 13.4, 14.1, 14.2 | Update README "Demo" line. |
+| [14.10](14.10-foreign-assign-damage-dialog.md) | pending |  |  |  | 07.3, 07.4, 07.7 | Real per-round absorber UI. |
+| [14.11](14.11-networked-playtest.md) | pending |  |  |  | 10.x, 12.7, 13.3, 14.1, 14.2 | E2E networked playtest; produces a notes file. |
