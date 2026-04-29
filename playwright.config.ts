@@ -29,14 +29,14 @@ export default defineConfig({
     },
   ],
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:5179',
     // Trace + screenshot only on failure to keep the artifact size sane.
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
   webServer: {
     command: 'npm run dev',
-    port: 5173,
+    port: 5179,
     reuseExistingServer: true,
     timeout: 120_000,
   },

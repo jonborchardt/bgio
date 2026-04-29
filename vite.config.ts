@@ -5,6 +5,17 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   base: './',
   plugins: [react()],
+  // Pinned away from Vite's default 5173 so the dev loop doesn't collide
+  // with other projects that also default to 5173. Playwright + dev:full
+  // both target this port.
+  server: {
+    port: 5179,
+    strictPort: true,
+  },
+  preview: {
+    port: 5179,
+    strictPort: true,
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
