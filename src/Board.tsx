@@ -23,6 +23,7 @@ import { BoardShell } from './ui/layout/BoardShell.tsx';
 import { RoleSlot } from './ui/layout/RoleSlot.tsx';
 import { SeatPicker } from './ui/layout/SeatPicker.tsx';
 import { SeatPickerContext } from './ui/layout/SeatPickerContext.ts';
+import { pickActiveSeat } from './ui/layout/activeSeat.ts';
 import { StatusBar } from './ui/layout/StatusBar.tsx';
 import { CenterMat } from './ui/mat/CenterMat.tsx';
 import { ChatPane } from './ui/chat/ChatPane.tsx';
@@ -61,6 +62,11 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
 
   return (
     <Box sx={{ width: 'min(100%, 60rem)', display: 'grid', gap: 3 }}>
+      {/* 14.12 — header reads the active seat from `ctx.activePlayers`
+          (with `ctx.currentPlayer` as a fallback) so the round-2
+          chiefPhase no longer mis-labels itself "Player 4's turn"
+          just because that's who happened to move last in
+          othersPhase. */}
       <Box component="header" sx={{ textAlign: 'center' }}>
         <Typography
           variant="h4"
@@ -78,7 +84,15 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
         >
           {gameOver
             ? 'Game over'
-            : `Player ${Number(ctx.currentPlayer) + 1}'s turn`}
+            : (() => {
+                const active = pickActiveSeat({
+                  activePlayers: ctx.activePlayers,
+                  currentPlayer: ctx.currentPlayer,
+                  roleAssignments: G.roleAssignments,
+                  localSeat: playerID,
+                });
+                return `${active.label}'s turn`;
+              })()}
         </Typography>
       </Box>
 
