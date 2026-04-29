@@ -4,19 +4,20 @@ A four-role co-op-ish strategy game built on **[boardgame.io](https://boardgame.
 **React** + **TypeScript** + **Vite**, with a sibling **Koa** server under `server/` for
 networked play.
 
-> **Status: V1 engine + UI scaffolding complete; UI not yet end-to-end playable.**
-> Stages 01-13 of the [`plans/`](plans/) execution tree are all `done` (449 tests, typecheck
-> + lint clean, coverage 83/75/91, Playwright smoke green). Stage 14 (driven by the
-> 2026-04-29 hot-seat playtest) addresses the unblockers that make the demo actually
-> playable from the browser — see [`plans/14-playtest-followups.md`](plans/14-playtest-followups.md).
+> **Status: V1 engine + UI scaffolding complete; hot-seat single-tab end-to-end playable.**
+> Stages 01-13 are `done` (471+ tests, typecheck + lint clean, Playwright smoke green).
+> Stage 14 (post-V1 playtest follow-ups) is in progress: 14.1 (seat picker), 14.2 (per-role
+> "End my turn" moves), 14.3 (mode tag + center-mat dedup), 14.5 (game-over banner), 14.6
+> (phase hints), 14.7 (chat hidden in hot-seat), 14.8 (favicon), 14.9 (this README pass),
+> and 14.12 (active-seat header) all landed; see
+> [`plans/14-playtest-followups.md`](plans/14-playtest-followups.md) for the rest.
 
-## Two ways to play (intended)
+## Two ways to play
 
-- **Preview / demo at the GitHub Pages URL** — hot-seat, single-tab, no save, no login.
-  *Currently not playable end-to-end:* the default build mounts the bgio React client
-  with no `playerID`, so every role panel returns null. Stage 14.1 (seat picker) +
-  14.2 (per-role "I'm done" buttons) are the unblockers. Track in
-  [`plans/14-playtest-followups.md`](plans/14-playtest-followups.md).
+- **Demo at the GitHub Pages URL** — hot-seat, single-tab, no save, no login. Pick a seat
+  from the tab strip and play all four roles from one browser; the bgio debug panel is
+  also mounted (production build hides it). Round-loop reachable end-to-end after 14.1 +
+  14.2 + 14.12.
 - **Full experience with accounts and run history** runs against the networked Render
   deploy. See [`server/README.md`](server/README.md) for env vars + Render setup.
 
