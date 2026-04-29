@@ -72,7 +72,7 @@ describe('idleWatcher (10.9) — sweep', () => {
     const table = w.__getLastActivity();
     table.get('m1')?.set('0', Date.now() - IDLE_TIMEOUT_MS - 1);
     await w.__sweepNow();
-    expect(spy).toHaveBeenCalledWith('m1', '0');
+    expect(spy).toHaveBeenCalledWith(undefined, 'm1', '0');
     spy.mockRestore();
   });
 

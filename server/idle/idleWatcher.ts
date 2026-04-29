@@ -58,20 +58,17 @@ export interface IdleWatcher {
   __getLastActivity: () => Map<string, Map<PlayerID, number>>;
 }
 
-/** Bgio Server instance — passed in for future hooks (e.g. reading
- * `state.G` to decide whose stage it is, or to send a chat message via
- * `client.sendChatMessage`). V1 doesn't dereference any of that; we
- * type the parameter as `unknown` to avoid leaking bgio's private
- * `Server` shape into our public surface. */
+/** Bgio Server instance — passed in so seatTakeover.grant/revokeBot
+ * Control can mutate match.metadata.players[playerID].isBot through
+ * the storage adapter on bgio's `db` field. V1 doesn't dereference
+ * the rest of the Server (state.G inspection, chat broadcasting,
+ * etc.); we keep the parameter typed `unknown` because bgio's actual
+ * Server type isn't structurally a perfect subtype of the metadata
+ * store interface in seatTakeover (different MatchData shape, no
+ * index signature). seatTakeover narrows safely at runtime. */
 export type BgioServer = unknown;
 
 export const makeIdleWatcher = (server: BgioServer): IdleWatcher => {
-  // Bind the bgio Server so seatTakeover.grant/revokeBotControl can
-  // mutate match.metadata.players[playerID].isBot through the storage
-  // adapter on bgio's `db` field. Calling with a stub `unknown` server
-  // is harmless: seatTakeover falls back to a log-only path when the
-  // bound value lacks a usable `db.fetch` / `db.setMetadata`.
-  seatTakeover.setBgioServer(server);
   // matchID -> playerID -> last activity epoch ms.
   const lastActivity = new Map<string, Map<PlayerID, number>>();
   // Tracks which (matchID, playerID) pairs we've already handed off
@@ -105,7 +102,14 @@ export const makeIdleWatcher = (server: BgioServer): IdleWatcher => {
         if (granted.has(key)) continue;
         granted.add(key);
         try {
-          await seatTakeover.grantBotControl(matchID, playerID);
+          // server is `unknown` at the watcher boundary; seatTakeover
+          // performs the structural narrowing on `db.fetch` /
+          // `db.setMetadata` at call time.
+          await seatTakeover.grantBotControl(
+            server as seatTakeover.BgioServerLike | null | undefined,
+            matchID,
+            playerID,
+          );
         } catch (err) {
           // A failed takeover shouldn't crash the watcher; log and
           // continue. The plan calls this out explicitly: "Watcher
