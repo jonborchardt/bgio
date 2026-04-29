@@ -7,8 +7,9 @@
   "scripts": {
     "dev": "vite",
     "dev:server": "vite-node --watch server/start.ts",
-    "dev:full": "concurrently -n server,client -c blue,green \"npm run dev:server\" \"npm run dev\"",
+    "dev:full": "node scripts/free-ports.mjs 5179 8000 && concurrently -n server,client -c blue,green \"npm run dev:server\" \"npm run dev\"",
     "dev:seed": "vite-node scripts/dev-seed.ts",
+    "free:ports": "node scripts/free-ports.mjs 5179 8000",
     "build": "tsc -b && vite build",
     "build:hotseat": "tsc -b && vite build",
     "build:networked": "tsc -b && node scripts/build-networked.mjs",
