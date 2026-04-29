@@ -6,6 +6,34 @@ import { EMPTY_BAG, RESOURCES } from './types.ts';
 
 const fresh = (): ResourceBag => ({ ...EMPTY_BAG });
 
+/**
+ * Validate that an externally-supplied amounts bag carries only
+ * non-negative finite integer values. Move bodies call this before
+ * canAfford / transfer so a network-supplied negative or NaN can't
+ * mint resources or corrupt the bank. Returns the offending key, or
+ * `null` if the bag is clean.
+ *
+ * Used by 03.4 pullFromMat, 04.1 chiefDistribute, 05.2 scienceContribute,
+ * any move taking a `Partial<ResourceBag>` from the client.
+ */
+export const findInvalidAmount = (
+  amounts: Partial<ResourceBag>,
+): Resource | null => {
+  for (const r of RESOURCES) {
+    const v = amounts[r];
+    if (v === undefined) continue;
+    if (
+      typeof v !== 'number' ||
+      !Number.isFinite(v) ||
+      !Number.isInteger(v) ||
+      v < 0
+    ) {
+      return r;
+    }
+  }
+  return null;
+};
+
 export const bagOf = (entries: Partial<ResourceBag>): ResourceBag => {
   const out = fresh();
   for (const r of RESOURCES) {

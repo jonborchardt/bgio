@@ -16,7 +16,7 @@ import type { Move } from 'boardgame.io';
 import { INVALID_MOVE } from 'boardgame.io/core';
 import type { PlayerID, SettlementState } from '../types.ts';
 import type { ResourceBag } from './types.ts';
-import { canAfford } from './bag.ts';
+import { canAfford, findInvalidAmount } from './bag.ts';
 import { transfer } from './bank.ts';
 import { rolesAtSeat } from '../roles.ts';
 
@@ -45,6 +45,13 @@ export const pullFromMat: Move<SettlementState> = (
   const roles = rolesAtSeat(G.roleAssignments, playerID);
   if (roles.length === 0) return INVALID_MOVE;
   if (roles.includes('chief')) return INVALID_MOVE;
+
+  // Reject negative / non-finite / non-integer amounts before any
+  // affordability check. Without this gate `canAfford` returns true
+  // for negatives (0 < -5 is false), and `transfer` would mint
+  // resources from nothing.
+  if (typeof amounts !== 'object' || amounts === null) return INVALID_MOVE;
+  if (findInvalidAmount(amounts) !== null) return INVALID_MOVE;
 
   const circle = G.centerMat.circles[playerID];
   if (!circle) return INVALID_MOVE;

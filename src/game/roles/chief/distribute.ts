@@ -11,7 +11,7 @@ import type { Move } from 'boardgame.io';
 import { INVALID_MOVE } from 'boardgame.io/core';
 import type { PlayerID, SettlementState } from '../../types.ts';
 import type { ResourceBag } from '../../resources/types.ts';
-import { canAfford } from '../../resources/bag.ts';
+import { canAfford, findInvalidAmount } from '../../resources/bag.ts';
 import { transfer } from '../../resources/bank.ts';
 import { rolesAtSeat } from '../../roles.ts';
 
@@ -39,6 +39,12 @@ export const chiefDistribute: Move<SettlementState> = (
   // Target must be a non-chief seat with a circle on the mat.
   const circle = G.centerMat.circles[targetSeat];
   if (!circle) return INVALID_MOVE;
+
+  // Reject negative / non-finite / non-integer amounts before any
+  // affordability check (canAfford returns true for negatives —
+  // `0 < -5` is false — which would let transfer mint resources).
+  if (typeof amounts !== 'object' || amounts === null) return INVALID_MOVE;
+  if (findInvalidAmount(amounts) !== null) return INVALID_MOVE;
 
   // Affordability check up front so the mutation path can't half-apply.
   if (!canAfford(G.bank, amounts)) return INVALID_MOVE;

@@ -13,7 +13,7 @@ import { INVALID_MOVE } from 'boardgame.io/core';
 import type { SettlementState } from '../../types.ts';
 import type { ResourceBag } from '../../resources/types.ts';
 import { RESOURCES } from '../../resources/types.ts';
-import { canAfford } from '../../resources/bag.ts';
+import { canAfford, findInvalidAmount } from '../../resources/bag.ts';
 import { transfer } from '../../resources/bank.ts';
 import { rolesAtSeat } from '../../roles.ts';
 
@@ -63,6 +63,11 @@ export const scienceContribute: Move<SettlementState> = (
     if (c.level < lowestLevel) lowestLevel = c.level;
   }
   if (card.level !== lowestLevel) return INVALID_MOVE;
+
+  // Reject negative / non-finite / non-integer amounts before any
+  // affordability check.
+  if (typeof amounts !== 'object' || amounts === null) return INVALID_MOVE;
+  if (findInvalidAmount(amounts) !== null) return INVALID_MOVE;
 
   // Wallet must cover the requested amounts.
   const wallet = G.wallets[playerID];
