@@ -215,4 +215,4 @@ null when no `playerID` is set.
 | [14.10](14.10-foreign-assign-damage-dialog.md) | pending |  |  |  | 07.3, 07.4, 07.7 | Real per-round absorber UI. |
 | [14.11](14.11-networked-playtest.md) | pending |  |  |  | 10.x, 12.7, 13.3, 14.1, 14.2 | E2E networked playtest; produces a notes file. |
 | [14.12](14.12-active-seat-header.md) | done | claude | plan/14.12-active-seat-header | 2026-04-28 | 09.1, 14.1 | Done. pickActiveSeat helper + Board header derive from ctx.activePlayers; falls back to currentPlayer when null/empty. |
-| [14.13](14.13-role-panel-done-state.md) | in_progress | claude | plan/14.13-role-panel-done-state | 2026-04-28 | 14.2, 09.1, 09.4 | Disable + relabel role-panel "End my turn" once seat flipped done. Surfaced by post-14.1/14.2 smoke. |
+| [14.13](14.13-role-panel-done-state.md) | done | claude | plan/14.13-role-panel-done-state | 2026-04-28 | 14.2, 09.1, 09.4 | Done. Role panels read G.othersDone[seat] and relabel End-my-turn to "Turn ended" while disabling. |

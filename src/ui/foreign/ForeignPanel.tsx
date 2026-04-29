@@ -44,6 +44,8 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
   const battleInFlight = foreign.inFlight.battle !== null;
   const canFlipTrade = foreign.lastBattleOutcome === 'win';
   const upkeepPaid = foreign._upkeepPaid === true;
+  // 14.13 — disable + relabel End-my-turn after the seat flips done.
+  const alreadyDone = G.othersDone?.[playerID] === true;
 
   const handleRecruit = (defID: string): void => {
     moves.foreignRecruit(defID, 1);
@@ -173,10 +175,11 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
           {/* 14.2 — "End my turn" — flips G.othersDone[seat]; bgio
               transitions to endOfRound once every non-chief seat has.
               Allowed from foreignTurn or foreignAwaitingDamage so the
-              seat is never stuck in a battle interrupt. */}
+              seat is never stuck in a battle interrupt. 14.13 —
+              disables + relabels once the flag is set. */}
           <Button
             variant="contained"
-            disabled={!canActOnTurn && !canAssignDamage}
+            disabled={(!canActOnTurn && !canAssignDamage) || alreadyDone}
             onClick={handleSeatDone}
             aria-label="End my Foreign turn"
             sx={{
@@ -187,7 +190,7 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
               },
             }}
           >
-            End my turn
+            {alreadyDone ? 'Turn ended' : 'End my turn'}
           </Button>
         </Box>
       </Stack>

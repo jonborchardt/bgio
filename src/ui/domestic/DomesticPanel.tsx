@@ -48,6 +48,8 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
 
   const canAct = ctx.activePlayers?.[playerID] === 'domesticTurn';
   const alreadyProduced = domestic.producedThisRound === true;
+  // 14.13 — disable + relabel End-my-turn after the seat flips done.
+  const alreadyDone = G.othersDone?.[playerID] === true;
 
   const activeCard = selectedCardName
     ? domestic.hand.find((c) => c.name === selectedCardName)
@@ -127,10 +129,11 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
             {alreadyProduced ? 'Produced' : 'Produce'}
           </Button>
           {/* 14.2 — "End my turn" — flips G.othersDone[seat]; bgio
-              transitions to endOfRound once every non-chief seat has. */}
+              transitions to endOfRound once every non-chief seat has.
+              14.13 — disables + relabels once the flag is set. */}
           <Button
             variant="contained"
-            disabled={!canAct}
+            disabled={!canAct || alreadyDone}
             onClick={handleSeatDone}
             aria-label="End my Domestic turn"
             sx={{
@@ -141,7 +144,7 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
               },
             }}
           >
-            End my turn
+            {alreadyDone ? 'Turn ended' : 'End my turn'}
           </Button>
         </Box>
       </Stack>

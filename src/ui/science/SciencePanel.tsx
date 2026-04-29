@@ -41,6 +41,10 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
 
   const canAct = ctx.activePlayers?.[playerID] === 'scienceTurn';
   const completionsLeft = science.perRoundCompletions < 1;
+  // 14.13 — once the seat flips its done flag (via scienceSeatDone),
+  // the End-my-turn button should reflect that. Re-clicking is a
+  // no-op but the unchanged UI gave no feedback.
+  const alreadyDone = G.othersDone?.[playerID] === true;
 
   // For a given card, find the lowest-level non-completed card in its color
   // column. The cell's card matches → it's the legal contribute/complete
@@ -166,7 +170,7 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
         <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
           <Button
             variant="contained"
-            disabled={!canAct}
+            disabled={!canAct || alreadyDone}
             onClick={handleSeatDone}
             aria-label="End my Science turn"
             sx={{
@@ -177,7 +181,7 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
               },
             }}
           >
-            End my turn
+            {alreadyDone ? 'Turn ended' : 'End my turn'}
           </Button>
         </Box>
       </Stack>
