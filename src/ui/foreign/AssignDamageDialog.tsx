@@ -18,7 +18,7 @@
 // first, partial leftover on the highest-HP defID". One click submits
 // a sane plan.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box,
   Button,
@@ -105,11 +105,33 @@ export function AssignDamageDialog({
 
   const playerRows = useMemo(() => playerRowsFor(inPlay), [inPlay]);
 
-  // One DamageAllocation per event; user-editable. Reset whenever the
-  // event list changes (i.e. the dialog opens for a new battle).
+  // 14.15: one DamageAllocation per event; user-editable. We reset
+  // ONLY when the dialog re-opens or when the underlying battle / event
+  // shape changes — bgio's Client re-renders the board on every state
+  // update, recreating `inPlay` / `events` array identities each tick.
+  // Resetting on every render would blow away the player's edits.
+  //
+  // Reset key: `<battle.id>|<events incoming sequence>`. Different
+  // battles get a new id; different per-event incoming amounts (e.g.
+  // a unit died and the resolver no longer needs allocation N) reset
+  // because the prior allocations are no longer valid for that shape.
   const [allocations, setAllocations] = useState<DamageAllocation[]>([]);
+  const lastResetKeyRef = useRef<string | null>(null);
+
+  const resetKey = useMemo(() => {
+    const battleId = inFlight.battle?.id ?? '';
+    const eventShape = events.map((e) => e.incoming).join(',');
+    return open ? `${battleId}|${eventShape}` : null;
+  }, [open, inFlight.battle, events]);
 
   useEffect(() => {
+    if (resetKey === null) {
+      // Dialog closed — clear ref so the next open re-seeds.
+      lastResetKeyRef.current = null;
+      return;
+    }
+    if (resetKey === lastResetKeyRef.current) return;
+    lastResetKeyRef.current = resetKey;
     setAllocations(
       events.map((e) =>
         mergeWithRowKeys(
@@ -118,7 +140,7 @@ export function AssignDamageDialog({
         ),
       ),
     );
-  }, [events, playerRows]);
+  }, [resetKey, events, playerRows]);
 
   if (!open) return null;
 
