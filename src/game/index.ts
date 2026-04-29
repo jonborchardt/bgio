@@ -49,42 +49,59 @@ export type {
 
 export { assignRoles, rolesAtSeat, seatOfRole } from './roles.ts';
 
+// Production move set. The `__test*` moves are deliberately excluded:
+// they exist only so 02.1's phase-transition tests can flip
+// `G.phaseDone` / `G.othersDone[seat]` without driving the real
+// chief/others moves, and a network adversary calling them would skip
+// turns at will. We expose them via `__SettlementTestMoves` (below)
+// for tests that want to mount the engine with the scaffolds enabled.
+const productionMoves = {
+  pass,
+  pullFromMat,
+  chiefDistribute,
+  chiefEndPhase,
+  chiefPlaceWorker,
+  chiefPlayGoldEvent,
+  chiefDecideTradeDiscard,
+  sciencePlayBlueEvent,
+  domesticPlayGreenEvent,
+  foreignPlayRedEvent,
+  foreignRecruit,
+  foreignUpkeep,
+  foreignReleaseUnit,
+  foreignFlipBattle,
+  foreignAssignDamage,
+  foreignFlipTrade,
+  scienceContribute,
+  scienceComplete,
+  domesticBuyBuilding,
+  domesticUpgradeBuilding,
+  domesticProduce,
+  eventResolve,
+  chiefPlayTech,
+  sciencePlayTech,
+  domesticPlayTech,
+  foreignPlayTech,
+};
+
+/** Test-only move scaffolds. Imported into the engine via
+ * `Settlement` only when `process.env.NODE_ENV === 'test'` (Vitest sets
+ * this) OR when a test explicitly opts in via
+ * `withTestMoves(Settlement)`. Never reachable in a production bundle. */
+export const __SettlementTestMoves = {
+  __testSetPhaseDone,
+  __testSetOthersDone,
+};
+
+const isTestEnv =
+  typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
+
 export const Settlement: Game<SettlementState> = {
   name: 'settlement',
   setup,
-  // The `__test*` moves are a temporary scaffold so 02.1's tests can drive
-  // phase transitions before the real chief/others moves land. They will be
-  // removed once 04.2 ships `chiefEndPhase` and the others-phase role stubs.
-  moves: {
-    pass,
-    pullFromMat,
-    chiefDistribute,
-    chiefEndPhase,
-    chiefPlaceWorker,
-    chiefPlayGoldEvent,
-    chiefDecideTradeDiscard,
-    sciencePlayBlueEvent,
-    domesticPlayGreenEvent,
-    foreignPlayRedEvent,
-    foreignRecruit,
-    foreignUpkeep,
-    foreignReleaseUnit,
-    foreignFlipBattle,
-    foreignAssignDamage,
-    foreignFlipTrade,
-    scienceContribute,
-    scienceComplete,
-    domesticBuyBuilding,
-    domesticUpgradeBuilding,
-    domesticProduce,
-    eventResolve,
-    chiefPlayTech,
-    sciencePlayTech,
-    domesticPlayTech,
-    foreignPlayTech,
-    __testSetPhaseDone,
-    __testSetOthersDone,
-  },
+  moves: isTestEnv
+    ? { ...productionMoves, ...__SettlementTestMoves }
+    : productionMoves,
   // Game-level default: every move ends the turn so `pass` cleanly cycles
   // seats. Phase-level `turn` configs override this with their own
   // `activePlayers` map (chief-only, others-only) — the cycling default
