@@ -127,6 +127,7 @@ This stage closes those gaps without re-litigating any of stages 01-13.
 | [14.10](14.10-foreign-assign-damage-dialog.md) | Real per-round damage absorber UI for the Foreign assign-damage flow. The resolver consumes one allocation per incoming-damage event; the current stub fires a single `[{ byUnit: { [first]: 1 } }]` regardless. | `src/ui/foreign/AssignDamageDialog.tsx`, supporting helpers |
 | [14.11](14.11-networked-playtest.md) | End-to-end networked playtest with two browser tabs against `npm run dev:full`: register alice + bob, create a match, both join, drive one full round. Capture findings as a follow-up `plans/14.11-networked-playtest-findings.md`. Depends on `npm install` having run on the test host so SQLite + concurrently are available. | (no code; produces a plan-input file) |
 | [14.12](14.12-active-seat-header.md) | Board header derives the active seat from `ctx.activePlayers` instead of `ctx.currentPlayer`. Surfaced by the post-14.1 / 14.2 smoke: round-2 `chiefPhase` mis-labelled "Player 4's turn". | `src/Board.tsx`, `src/ui/layout/activeSeat.ts` (new) |
+| [14.13](14.13-role-panel-done-state.md) | Role-panel "End my turn" button disables + relabels to "Turn ended" once the seat has flipped done. Surfaced by post-14.1 / 14.2 smoke: button stays enabled even though the move is now a no-op. | role panels under `src/ui/{science,domestic,foreign}/` |
 
 ## Order
 
