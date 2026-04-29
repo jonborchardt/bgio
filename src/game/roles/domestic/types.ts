@@ -1,30 +1,23 @@
-// 06.1 — Domestic role state types.
+// Domestic role state types.
 //
 // These shapes back the Domestic role's hand and in-play building grid. The
 // hand is the player's pile of buildings they can buy and place onto the
 // grid; the grid is the placed-buildings map keyed by `'x,y'` cell strings.
 //
-// PLAN DEVIATIONS (intentional):
+// Two intentional shape choices worth documenting:
 //
-// 1. The plan API in `plans/06.1-hand-and-grid.md` declares
-//      `grid: Map<string, DomesticBuilding>`
-//    but Map values do not survive boardgame.io's Immer-frozen / JSON-
+// 1. `grid` is `Record<string, DomesticBuilding>` rather than a `Map`.
+//    Map values do not survive boardgame.io's Immer-frozen / JSON-
 //    serialized state — bgio expects plain JSON-shaped state for replay,
-//    network sync, and logging. We use `Record<string, DomesticBuilding>`
-//    here (still keyed by `cellKey(x, y) === \`${x},${y}\``) so the rest of
-//    the bgio pipeline keeps working. Helpers in `./grid.ts` operate on the
-//    Record form.
+//    network sync, and logging. The Record form is keyed by
+//    `cellKey(x, y) === \`${x},${y}\``; helpers in `./grid.ts` operate on
+//    that form.
 //
-// 2. The plan also says the hand starts as `BuildingDef[]`, while 05.3's
-//    `scienceComplete` distributes `TechnologyDef` objects to a green-color
-//    seat's `G.domestic.hand`. Those two slots are conceptually different
-//    (a hand of placeable buildings vs. a hand of researched tech cards),
-//    so we keep them as separate fields here:
-//      - `hand: BuildingDef[]`        — the buy-and-place pile (06.1).
-//      - `techHand?: TechnologyDef[]` — green-color tech distributed by
-//                                       `scienceComplete` (05.3, was named
-//                                       `hand` in that earlier slice).
-//    `scienceComplete` was updated in lockstep to push to `techHand`.
+// 2. The hand splits into two named slots — `hand: BuildingDef[]` for the
+//    buy-and-place pile, and `techHand?: TechnologyDef[]` for green-color
+//    tech cards distributed by `scienceComplete`. They started life as a
+//    single `hand` slot before tech-card distribution landed; keeping them
+//    separate now keeps each move's domain narrow.
 
 import type { BuildingDef, TechnologyDef } from '../../../data/schema.ts';
 import type { PlayerID } from '../../types.ts';

@@ -4,24 +4,19 @@ A four-role co-op-ish strategy game built on **[boardgame.io](https://boardgame.
 **React** + **TypeScript** + **Vite**, with a sibling **Koa** server under `server/` for
 networked play.
 
-> **Status: V1 engine + UI scaffolding complete; hot-seat single-tab end-to-end playable.**
-> Stages 01-13 are `done` (490+ tests, typecheck + lint clean, Playwright smoke green).
-> Stage 14 is now complete except for the live networked two-tab playtest (14.11 has a
-> static findings file; live run unblocked by 14.14 but not yet driven through). 14.1
-> (seat picker), 14.2 (per-role "End my turn" moves), 14.3 (mode tag + center-mat dedup),
-> 14.4 (multi-resource CircleEditor), 14.5 (game-over banner), 14.6 (phase hints), 14.7
-> (chat hidden in hot-seat), 14.8 (favicon), 14.9 (this README pass), 14.10 (real foreign
-> assign-damage UI), 14.12 (active-seat header), 14.13 (role-panel done state), 14.14
-> (vite-node server runner), 14.15 (dialog reset key), and 14.16 (CenterMat gate fix) all
-> landed; see [`plans/14-playtest-followups.md`](plans/14-playtest-followups.md) for the
-> per-finding lineage.
+> **Status: V1 engine + UI complete; hot-seat single-tab end-to-end playable.**
+> 490+ tests, typecheck + lint clean, Playwright smoke green. The hot-seat board ships
+> a seat-picker tab strip, per-role "End my turn" buttons, a `ctx.activePlayers`-driven
+> "Player N: role's turn" header, a phase hint, a game-over banner, a favicon, and a
+> per-event damage absorber UI for Foreign battles. The networked stack assembles
+> end-to-end (lobby + accounts + chat + idle bot takeover) but the live two-tab playtest
+> hasn't been driven through yet.
 
 ## Two ways to play
 
 - **Demo at the GitHub Pages URL** — hot-seat, single-tab, no save, no login. Pick a seat
   from the tab strip and play all four roles from one browser; the bgio debug panel is
-  also mounted (production build hides it). Round-loop reachable end-to-end after 14.1 +
-  14.2 + 14.12.
+  also mounted in dev (production build hides it). Round-loop reachable end-to-end.
 - **Full experience with accounts and run history** runs against the networked Render
   deploy. See [`server/README.md`](server/README.md) for env vars + Render setup.
 
@@ -97,11 +92,7 @@ Python 3 / make / a C++ toolchain. The Dockerfile installs them automatically.
 │   ├── helpers/{makeClient,runMoves,seed,factories,seeds}.ts
 │   └── ...
 ├── tests-e2e/smoke.spec.ts    # Playwright
-├── plans/                     # execution playbook + 88 sub-plans
-│   ├── EXECUTION.md STATUS.md README.md
-│   ├── 01.* ... 13.* (done)
-│   └── 14.* (post-V1 playtest follow-ups)
-├── scripts/                   # dev-seed.ts, build-networked.mjs
+├── scripts/                   # dev-seed.ts, build-networked.mjs, free-ports.mjs
 ├── .github/workflows/         # ci.yml, deploy-pages.yml, deploy-server.yml
 ├── render.yaml                # Render blueprint (free-tier docker + persistent disk)
 ├── vite.config.ts             # Vite + Vitest config (port 5179 strict)
@@ -109,15 +100,14 @@ Python 3 / make / a C++ toolchain. The Dockerfile installs them automatically.
 └── eslint.config.js           # bans Math.random in src/
 ```
 
-## Plans
+## History
 
-Every change in `src/` was driven by a sub-plan under [`plans/`](plans/). The execution
-playbook lives in [`plans/EXECUTION.md`](plans/EXECUTION.md); the live status of every
-sub-plan is in [`plans/STATUS.md`](plans/STATUS.md).
-
-The 2026-04-29 hot-seat playtest log is packed into
-[`plans/14-playtest-followups.md`](plans/14-playtest-followups.md); the 11 stage-14
-sub-plans address each finding in priority order, with 14.1 + 14.2 as the unblockers.
+The repo carries a `plans/` directory with the historical execution playbook + the
+sub-plan files that drove each commit. It's purely archival now — every shipped piece
+is reflected in [`CLAUDE.md`](CLAUDE.md), the file headers under `src/`, and the test
+suite. Numeric tags in source-file headers (e.g. `// 14.1 — seat picker`) point at the
+sub-plan that introduced the slice; the plan files themselves can be deleted without
+breaking the build, the tests, or the deploys.
 
 ## Deploying
 

@@ -273,6 +273,8 @@ installs Python 3 / make / g++ for the SQLite native compile.
   fix ride-along). Tech / wander / event content is a starter set; balancing comes after
   Stage 14.
 - **Networked playtest is still unverified end-to-end** in production-like conditions.
-  14.11 produced a static findings file ([plans/14.11-networked-playtest-findings.md](plans/14.11-networked-playtest-findings.md));
-  the live two-tab run is now unblocked by 14.14 but hasn't been driven through. See the
-  resume steps in that file.
+  Resume steps for a human run: `npm install`, `npm run dev:full`, build the client with
+  `VITE_CLIENT_MODE=networked` (or visit the dev URL), register two accounts via
+  `<AuthForms>`, create a 2-player match in tab A, join from tab B, drive a round. The
+  server runner switch (vite-node) cleared the original boot blocker; the live run is the
+  next validation step.

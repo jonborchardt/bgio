@@ -1,9 +1,9 @@
-// 07.3 — Pure deterministic battle resolver.
+// Pure deterministic battle resolver.
 //
 // `resolveBattle(input)` runs a turn-by-turn simulation between a Foreign
 // player's committed units and the units on a flipped battle card. There
 // is NO randomness — battles in this design are read off the resolver's
-// log like a film reel. (See plans/07-foreign.md.)
+// log like a film reel.
 //
 // V1 ability coverage (deliberate, mirrors abilities.ts):
 //

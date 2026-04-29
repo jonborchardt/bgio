@@ -1,15 +1,15 @@
-// 14.14 — explicit boot entry point.
+// Explicit boot entry point.
 //
 // `server/index.ts` exports `createServer` and ALSO bootstraps when
 // invoked directly via tsx (it compares `import.meta.url` against
 // `process.argv[1]`). That detection is brittle under runners that
 // set `argv[1]` to their own CLI script — including vite-node, which
-// 14.14 adopted as the canonical dev runner because tsx 4.x mis-
-// resolves bgio subpath imports (see plans/14.11-...-findings.md F1).
-//
-// This file always boots the server — no ambient detection. The npm
-// scripts in package.json point here for `server:dev` / `dev:server`
-// / `server:start` so the runner choice no longer matters.
+// is the canonical dev runner here. (tsx 4.x is unusable as a server
+// runner because it can't resolve bgio's subpath imports — see the
+// rationale block in `Dockerfile`.) This file always boots the
+// server with no ambient detection. The npm scripts in package.json
+// point here for `server:dev` / `dev:server` / `server:start` so the
+// runner choice no longer matters.
 //
 // Why we don't just remove `index.ts`'s direct-invocation block: the
 // existing tests + Render Dockerfile both rely on it, and a separate

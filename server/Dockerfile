@@ -1,4 +1,4 @@
-# 13.2 — Server image for Render.
+# Server image for Render.
 #
 # Multi-stage Node 20 image. The build stage runs `npm ci` and the typecheck
 # (`server:build`); the runtime stage copies the dependency tree, server source,
@@ -9,17 +9,18 @@
 #   attributes (matching Vite's bundler resolution). Switching to nodenext-
 #   strict ESM emit would touch every JSON import in the codebase. A
 #   Vite-flavored runner sidesteps that by running TypeScript directly.
-# - 14.14 swapped `tsx` for `vite-node` because tsx 4.x mis-resolves bgio's
-#   subpath imports (`boardgame.io/server`, `boardgame.io/core`, …) — see
-#   plans/14.11-networked-playtest-findings.md F1. vite-node uses the same
-#   resolver Vitest uses for the boot smoke test, so dev/test/prod stay
-#   aligned.
+# - `tsx` 4.x cannot resolve bgio's subpath imports
+#   (`boardgame.io/server`, `boardgame.io/core`, …): bgio 0.50.x ships
+#   per-subpath `package.json` files but no top-level `exports` field, and
+#   tsx's resolver appends `.jsx` to the bare specifier instead of reading
+#   the subpath's own `main`. vite-node uses the same resolver Vitest uses
+#   for the server boot smoke test, so dev/test/prod stay aligned.
 # - Render's free tier already pays a cold-start tax (15-min sleep wake-up);
 #   a few extra ms of vite-node boot is rounding error.
 #
-# The native dep `better-sqlite3` (added in 13.3) compiles in `npm ci` on
-# the builder stage and gets copied via `node_modules`. Render's build runs
-# inside this container so the native binary matches the runtime libc.
+# The native dep `better-sqlite3` compiles in `npm ci` on the builder
+# stage and gets copied via `node_modules`. Render's build runs inside
+# this container so the native binary matches the runtime libc.
 
 # ---- builder ----------------------------------------------------------------
 FROM node:20-alpine AS builder

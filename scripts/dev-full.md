@@ -10,11 +10,18 @@ the same terminal with prefixed, color-tagged output:
 
 - **server** (`vite-node --watch server/start.ts`) — bgio Koa server
   on `:8000`. vite-node restarts it on `server/**` or `src/game/**`
-  changes (the same files the production server bundles). 14.14
-  swapped the runner from `tsx` to `vite-node` — see
-  plans/14.11-networked-playtest-findings.md F1.
+  changes (the same files the production server bundles). The
+  runner is `vite-node`, not `tsx`, because tsx 4.x cannot resolve
+  bgio's subpath imports — full rationale in
+  [`server/Dockerfile`](../server/Dockerfile)'s header.
 - **client** (`vite`) — Vite dev server on `:5179` with HMR. Serves
   the React app the same way `npm run dev` does.
+
+A pre-hook runs `node scripts/free-ports.mjs 5179 8000` to clear
+any stale process listening on either port before `concurrently`
+fires; without that, a leftover Vite from a previous session
+would crash-exit the new client because the Vite config sets
+`strictPort: true` (Playwright targets the fixed port).
 
 `Ctrl+C` kills both — `concurrently`'s default `--kill-others-on-fail`
 behavior plus the SIGINT propagation handles teardown.

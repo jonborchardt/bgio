@@ -1,8 +1,9 @@
 // Pure role-assignment helpers. No boardgame.io imports.
 //
 // The mapping from player-count to seat -> roles is fixed by
-// game-design.md §Players. See plans/01.1-state-shape.md for the
-// canonical table this file encodes.
+// game-design.md §Players. The `ASSIGNMENTS` table below is the
+// canonical encoding — every other module reads its seat/role
+// pairing through `assignRoles(numPlayers)`.
 
 import type { PlayerID, Role } from './types.ts';
 
