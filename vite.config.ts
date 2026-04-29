@@ -30,6 +30,12 @@ export default defineConfig({
       'src/**/*.test.{ts,tsx}',
       'src/**/*.spec.{ts,tsx}',
     ],
+    // The smoke tests under `tests/ui/**/*.test.tsx` cold-import MUI
+    // components (each transitively pulls a few hundred KB of emotion +
+    // material), and the first jsdom load can occasionally exceed
+    // Vitest's 5 s default on a busy machine. Bump to 15 s so the suite
+    // stays green when the dev server / Playwright is also running.
+    testTimeout: 15000,
     // 12.6 — coverage gate.
     //
     // Provider: v8 (built into Vitest). Reports an `lcov` file for

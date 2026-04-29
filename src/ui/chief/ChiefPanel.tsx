@@ -20,16 +20,13 @@
 import { Box, Button, Paper, Stack, Typography } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
 import type { PlayerID, SettlementState } from '../../game/types.ts';
-import type {
-  Resource,
-  ResourceBag,
+import {
+  RESOURCES,
+  type Resource,
+  type ResourceBag,
 } from '../../game/resources/types.ts';
 import { rolesAtSeat } from '../../game/roles.ts';
 import { CircleEditor } from './CircleEditor.tsx';
-
-// Gold-only summary for V1; mirrors CircleEditor's RESOURCES_SHOWN. Once
-// other resources flow through chiefDistribute, extend both lists.
-const BANK_RESOURCES_SHOWN: readonly Resource[] = ['gold'] as const;
 
 export function ChiefPanel(props: BoardProps<SettlementState>) {
   const { G, ctx, moves, playerID } = props;
@@ -66,6 +63,13 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
   const handleEndTurn = (): void => {
     moves.chiefEndPhase();
   };
+
+  // 14.4 — bank summary now shows every non-zero resource (with gold
+  // always visible as the chief's canonical output) so the chief knows
+  // what they can distribute.
+  const bankResourcesShown: Resource[] = RESOURCES.filter(
+    (r) => r === 'gold' || (G.bank[r] ?? 0) > 0,
+  );
 
   return (
     <Paper
@@ -104,7 +108,7 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
           >
             Bank
           </Typography>
-          {BANK_RESOURCES_SHOWN.map((resource) => (
+          {bankResourcesShown.map((resource) => (
             <Stack
               key={resource}
               direction="row"

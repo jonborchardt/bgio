@@ -1,23 +1,26 @@
 // CircleEditor — per-target widget rendered by ChiefPanel for each non-chief
-// seat. Shows the resource currently in that seat's center-mat circle and
+// seat. Shows the resources currently in that seat's center-mat circle and
 // exposes +1 / +2 / +5 push buttons that route through the parent's
 // onPush(resource, amount) callback (which in turn calls the chiefDistribute
-// move). For V1 the only resource shown is gold; once UNITS / other resources
-// flow through chiefDistribute later slices, extend the resource list here.
+// move).
+//
+// 14.4: rows are now per-non-zero-bank-resource rather than gold-only. The
+// chief sees one row per resource the bank actually holds, plus always-show
+// `gold` (so the panel doesn't go empty in the rare case the bank only has
+// gold-zero — gives the chief a stable surface). When the bank holds zero
+// gold AND zero of every other resource, we render a small "Bank is empty"
+// note so the chief knows there's nothing to push.
 //
 // All visual choices route through the theme tokens added in 09.4
 // (palette.resource.<r>.main / .contrastText) — no raw hex literals.
 
 import { Box, Button, ButtonGroup, Stack, Typography } from '@mui/material';
 import type { PlayerID } from '../../game/types.ts';
-import type {
-  Resource,
-  ResourceBag,
+import {
+  RESOURCES,
+  type Resource,
+  type ResourceBag,
 } from '../../game/resources/types.ts';
-
-// Gold-only for V1 — see header. Listed as an array so future resources slot
-// in by appending without restructuring the JSX.
-const RESOURCES_SHOWN: readonly Resource[] = ['gold'] as const;
 
 const PUSH_AMOUNTS: readonly number[] = [1, 2, 5] as const;
 
@@ -36,6 +39,14 @@ export function CircleEditor({
   canPush,
   onPush,
 }: CircleEditorProps) {
+  // 14.4 — render every resource the bank holds. Gold is forced visible
+  // (it's the canonical chief output) so the row layout doesn't flicker
+  // when other resources transiently drain to zero between rounds.
+  const resourcesShown: Resource[] = RESOURCES.filter(
+    (r) => r === 'gold' || (bank[r] ?? 0) > 0,
+  );
+  const bankEmpty = RESOURCES.every((r) => (bank[r] ?? 0) === 0);
+
   return (
     <Box
       sx={{
@@ -55,8 +66,17 @@ export function CircleEditor({
         Player {Number(seat) + 1}
       </Typography>
 
+      {bankEmpty ? (
+        <Typography
+          variant="caption"
+          sx={{ color: (t) => t.palette.status.muted, fontStyle: 'italic' }}
+        >
+          Bank is empty.
+        </Typography>
+      ) : null}
+
       <Stack spacing={1}>
-        {RESOURCES_SHOWN.map((resource) => {
+        {resourcesShown.map((resource) => {
           const inCircle = circle[resource] ?? 0;
           const inBank = bank[resource] ?? 0;
           return (
