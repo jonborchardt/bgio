@@ -218,4 +218,4 @@ null when no `playerID` is set.
 | [14.12](14.12-active-seat-header.md) | done | claude | plan/14.12-active-seat-header | 2026-04-28 | 09.1, 14.1 | Done. pickActiveSeat helper + Board header derive from ctx.activePlayers; falls back to currentPlayer when null/empty. |
 | [14.13](14.13-role-panel-done-state.md) | done | claude | plan/14.13-role-panel-done-state | 2026-04-28 | 14.2, 09.1, 09.4 | Done. Role panels read G.othersDone[seat] and relabel End-my-turn to "Turn ended" while disabling. |
 | [14.15](14.15-assign-damage-dialog-state-reset.md) | done | claude | plan/14.15-assign-damage-dialog-state-reset | 2026-04-29 | 14.10 | Done. Reset-key `${battleId}|${eventIncomingShape}` gates the seed; user edits survive Board re-renders. |
-| [14.16](14.16-centermat-chief-othersphase.md) | pending |  |  |  | 14.3 | CenterMat hidden when chief seat is in othersPhase (multi-role). Surfaced by post-14.3 code review. |
+| [14.16](14.16-centermat-chief-othersphase.md) | in_progress | claude | plan/14.16-centermat-chief-othersphase | 2026-04-29 | 14.3 | CenterMat hidden when chief seat is in othersPhase (multi-role). Surfaced by post-14.3 code review. |
