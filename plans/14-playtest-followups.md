@@ -126,6 +126,7 @@ This stage closes those gaps without re-litigating any of stages 01-13.
 | [14.9](14.9-readme-demo-claim.md) | Update README's "Demo at the GitHub Pages URL" line to reflect that hot-seat needs the seat picker (14.1) before it's actually playable. Replace with `npm run dev:full` instructions if the picker doesn't land before the next deploy. | [../README.md](../README.md) |
 | [14.10](14.10-foreign-assign-damage-dialog.md) | Real per-round damage absorber UI for the Foreign assign-damage flow. The resolver consumes one allocation per incoming-damage event; the current stub fires a single `[{ byUnit: { [first]: 1 } }]` regardless. | `src/ui/foreign/AssignDamageDialog.tsx`, supporting helpers |
 | [14.11](14.11-networked-playtest.md) | End-to-end networked playtest with two browser tabs against `npm run dev:full`: register alice + bob, create a match, both join, drive one full round. Capture findings as a follow-up `plans/14.11-networked-playtest-findings.md`. Depends on `npm install` having run on the test host so SQLite + concurrently are available. | (no code; produces a plan-input file) |
+| [14.12](14.12-active-seat-header.md) | Board header derives the active seat from `ctx.activePlayers` instead of `ctx.currentPlayer`. Surfaced by the post-14.1 / 14.2 smoke: round-2 `chiefPhase` mis-labelled "Player 4's turn". | `src/Board.tsx`, `src/ui/layout/activeSeat.ts` (new) |
 
 ## Order
 

@@ -214,3 +214,4 @@ null when no `playerID` is set.
 | [14.9](14.9-readme-demo-claim.md) | pending |  |  |  | 13.4, 14.1, 14.2 | Update README "Demo" line. |
 | [14.10](14.10-foreign-assign-damage-dialog.md) | pending |  |  |  | 07.3, 07.4, 07.7 | Real per-round absorber UI. |
 | [14.11](14.11-networked-playtest.md) | pending |  |  |  | 10.x, 12.7, 13.3, 14.1, 14.2 | E2E networked playtest; produces a notes file. |
+| [14.12](14.12-active-seat-header.md) | pending |  |  |  | 09.1, 14.1 | Header reads from ctx.activePlayers, not ctx.currentPlayer. Surfaced by post-14.1/14.2 smoke. |
