@@ -15,6 +15,8 @@ import { Box, Paper, Stack, Typography } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
 import type { PlayerID, SettlementState } from './game/index.ts';
 import { rolesAtSeat } from './game/roles.ts';
+import { detectMode } from './clientMode.ts';
+import type { StatusBarMode } from './ui/layout/StatusBar.tsx';
 import { ChiefPanel } from './ui/chief/ChiefPanel.tsx';
 import { SciencePanel } from './ui/science/SciencePanel.tsx';
 import { DomesticPanel } from './ui/domestic/DomesticPanel.tsx';
@@ -51,6 +53,16 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
   const isSpectator = playerID === null;
   const hasSeat = playerID !== undefined && playerID !== null;
 
+  // 14.3 — actual client mode for the StatusBar "Mode" tag. A null
+  // local seat in networked mode is a spectator (10.8); everything
+  // else just reports the build-time mode.
+  const clientMode = detectMode();
+  const statusMode: StatusBarMode | undefined = isSpectator
+    ? 'spectating'
+    : clientMode === 'networked'
+      ? 'networked'
+      : 'hotseat';
+
   // 09.1: a role's slot is expanded when the local seat holds it OR when
   // we're in a single-player game (hot-seat solo: everything visible).
   const localRoles = hasSeat
@@ -59,6 +71,12 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
   const isSolo = ctx.numPlayers === 1;
   const expanded = (role: 'chief' | 'science' | 'domestic' | 'foreign') =>
     isSolo || localRoles.includes(role);
+
+  // 14.3 — hide the standalone CenterMat row when the chief panel is
+  // visible. ChiefPanel's CircleEditors already render every non-chief
+  // seat's circle plus the bank summary; the standalone row was a
+  // duplicate that confused playtesters.
+  const showCenterMat = !expanded('chief');
 
   return (
     <Box sx={{ width: 'min(100%, 60rem)', display: 'grid', gap: 3 }}>
@@ -166,13 +184,13 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
             <ForeignPanel {...props} />
           </RoleSlot>
         }
-        centerMat={<CenterMat {...props} />}
+        centerMat={showCenterMat ? <CenterMat {...props} /> : null}
         status={
           <StatusBar
             phase={ctx.phase ?? null}
             currentPlayer={ctx.currentPlayer}
             round={G.round}
-            spectating={isSpectator}
+            mode={statusMode}
           />
         }
       />
