@@ -22,11 +22,13 @@ import { SciencePanel } from './ui/science/SciencePanel.tsx';
 import { DomesticPanel } from './ui/domestic/DomesticPanel.tsx';
 import { ForeignPanel } from './ui/foreign/ForeignPanel.tsx';
 import { BoardShell } from './ui/layout/BoardShell.tsx';
+import { GameOverBanner } from './ui/layout/GameOverBanner.tsx';
 import { RoleSlot } from './ui/layout/RoleSlot.tsx';
 import { SeatPicker } from './ui/layout/SeatPicker.tsx';
 import { SeatPickerContext } from './ui/layout/SeatPickerContext.ts';
 import { pickActiveSeat } from './ui/layout/activeSeat.ts';
 import { StatusBar } from './ui/layout/StatusBar.tsx';
+import type { GameOutcome } from './game/endConditions.ts';
 import { CenterMat } from './ui/mat/CenterMat.tsx';
 import { ChatPane } from './ui/chat/ChatPane.tsx';
 import { ChatComposer } from './ui/chat/ChatComposer.tsx';
@@ -114,6 +116,20 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
               })()}
         </Typography>
       </Box>
+
+      {/* 14.5 — Game-over banner. Reads bgio's GameOutcome from
+          ctx.gameover and renders win / timeUp copy with a
+          "Play again" reload button. */}
+      {gameOver ? (
+        <GameOverBanner
+          outcome={ctx.gameover as GameOutcome}
+          onPlayAgain={
+            typeof window !== 'undefined'
+              ? () => window.location.reload()
+              : undefined
+          }
+        />
+      ) : null}
 
       {/* 14.1 — Seat picker. In hot-seat we expose a tab strip so the
           single-tab user can switch which seat they're driving (without
