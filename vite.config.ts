@@ -44,17 +44,19 @@ export default defineConfig({
     //     is configuration data rather than logic.
     //
     // Thresholds: the plan calls for 90/90/80 (lines/functions/branches).
-    // We start there. If stage 11 hasn't covered every module, drop these
-    // numbers (e.g. 70/70/70) until the surface catches up — keeping CI
-    // green is the priority. See `tests/coverage.note.md`.
+    // The first measured run (post-stage-13) hit 83 lines / 91 functions /
+    // 75 branches. We pin to 80/85/70 so a regression on any of the three
+    // trips CI but the suite is green today; ratchet up toward 90/90/80
+    // as the lobby + replay paths gain real tests. See
+    // `tests/coverage.note.md` for the policy.
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/**/*.tsx', 'src/main.tsx', 'src/theme.ts'],
       thresholds: {
-        lines: 70,
-        functions: 70,
+        lines: 80,
+        functions: 85,
         branches: 70,
       },
     },

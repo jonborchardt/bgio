@@ -65,7 +65,13 @@ export interface IdleWatcher {
  * `Server` shape into our public surface. */
 export type BgioServer = unknown;
 
-export const makeIdleWatcher = (_server: BgioServer): IdleWatcher => {
+export const makeIdleWatcher = (server: BgioServer): IdleWatcher => {
+  // Bind the bgio Server so seatTakeover.grant/revokeBotControl can
+  // mutate match.metadata.players[playerID].isBot through the storage
+  // adapter on bgio's `db` field. Calling with a stub `unknown` server
+  // is harmless: seatTakeover falls back to a log-only path when the
+  // bound value lacks a usable `db.fetch` / `db.setMetadata`.
+  seatTakeover.setBgioServer(server);
   // matchID -> playerID -> last activity epoch ms.
   const lastActivity = new Map<string, Map<PlayerID, number>>();
   // Tracks which (matchID, playerID) pairs we've already handed off

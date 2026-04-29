@@ -1,57 +1,117 @@
 // 10.9 — seat takeover (human ↔ bot swap).
 //
-// **V1 stub:** the real implementation needs to mutate
-// `match.metadata.bots` through bgio's storage adapter so the running
-// `Server` picks up the change on its next tick. That requires:
+// Real implementation: mutate `match.metadata.players[playerID].isBot`
+// through bgio's storage adapter. The running `Server` consults the
+// metadata on its next dispatch tick (it forwards moves from the
+// matching socket only when isBot is false), so flipping the flag is
+// what actually makes the bot driver pick up the seat.
 //
-//   1. A handle to the storage adapter (or to bgio's Server instance,
-//      from which we can reach the adapter via a private field).
-//   2. Knowing which bot to register (per-role heuristic from 11.x —
-//      none of those are wired yet).
-//   3. A test harness that can roundtrip the metadata update through
-//      bgio's running game loop.
+// We bind the bgio Server (and through it, the storage adapter) via a
+// module-scoped setter rather than threading it through every call
+// site. That keeps the public function signatures (and the tests that
+// spy on them) unchanged from the V1 stub.
 //
-// None of those are present in this slice. We ship the API shape and
-// log statements so the watcher (`idleWatcher.ts`) can call into us
-// without crashing, and the integration lands when 11.3-11.6 do. The
-// `it.todo`s in `tests/server/idle.test.ts` pin the work.
-//
-// Per CLAUDE.md: when bgio's primitive falls short of a real
-// requirement, we layer a thin shell over it rather than inventing a
-// parallel system. `match.metadata.bots` IS that primitive — we just
-// haven't wired the writer yet.
+// Per CLAUDE.md: this is a thin shell over the bgio primitive
+// (`match.metadata`), not a parallel system.
 
 /** Shape of a bgio playerID. bgio uses bare strings ('0', '1', …) but
- * doesn't export a named type from the top-level entry. We mirror the
- * shape locally to keep the public API documented. */
+ * doesn't export a named type from the top-level entry. */
 export type PlayerID = string;
 
+/** Minimal shape we need off bgio's Server to mutate metadata. The
+ * actual `Server` instance has many more fields; we keep our coupling
+ * narrow. */
+interface BgioMetadataStore {
+  fetch: (
+    matchID: string,
+    opts: { metadata?: boolean },
+  ) => Promise<{ metadata?: BgioMatchMetadata }>;
+  setMetadata: (
+    matchID: string,
+    metadata: BgioMatchMetadata,
+  ) => Promise<void>;
+}
+
+interface BgioMatchMetadata {
+  players?: Record<string, { isBot?: boolean; name?: string } | undefined>;
+  // bgio's metadata has more fields (gameName, setupData, gameover, …)
+  // but we only touch `players` here. Rest pass through verbatim.
+  [k: string]: unknown;
+}
+
+/** The bgio Server has a `db` field of shape `BgioMetadataStore`. We
+ * type it loosely because bgio doesn't export the storage interface
+ * from the top-level entry; this matches what we already do in
+ * `server/storage/sqlite.ts`. */
+interface BgioServerLike {
+  db?: BgioMetadataStore;
+}
+
+let activeServer: BgioServerLike | null = null;
+
+/** Called by `makeIdleWatcher(server)` so subsequent grant/revoke
+ * calls can reach the storage adapter. Test harnesses that drive
+ * grant/revoke directly can call this with a mock store. */
+export const setBgioServer = (server: unknown): void => {
+  activeServer = (server as BgioServerLike) ?? null;
+};
+
+const getDb = (): BgioMetadataStore | null => {
+  const db = activeServer?.db;
+  return db && typeof db.fetch === 'function' && typeof db.setMetadata === 'function'
+    ? db
+    : null;
+};
+
+const updateIsBot = async (
+  matchID: string,
+  playerID: PlayerID,
+  isBot: boolean,
+): Promise<void> => {
+  const db = getDb();
+  if (!db) {
+    // No server bound (e.g. the watcher was constructed with a stub
+    // server, or tests didn't set one). Stay best-effort: log and
+    // return so callers don't have to special-case.
+    console.info(
+      `[idle] ${isBot ? 'grantBotControl' : 'revokeBotControl'}(matchID=${matchID}, playerID=${playerID}) — no db bound, skipping`,
+    );
+    return;
+  }
+  const fetched = await db.fetch(matchID, { metadata: true });
+  const metadata: BgioMatchMetadata = fetched.metadata ?? {};
+  const players: Record<string, { isBot?: boolean; name?: string } | undefined> =
+    { ...(metadata.players ?? {}) };
+  const existing = players[playerID] ?? {};
+  if (existing.isBot === isBot) {
+    // Idempotent — bgio's bot driver is already in the desired state.
+    return;
+  }
+  players[playerID] = { ...existing, isBot };
+  await db.setMetadata(matchID, { ...metadata, players });
+};
+
 /** Take a match seat away from a (presumed-idle) human and hand it to
- * a server-side bot. Idempotent: calling twice for the same
- * (matchID, playerID) is a no-op on the second call.
- *
- * V1: this is a stub that logs the takeover; the real metadata.bots
- * mutation lands once bots from 11.3-11.6 are registered on the
- * server. */
+ * a server-side bot. Idempotent: writing isBot=true twice is a no-op
+ * on the second call. */
 export const grantBotControl = async (
   matchID: string,
   playerID: PlayerID,
 ): Promise<void> => {
-  console.info(
-    `[idle] grantBotControl(matchID=${matchID}, playerID=${playerID}) — stub (10.9)`,
-  );
+  await updateIsBot(matchID, playerID, true);
 };
 
 /** Inverse of `grantBotControl`. Called when the human reconnects:
- * removes the seat from `match.metadata.bots` so bgio stops driving
- * it and forwards moves from the human's socket again.
- *
- * V1: stub for the same reason as `grantBotControl`. */
+ * clears `isBot` so bgio stops driving the seat with a bot. */
 export const revokeBotControl = async (
   matchID: string,
   playerID: PlayerID,
 ): Promise<void> => {
-  console.info(
-    `[idle] revokeBotControl(matchID=${matchID}, playerID=${playerID}) — stub (10.9)`,
-  );
+  await updateIsBot(matchID, playerID, false);
+};
+
+/** Test helper — wipe the bound server so subsequent calls fall back
+ * to the no-db log-only path. */
+export const __resetSeatTakeoverForTest = (): void => {
+  activeServer = null;
 };
