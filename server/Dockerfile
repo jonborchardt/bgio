@@ -2,16 +2,20 @@
 #
 # Multi-stage Node 20 image. The build stage runs `npm ci` and the typecheck
 # (`server:build`); the runtime stage copies the dependency tree, server source,
-# and shared `src/` tree, and starts the server through `tsx`.
+# and shared `src/` tree, and starts the server through `vite-node`.
 #
-# Why `tsx` at runtime instead of compiled JS:
+# Why `vite-node` at runtime instead of compiled JS or `tsx`:
 # - Our shared `src/` tree imports `.ts` paths and JSON without import
 #   attributes (matching Vite's bundler resolution). Switching to nodenext-
-#   strict ESM emit would touch every JSON import in the codebase. `tsx`
-#   sidesteps that by running TypeScript directly. The cost is a small
-#   per-startup parse, which is fine for a long-lived server.
+#   strict ESM emit would touch every JSON import in the codebase. A
+#   Vite-flavored runner sidesteps that by running TypeScript directly.
+# - 14.14 swapped `tsx` for `vite-node` because tsx 4.x mis-resolves bgio's
+#   subpath imports (`boardgame.io/server`, `boardgame.io/core`, …) — see
+#   plans/14.11-networked-playtest-findings.md F1. vite-node uses the same
+#   resolver Vitest uses for the boot smoke test, so dev/test/prod stay
+#   aligned.
 # - Render's free tier already pays a cold-start tax (15-min sleep wake-up);
-#   a few extra ms of `tsx` boot is rounding error.
+#   a few extra ms of vite-node boot is rounding error.
 #
 # The native dep `better-sqlite3` (added in 13.3) compiles in `npm ci` on
 # the builder stage and gets copied via `node_modules`. Render's build runs
@@ -35,7 +39,7 @@ COPY tsconfig.json tsconfig.app.json tsconfig.node.json ./
 COPY server ./server
 COPY src ./src
 
-# Typecheck only — emitting is handled at runtime by `tsx`.
+# Typecheck only — emitting is handled at runtime by `vite-node`.
 RUN npm run server:build
 
 # ---- runtime ----------------------------------------------------------------
@@ -56,9 +60,12 @@ COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/server ./server
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
+# vite-node reads vite.config.ts to set up its resolver, so copy it too.
+COPY --from=builder /app/vite.config.ts ./vite.config.ts
 
 EXPOSE 8000
 
-# `npm run server:start` shells out to `tsx server/index.ts`; we call the
-# script directly to keep the entrypoint visible in process listings.
-CMD ["npx", "tsx", "server/index.ts"]
+# `npm run server:start` shells out to `vite-node server/start.ts`; we
+# call the script directly to keep the entrypoint visible in process
+# listings.
+CMD ["npx", "vite-node", "server/start.ts"]

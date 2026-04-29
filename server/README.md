@@ -8,9 +8,12 @@ the repo root can be built two ways (`npm run build:hotseat` /
 
 ```bash
 npm install
-npm run dev:server     # tsx server/index.ts on PORT=8000
+npm run dev:server     # vite-node --watch server/start.ts on PORT=8000
 npm run dev:full       # client + server in one terminal
 ```
+
+(14.14 swapped the runner from `tsx` to `vite-node`; tsx 4.x mis-resolves
+bgio subpath imports — see plans/14.11-networked-playtest-findings.md.)
 
 By default `STORAGE_KIND` is `memory` (no on-disk persistence). For
 SQLite-backed local dev set:

@@ -8,11 +8,13 @@ One-command bootstrap for the local "client + server + storage" experience
 `concurrently -n server,client -c blue,green ...` runs two processes in
 the same terminal with prefixed, color-tagged output:
 
-- **server** (`tsx watch server/index.ts`) — bgio Koa server on
-  `:8000`. `tsx watch` restarts it on `server/**` or `src/game/**`
-  changes (the same files the production server bundles).
-- **client** (`vite`) — Vite dev server on `:5173` with HMR. Serves the
-  React app the same way `npm run dev` does.
+- **server** (`vite-node --watch server/start.ts`) — bgio Koa server
+  on `:8000`. vite-node restarts it on `server/**` or `src/game/**`
+  changes (the same files the production server bundles). 14.14
+  swapped the runner from `tsx` to `vite-node` — see
+  plans/14.11-networked-playtest-findings.md F1.
+- **client** (`vite`) — Vite dev server on `:5179` with HMR. Serves
+  the React app the same way `npm run dev` does.
 
 `Ctrl+C` kills both — `concurrently`'s default `--kill-others-on-fail`
 behavior plus the SIGINT propagation handles teardown.
