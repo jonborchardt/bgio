@@ -15,6 +15,7 @@ import { Server } from 'boardgame.io/server';
 import { Settlement } from '../src/game/index.ts';
 import { makeStorage, type StorageKind } from './storage/index.ts';
 import { makeIdleWatcher, type IdleWatcher } from './idle/idleWatcher.ts';
+import { mountAuthRoutes } from './auth/routes.ts';
 
 /** Result of `createServer` — exposes the bgio Server instance plus a
  * `port` Promise that resolves once the underlying Koa app is listening.
@@ -82,6 +83,17 @@ export const createServer = (opts: CreateServerOptions = {}): CreatedServer => {
   // lockstep with the bgio Server it watches.
   const idleWatcher = makeIdleWatcher(server);
   idleWatcher.start();
+
+  // 10.7 follow-up — mount auth routes on bgio's Koa app. bgio exposes
+  // its app at server.app; we attach a small middleware that handles
+  // /auth/register, /auth/login, /auth/verify backed by the in-memory
+  // accounts module. Falls through to bgio's own routes for everything
+  // else.
+  const koa = (server as unknown as { app?: { use: (mw: unknown) => unknown } })
+    .app;
+  if (koa && typeof koa.use === 'function') {
+    mountAuthRoutes(koa as Parameters<typeof mountAuthRoutes>[0]);
+  }
 
   const start = async (port?: number): Promise<number> => {
     const requestedPort =
