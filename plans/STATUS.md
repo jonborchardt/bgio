@@ -203,7 +203,7 @@ null when no `playerID` is set.
 
 | Sub-plan | Status | Owner | Branch | Updated | Blocked on | Notes |
 |---|---|---|---|---|---|---|
-| [14.1](14.1-hot-seat-seat-picker.md) | pending |  |  |  | 04.5, 05.5, 06.7, 07.7 | Sticky tab strip; calls `client.updatePlayerID`. Unblocker. |
+| [14.1](14.1-hot-seat-seat-picker.md) | in_progress | claude | plan/14.1-hot-seat-seat-picker | 2026-04-28 | 04.5, 05.5, 06.7, 07.7 | Sticky tab strip; calls `client.updatePlayerID`. Unblocker. |
 | [14.2](14.2-role-done-buttons.md) | pending |  |  |  | 02.1, 02.2, 04.5, 05.5, 06.7, 07.7 | Real `<role>SeatDone` moves + per-panel buttons. Unblocker. |
 | [14.3](14.3-mode-status-cleanup.md) | pending |  |  |  | 09.1, 09.3, 10.2, 04.5, 14.1 | Mode label + CenterMat dedup. |
 | [14.4](14.4-circle-editor-multi-resource.md) | pending |  |  |  | 03.1, 04.1, 04.5, 09.4 | Per-non-zero-resource rows in CircleEditor. |
