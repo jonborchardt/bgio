@@ -69,6 +69,10 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
     moves.domesticProduce();
   };
 
+  const handleSeatDone = (): void => {
+    moves.domesticSeatDone();
+  };
+
   return (
     <Paper
       elevation={0}
@@ -106,7 +110,7 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
           onPlace={handlePlace}
         />
 
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
           <Button
             variant="contained"
             disabled={!canAct || alreadyProduced}
@@ -121,6 +125,23 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
             }}
           >
             {alreadyProduced ? 'Produced' : 'Produce'}
+          </Button>
+          {/* 14.2 — "End my turn" — flips G.othersDone[seat]; bgio
+              transitions to endOfRound once every non-chief seat has. */}
+          <Button
+            variant="contained"
+            disabled={!canAct}
+            onClick={handleSeatDone}
+            aria-label="End my Domestic turn"
+            sx={{
+              bgcolor: (t) => t.palette.role.domestic.main,
+              color: (t) => t.palette.role.domestic.contrastText,
+              '&:hover': {
+                bgcolor: (t) => t.palette.role.domestic.dark,
+              },
+            }}
+          >
+            End my turn
           </Button>
         </Box>
       </Stack>

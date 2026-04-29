@@ -16,7 +16,7 @@
 // The completion button also requires `paid >= cost` and that the seat
 // hasn't already used its one-completion-per-round allowance.
 
-import { Box, Paper, Stack, Typography } from '@mui/material';
+import { Box, Button, Paper, Stack, Typography } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
 import type { SettlementState } from '../../game/types.ts';
 import type {
@@ -68,6 +68,10 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
 
   const handleComplete = (cardID: string): void => {
     moves.scienceComplete(cardID);
+  };
+
+  const handleSeatDone = (): void => {
+    moves.scienceSeatDone();
   };
 
   // Visualize as columns side-by-side. Each column = one color, with row 0
@@ -153,6 +157,28 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
               })}
             </Stack>
           ))}
+        </Box>
+
+        {/* 14.2 — "End my turn" footer. Without this move + button the
+            othersPhase endIf cannot trip from any UI (review fix #1
+            stripped the test-only `__testSetOthersDone` from the
+            production move set). */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Button
+            variant="contained"
+            disabled={!canAct}
+            onClick={handleSeatDone}
+            aria-label="End my Science turn"
+            sx={{
+              bgcolor: (t) => t.palette.role.science.main,
+              color: (t) => t.palette.role.science.contrastText,
+              '&:hover': {
+                bgcolor: (t) => t.palette.role.science.dark,
+              },
+            }}
+          >
+            End my turn
+          </Button>
         </Box>
       </Stack>
     </Paper>

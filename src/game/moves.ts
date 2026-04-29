@@ -33,6 +33,9 @@ import { chiefPlayTech } from './roles/chief/playTech.ts';
 import { sciencePlayTech } from './roles/science/playTech.ts';
 import { domesticPlayTech } from './roles/domestic/playTech.ts';
 import { foreignPlayTech } from './roles/foreign/playTech.ts';
+import { scienceSeatDone } from './roles/science/seatDone.ts';
+import { domesticSeatDone } from './roles/domestic/seatDone.ts';
+import { foreignSeatDone } from './roles/foreign/seatDone.ts';
 
 export const pass: Move<SettlementState> = () => {
   // intentional no-op — bgio advances the turn after the move resolves.
@@ -109,6 +112,14 @@ export { foreignFlipBattle, foreignAssignDamage, foreignFlipTrade };
 // idempotent via `G.domestic.producedThisRound`, cleared by the
 // `domestic:reset-produced` round-end hook registered in `produce.ts`.
 export { domesticBuyBuilding, domesticUpgradeBuilding, domesticProduce };
+
+// 14.2 — per-role "I'm done" moves. Each flips `G.othersDone[seat]`
+// after the seat finishes its work in `othersPhase`; bgio re-evaluates
+// `othersPhase.endIf` after the move and transitions to `endOfRound`
+// once every non-chief seat has flipped. The chief uses `chiefEndPhase`
+// for the analogous transition out of `chiefPhase`. Replaces the
+// review-fix-#1-gated `__testSetOthersDone` for production play.
+export { scienceSeatDone, domesticSeatDone, foreignSeatDone };
 
 // ---------------------------------------------------------------------------
 // Test-only scaffolding.

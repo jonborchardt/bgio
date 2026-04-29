@@ -11,7 +11,7 @@
 // looking at the board.
 
 import { useContext } from 'react';
-import { Box, Button, Paper, Stack, Typography } from '@mui/material';
+import { Box, Paper, Stack, Typography } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
 import type { PlayerID, SettlementState } from './game/index.ts';
 import { rolesAtSeat } from './game/roles.ts';
@@ -29,7 +29,7 @@ import { ChatPane } from './ui/chat/ChatPane.tsx';
 import { ChatComposer } from './ui/chat/ChatComposer.tsx';
 
 export function SettlementBoard(props: BoardProps<SettlementState>) {
-  const { G, ctx, moves, playerID } = props;
+  const { G, ctx, playerID } = props;
   const gameOver = ctx.gameover !== undefined;
   const seats = Object.keys(G.roleAssignments).sort();
 
@@ -174,17 +174,10 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
         />
       </Stack>
 
-      {isSpectator ? null : (
-        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-          <Button
-            variant="contained"
-            disabled={gameOver}
-            onClick={() => moves.pass()}
-          >
-            End my turn
-          </Button>
-        </Box>
-      )}
+      {/* 14.2 removed the legacy bottom "End my turn" stub that called
+          `pass()`. Chief uses ChiefPanel's own "End my turn" button
+          (chiefEndPhase); every non-chief role uses the matching
+          per-panel `<role>SeatDone` button. */}
     </Box>
   );
 }

@@ -204,7 +204,7 @@ null when no `playerID` is set.
 | Sub-plan | Status | Owner | Branch | Updated | Blocked on | Notes |
 |---|---|---|---|---|---|---|
 | [14.1](14.1-hot-seat-seat-picker.md) | done | claude | plan/14.1-hot-seat-seat-picker | 2026-04-28 | 04.5, 05.5, 06.7, 07.7 | Done. SeatPicker tab strip + SeatPickerContext; HotSeatShell threads `playerID` prop into bgio Client. |
-| [14.2](14.2-role-done-buttons.md) | in_progress | claude | plan/14.2-role-done-buttons | 2026-04-28 | 02.1, 02.2, 04.5, 05.5, 06.7, 07.7 | Real `<role>SeatDone` moves + per-panel buttons. Unblocker. |
+| [14.2](14.2-role-done-buttons.md) | done | claude | plan/14.2-role-done-buttons | 2026-04-28 | 02.1, 02.2, 04.5, 05.5, 06.7, 07.7 | Done. {science,domestic,foreign}SeatDone moves + per-panel "End my turn" buttons; legacy bottom stub removed. |
 | [14.3](14.3-mode-status-cleanup.md) | pending |  |  |  | 09.1, 09.3, 10.2, 04.5, 14.1 | Mode label + CenterMat dedup. |
 | [14.4](14.4-circle-editor-multi-resource.md) | pending |  |  |  | 03.1, 04.1, 04.5, 09.4 | Per-non-zero-resource rows in CircleEditor. |
 | [14.5](14.5-game-over-banner.md) | pending |  |  |  | 08.5, 09.1 | Reads `ctx.gameover`; sticky win/timeUp banner. |

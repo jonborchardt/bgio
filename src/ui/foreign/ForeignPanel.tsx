@@ -69,6 +69,10 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
     moves.foreignAssignDamage(allocations);
   };
 
+  const handleSeatDone = (): void => {
+    moves.foreignSeatDone();
+  };
+
   return (
     <Paper
       elevation={0}
@@ -150,7 +154,7 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
           onAssignDamage={handleAssignDamage}
         />
 
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
           <Button
             variant="contained"
             disabled={!canActOnTurn || upkeepPaid}
@@ -165,6 +169,25 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
             }}
           >
             {upkeepPaid ? 'Upkeep paid' : 'Pay Upkeep'}
+          </Button>
+          {/* 14.2 — "End my turn" — flips G.othersDone[seat]; bgio
+              transitions to endOfRound once every non-chief seat has.
+              Allowed from foreignTurn or foreignAwaitingDamage so the
+              seat is never stuck in a battle interrupt. */}
+          <Button
+            variant="contained"
+            disabled={!canActOnTurn && !canAssignDamage}
+            onClick={handleSeatDone}
+            aria-label="End my Foreign turn"
+            sx={{
+              bgcolor: (t) => t.palette.role.foreign.main,
+              color: (t) => t.palette.role.foreign.contrastText,
+              '&:hover': {
+                bgcolor: (t) => t.palette.role.foreign.dark,
+              },
+            }}
+          >
+            End my turn
           </Button>
         </Box>
       </Stack>

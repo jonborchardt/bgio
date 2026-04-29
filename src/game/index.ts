@@ -31,6 +31,9 @@ import {
   sciencePlayTech,
   domesticPlayTech,
   foreignPlayTech,
+  scienceSeatDone,
+  domesticSeatDone,
+  foreignSeatDone,
   __testSetPhaseDone,
   __testSetOthersDone,
 } from './moves.ts';
@@ -82,6 +85,9 @@ const productionMoves = {
   sciencePlayTech,
   domesticPlayTech,
   foreignPlayTech,
+  scienceSeatDone,
+  domesticSeatDone,
+  foreignSeatDone,
 };
 
 /** Test-only move scaffolds. Imported into the engine via
