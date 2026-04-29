@@ -209,7 +209,7 @@ null when no `playerID` is set.
 | [14.4](14.4-circle-editor-multi-resource.md) | pending |  |  |  | 03.1, 04.1, 04.5, 09.4 | Per-non-zero-resource rows in CircleEditor. |
 | [14.5](14.5-game-over-banner.md) | done | claude | plan/14.5-game-over-banner | 2026-04-28 | 08.5, 09.1 | Done. GameOverBanner reads ctx.gameover; Play again reloads page. |
 | [14.6](14.6-phase-hints.md) | done | claude | plan/14.6-phase-hints | 2026-04-28 | 09.1, 14.1 | Done. PhaseHint + phaseHintRules under StatusBar; (phase, stage, role) lookup. |
-| [14.7](14.7-hot-seat-hide-chat.md) | pending |  |  |  | 10.2, 10.5 | Hide chat in hot-seat (no transport). |
+| [14.7](14.7-hot-seat-hide-chat.md) | in_progress | claude | plan/14.7-hot-seat-hide-chat | 2026-04-28 | 10.2, 10.5 | Hide chat in hot-seat (no transport). |
 | [14.8](14.8-favicon.md) | done | claude | plan/14.8-favicon | 2026-04-28 |  | Done. public/favicon.svg + index.html link. |
 | [14.9](14.9-readme-demo-claim.md) | pending |  |  |  | 13.4, 14.1, 14.2 | Update README "Demo" line. |
 | [14.10](14.10-foreign-assign-damage-dialog.md) | pending |  |  |  | 07.3, 07.4, 07.7 | Real per-round absorber UI. |
