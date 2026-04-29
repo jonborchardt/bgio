@@ -43,14 +43,23 @@ const HotSeatApp = Client({
 
 /** Read `?matchID=...&playerID=...&credentials=...` from the page URL.
  *
- * This is the developer-bypass path that survived 10.3 — supplying the
- * three params directly skips the lobby. If any are missing we fall
- * through to the normal lobby / hot-seat flow. */
+ * This is a developer-only bypass that skips both `<AuthForms>` and
+ * the `verify()` step. In a production build we always return null —
+ * an attacker with a stolen credentials triple should NOT be able to
+ * paste it into a URL and walk past auth. The lobby is the only
+ * sanctioned entry point in production.
+ *
+ * Vite inlines `import.meta.env.DEV` at build time (true under
+ * `vite dev` / Vitest, false under `vite build`), so the production
+ * bundle dead-code-eliminates the entire query-string branch. */
 const readMatchFromQuery = (): {
   matchID: string;
   playerID: string;
   credentials: string;
 } | null => {
+  const isDev =
+    (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true;
+  if (!isDev) return null;
   if (typeof window === 'undefined') return null;
   const params = new URLSearchParams(window.location.search);
   const matchID = params.get('matchID');
