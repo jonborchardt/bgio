@@ -12,10 +12,13 @@
 // (mis)read "Player 4's turn".
 //
 // The fix: when `activePlayers` is non-empty, prefer it as the
-// source of truth. Skip seats parked in the `done` stage (they've
-// already finished their work this phase). Pick the lowest seat id
+// source of truth. Skip seats parked in the `done` stage (the chief
+// is parked there for the whole `othersPhase`) AND seats whose
+// `G.othersDone[seat]` flag is set (the 14.2 seatDone moves flip
+// this without changing the stage map). Pick the lowest seat id
 // among the remaining active seats so the helper is stable. Fall
-// back to `currentPlayer` only when `activePlayers` is null/empty.
+// back to `currentPlayer` only when `activePlayers` is null/empty
+// or every seat in it is already done.
 
 import type { PlayerID, Role } from '../../game/types.ts';
 
@@ -44,14 +47,26 @@ export function pickActiveSeat(args: {
   activePlayers: Record<PlayerID, string> | null | undefined;
   currentPlayer: PlayerID;
   roleAssignments: Record<PlayerID, Role[]>;
+  /** `G.othersDone` — seats with `true` here have flipped done in
+   *  the current `othersPhase` (14.2's per-role seatDone moves) but
+   *  remain in their original stage until the phase ends. The helper
+   *  treats them as logically done. Optional so callers in pre-14.2
+   *  fixtures don't crash. */
+  othersDone?: Record<PlayerID, boolean> | undefined;
   localSeat: PlayerID | null | undefined;
 }): ActiveSeatInfo {
-  const { activePlayers, currentPlayer, roleAssignments, localSeat } = args;
+  const {
+    activePlayers,
+    currentPlayer,
+    roleAssignments,
+    othersDone,
+    localSeat,
+  } = args;
 
   let seat: PlayerID = currentPlayer;
   if (activePlayers && Object.keys(activePlayers).length > 0) {
     const candidates = Object.entries(activePlayers)
-      .filter(([, stage]) => stage !== 'done')
+      .filter(([s, stage]) => stage !== 'done' && !(othersDone?.[s] === true))
       .map(([s]) => s)
       .sort();
     if (candidates.length > 0) {

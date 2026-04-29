@@ -36,6 +36,44 @@ describe('pickActiveSeat (14.12)', () => {
     expect(out.isLocal).toBe(false);
   });
 
+  it('othersPhase: a seat with stage scienceTurn but G.othersDone[seat]=true counts as done', () => {
+    // 14.2's seatDone moves flip G.othersDone without touching the stage
+    // map. The helper treats that case as "logically done" so the header
+    // advances to the next pending seat.
+    const roleAssignments = assignRoles(4);
+    const out = pickActiveSeat({
+      activePlayers: {
+        '0': 'done',
+        '1': 'scienceTurn', // not 'done', but...
+        '2': 'domesticTurn',
+        '3': 'foreignTurn',
+      },
+      othersDone: { '1': true }, // ...science seat already flipped done.
+      currentPlayer: '1',
+      roleAssignments,
+      localSeat: '0',
+    });
+    expect(out.seat).toBe('2');
+    expect(out.label).toBe('Player 3: domestic');
+  });
+
+  it('othersPhase: every non-chief seat flipped othersDone falls back to currentPlayer', () => {
+    const roleAssignments = assignRoles(4);
+    const out = pickActiveSeat({
+      activePlayers: {
+        '0': 'done',
+        '1': 'scienceTurn',
+        '2': 'domesticTurn',
+        '3': 'foreignTurn',
+      },
+      othersDone: { '1': true, '2': true, '3': true },
+      currentPlayer: '3',
+      roleAssignments,
+      localSeat: '0',
+    });
+    expect(out.seat).toBe('3');
+  });
+
   it('null activePlayers: falls back to currentPlayer', () => {
     const roleAssignments = assignRoles(4);
     const out = pickActiveSeat({

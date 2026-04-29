@@ -89,6 +89,7 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
                   activePlayers: ctx.activePlayers,
                   currentPlayer: ctx.currentPlayer,
                   roleAssignments: G.roleAssignments,
+                  othersDone: G.othersDone,
                   localSeat: playerID,
                 });
                 return `${active.label}'s turn`;
