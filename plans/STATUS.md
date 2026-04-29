@@ -206,7 +206,7 @@ null when no `playerID` is set.
 | [14.1](14.1-hot-seat-seat-picker.md) | done | claude | plan/14.1-hot-seat-seat-picker | 2026-04-28 | 04.5, 05.5, 06.7, 07.7 | Done. SeatPicker tab strip + SeatPickerContext; HotSeatShell threads `playerID` prop into bgio Client. |
 | [14.2](14.2-role-done-buttons.md) | done | claude | plan/14.2-role-done-buttons | 2026-04-28 | 02.1, 02.2, 04.5, 05.5, 06.7, 07.7 | Done. {science,domestic,foreign}SeatDone moves + per-panel "End my turn" buttons; legacy bottom stub removed. |
 | [14.3](14.3-mode-status-cleanup.md) | done | claude | plan/14.3-mode-status-cleanup | 2026-04-28 | 09.1, 09.3, 10.2, 04.5, 14.1 | Done. StatusBar `mode` prop ('hotseat'/'networked'/'spectating'); CenterMat hidden when ChiefPanel visible. |
-| [14.4](14.4-circle-editor-multi-resource.md) | pending |  |  |  | 03.1, 04.1, 04.5, 09.4 | Per-non-zero-resource rows in CircleEditor. |
+| [14.4](14.4-circle-editor-multi-resource.md) | in_progress | claude | plan/14.4-circle-editor-multi-resource | 2026-04-28 | 03.1, 04.1, 04.5, 09.4 | Per-non-zero-resource rows in CircleEditor. |
 | [14.5](14.5-game-over-banner.md) | done | claude | plan/14.5-game-over-banner | 2026-04-28 | 08.5, 09.1 | Done. GameOverBanner reads ctx.gameover; Play again reloads page. |
 | [14.6](14.6-phase-hints.md) | done | claude | plan/14.6-phase-hints | 2026-04-28 | 09.1, 14.1 | Done. PhaseHint + phaseHintRules under StatusBar; (phase, stage, role) lookup. |
 | [14.7](14.7-hot-seat-hide-chat.md) | done | claude | plan/14.7-hot-seat-hide-chat | 2026-04-28 | 10.2, 10.5 | Done. ChatPane + ChatComposer gated on clientMode === 'networked'. |
