@@ -19,6 +19,17 @@ import { UNITS, BUILDINGS } from '../../../data/index.ts';
 import { payFromWallet } from '../../resources/moves.ts';
 import { canAfford } from '../../resources/bag.ts';
 import { parseBenefit } from '../domestic/parseBenefit.ts';
+import { registerRoundEndHook } from '../../hooks.ts';
+
+// foreign:reset-upkeep — at endOfRound we clear `_upkeepPaid` so the
+// Foreign seat can pay upkeep again next round. Without this, after
+// round 1 the seat is permanently exempt from upkeep (a soft-lock
+// since the stage's "must call upkeep first" contract evaporates).
+registerRoundEndHook('foreign:reset-upkeep', (G) => {
+  if (G.foreign !== undefined && G.foreign._upkeepPaid === true) {
+    G.foreign._upkeepPaid = false;
+  }
+});
 
 /**
  * Sum of every `unitMaintenance` BenefitEffect across in-play Domestic

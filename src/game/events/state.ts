@@ -197,3 +197,13 @@ registerRoundEndHook('events:reset-played-this-round', (G) => {
     G.events.playedThisRound[seat] = [];
   }
 });
+
+// Round-end hook: clear `_eventPlayedThisRound`, the per-role single-flag
+// ledger that 04.4 / 05.4 / 06.6 / 07.6's stub moves consult to enforce
+// "may play one event per round per role". Without this reset, after
+// round 1 every role is permanently locked out of playing events.
+registerRoundEndHook('events:reset-event-played-this-round', (G) => {
+  if (G._eventPlayedThisRound !== undefined) {
+    G._eventPlayedThisRound = {};
+  }
+});
