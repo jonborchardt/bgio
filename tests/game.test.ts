@@ -50,6 +50,11 @@ describe('test helpers', () => {
 
   it('runMoves with an unknown move leaves state unchanged', () => {
     const client = makeClient();
+    // playerView (02.4) redacts per the active playerID, so snapshot
+    // before/after from the SAME viewing seat — runMoves switches the
+    // client's playerID to '0' for its first call, and getState() for
+    // an unset playerID would render the spectator-redacted view.
+    client.updatePlayerID('0');
     const before = client.getState()!;
     // Suppress the expected "unknown move" error so the test output stays clean.
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});

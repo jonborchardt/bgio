@@ -172,30 +172,106 @@ export const playerViewFor = (
     if (forSeat !== null) hands = redactForeignForSeat(hands, forSeat);
   }
 
-  // `chief` and `science` slices are public — face-up tech under each
-  // science card and chief actions are visible to everyone. Nothing to
-  // redact here today; if 05.x introduces a private science slice this is
-  // the place to add it.
-
-  // 07.1 stores the real Battle / Trade decks at G.foreign. Their order is
-  // secret to anyone who doesn't hold the Foreign role (including
-  // spectators); only the deck *length* leaks. Mirror the hand-side
-  // redaction by replacing each card with `null` while preserving length.
+  // 07.1 + 07.2 — the real Foreign state lives on G.foreign. Its hand,
+  // deck order, the in-flight battle (drawn-but-unresolved), and any
+  // pendingTrade are private to whoever holds Foreign. Only deck/hand
+  // *length* leaks (we replace contents with null and keep the array
+  // shape).
   let foreign = G.foreign;
   if (!has('foreign') && foreign !== undefined) {
     foreign = {
       ...foreign,
+      hand: redactHand(foreign.hand),
       battleDeck: redactDeckOrder(foreign.battleDeck),
       tradeDeck: redactDeckOrder(foreign.tradeDeck),
+      // Hide the in-flight battle card itself; keep `committed` visible
+      // because committed unit counts are a public consequence of the
+      // flip (the chief sees how many troops are in play).
+      inFlight: foreign.inFlight
+        ? { ...foreign.inFlight, battle: foreign.inFlight.battle ? null : null }
+        : foreign.inFlight,
+      // 07.5 pending trade is held by Foreign waiting on chief's
+      // decision; the chief needs to see the card to decide, but
+      // other seats just learn one is pending. We strip it for
+      // non-foreign+non-chief viewers.
+      pendingTrade: has('chief') ? foreign.pendingTrade : undefined,
     };
+  }
+
+  // 05.3 distributes tech cards into per-role private hands. Chief gets
+  // gold-color techs, Domestic gets green-color techs (techHand),
+  // Science gets blue-color techs (science.hand). Each is private to
+  // its holding seat.
+  let chief = G.chief;
+  if (!has('chief') && chief !== undefined && chief.hand !== undefined) {
+    chief = { ...chief, hand: redactHand(chief.hand) };
+  }
+  let domestic = G.domestic;
+  if (!has('domestic') && domestic !== undefined) {
+    const next = { ...domestic };
+    if (next.hand !== undefined) next.hand = redactHand(next.hand);
+    if (next.techHand !== undefined) next.techHand = redactHand(next.techHand);
+    domestic = next;
+  }
+  let science = G.science;
+  if (!has('science') && science !== undefined && science.hand !== undefined) {
+    science = { ...science, hand: redactHand(science.hand) };
+  }
+
+  // 08.1 — every role's event-card hand. Each color belongs to exactly
+  // one role (chief=gold, science=blue, domestic=green, foreign=red);
+  // a viewer sees only the hand for the colors of roles they hold.
+  // `used` and `playedThisRound` stay visible (those are public
+  // bookkeeping the cycle UI needs).
+  let events = G.events;
+  if (events !== undefined) {
+    const colorByRole: Record<Role, 'gold' | 'blue' | 'green' | 'red'> = {
+      chief: 'gold',
+      science: 'blue',
+      domestic: 'green',
+      foreign: 'red',
+    };
+    const nextHands = { ...events.hands };
+    for (const role of ['chief', 'science', 'domestic', 'foreign'] as Role[]) {
+      if (has(role)) continue;
+      const color = colorByRole[role];
+      const seat = trySeatOfRole(G.roleAssignments, role);
+      if (seat === null) continue;
+      const perColor = nextHands[color];
+      if (!perColor) continue;
+      const arr = perColor[seat];
+      if (!Array.isArray(arr)) continue;
+      nextHands[color] = { ...perColor, [seat]: redactHand(arr) };
+    }
+    events = { ...events, hands: nextHands };
+  }
+
+  // 08.2 awaiting-input parks an effect a seat is resolving (e.g. a
+  // swapTwoScienceCards prompt). The effect itself describes what
+  // they're picking from, which can be sensitive — only the seat
+  // actually resolving needs it. We drop other seats' entries entirely
+  // (rather than null-ing them) since the type is
+  // `Record<PlayerID, EventEffect>` and null isn't assignable.
+  let awaitingInput = G._awaitingInput;
+  if (awaitingInput !== undefined) {
+    const viewerSeat =
+      playerID === null || playerID === undefined ? null : playerID;
+    const filtered: typeof awaitingInput = {};
+    for (const [seat, parked] of Object.entries(awaitingInput)) {
+      if (viewerSeat !== null && seat === viewerSeat) {
+        filtered[seat] = parked;
+      }
+      // Other seats: omitted. Presence/absence still leaks (callers
+      // can tell *whether* a peer is mid-prompt) but the effect
+      // payload doesn't.
+    }
+    awaitingInput = filtered;
   }
 
   // 08.4 — opponent wander deck. The deck order is hidden from EVERY
   // viewer (including the chief seat) — there's no role that "owns" the
   // opponent's hand. `currentlyApplied` and `discard` stay visible so
-  // observers can see what just hit the village. Only the `deck`
-  // field's order is opaque; its length is preserved so the UI can show
-  // the remaining-card count.
+  // observers can see what just hit the village.
   let opponent = G.opponent;
   if (opponent !== undefined) {
     opponent = {
@@ -211,11 +287,26 @@ export const playerViewFor = (
   if (
     hands === G.hands &&
     foreign === G.foreign &&
+    chief === G.chief &&
+    domestic === G.domestic &&
+    science === G.science &&
+    events === G.events &&
+    awaitingInput === G._awaitingInput &&
     opponent === G.opponent
   ) {
     return { ...G };
   }
-  return { ...G, hands, foreign, opponent };
+  return {
+    ...G,
+    hands,
+    foreign,
+    chief,
+    domestic,
+    science,
+    events,
+    _awaitingInput: awaitingInput,
+    opponent,
+  };
 };
 
 /**
