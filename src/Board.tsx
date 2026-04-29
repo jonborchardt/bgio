@@ -75,11 +75,15 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
   const expanded = (role: 'chief' | 'science' | 'domestic' | 'foreign') =>
     isSolo || localRoles.includes(role);
 
-  // 14.3 — hide the standalone CenterMat row when the chief panel is
-  // visible. ChiefPanel's CircleEditors already render every non-chief
-  // seat's circle plus the bank summary; the standalone row was a
-  // duplicate that confused playtesters.
-  const showCenterMat = !expanded('chief');
+  // 14.3 + 14.16 — hide the standalone CenterMat row only when the
+  // chief panel is ACTUALLY rendering (panel slot expanded AND we're
+  // in chiefPhase). 14.3's original `!expanded('chief')` gate also
+  // hid the mat in `othersPhase` for any seat that holds the chief
+  // role — including 2-player chief+science, where the mat is the
+  // only place to see seat circles during othersPhase.
+  const chiefPanelVisible =
+    expanded('chief') && ctx.phase === 'chiefPhase';
+  const showCenterMat = !chiefPanelVisible;
 
   return (
     <Box sx={{ width: 'min(100%, 60rem)', display: 'grid', gap: 3 }}>
