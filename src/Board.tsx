@@ -225,17 +225,26 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
         }
       />
 
-      {/* 10.5: chat lives below the StatusBar as a sibling of BoardShell.
-          `chatMessages` and `sendChatMessage` are bgio-Client-provided
-          props (see boardgame.io's BoardProps definition); they're
-          undefined under the headless test Client, so we tolerate that. */}
-      <Stack component="section" aria-label="Chat" spacing={1}>
-        <ChatPane chatMessages={props.chatMessages ?? []} />
-        <ChatComposer
-          onSend={(t) => props.sendChatMessage?.({ text: t, ts: Date.now() })}
-          disabled={props.sendChatMessage === undefined}
-        />
-      </Stack>
+      {/* 10.5 + 14.7: chat lives below the StatusBar as a sibling of
+          BoardShell. `chatMessages` and `sendChatMessage` are
+          bgio-Client-provided props that only exist under the
+          multiplayer transport — hot-seat has no transport, so we
+          render nothing rather than a permanently-empty pane.
+          (Headless test Clients also see no transport; the gate is
+          the same. Spectators in networked mode keep chat visible
+          read-only — `sendChatMessage` is undefined for them and
+          ChatComposer disables itself.) */}
+      {clientMode === 'networked' ? (
+        <Stack component="section" aria-label="Chat" spacing={1}>
+          <ChatPane chatMessages={props.chatMessages ?? []} />
+          <ChatComposer
+            onSend={(t) =>
+              props.sendChatMessage?.({ text: t, ts: Date.now() })
+            }
+            disabled={props.sendChatMessage === undefined}
+          />
+        </Stack>
+      ) : null}
 
       {/* 14.2 removed the legacy bottom "End my turn" stub that called
           `pass()`. Chief uses ChiefPanel's own "End my turn" button
