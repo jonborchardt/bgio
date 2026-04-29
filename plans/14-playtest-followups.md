@@ -129,6 +129,8 @@ This stage closes those gaps without re-litigating any of stages 01-13.
 | [14.12](14.12-active-seat-header.md) | Board header derives the active seat from `ctx.activePlayers` instead of `ctx.currentPlayer`. Surfaced by the post-14.1 / 14.2 smoke: round-2 `chiefPhase` mis-labelled "Player 4's turn". | `src/Board.tsx`, `src/ui/layout/activeSeat.ts` (new) |
 | [14.13](14.13-role-panel-done-state.md) | Role-panel "End my turn" button disables + relabels to "Turn ended" once the seat has flipped done. Surfaced by post-14.1 / 14.2 smoke: button stays enabled even though the move is now a no-op. | role panels under `src/ui/{science,domestic,foreign}/` |
 | [14.14](14.14-tsx-bgio-resolver.md) | Fix `npm run server:dev` boot — tsx 4.20 mis-resolves `boardgame.io/server` and other bgio subpath imports. Surfaced by 14.11 F1; blocks the live networked playtest. | `package.json` (scripts + devDependency), possibly `server/README.md` |
+| [14.15](14.15-assign-damage-dialog-state-reset.md) | AssignDamageDialog (14.10) blows away user edits on every Board re-render — `inPlay` array identity changes each tick, the events `useMemo` recomputes, and the reset `useEffect` fires. Surfaced by post-14.10 code review. | `src/ui/foreign/AssignDamageDialog.tsx` |
+| [14.16](14.16-centermat-chief-othersphase.md) | CenterMat hidden in `othersPhase` from a chief-holding seat (14.3 gate uses `expanded('chief')`, not "ChiefPanel actually rendering"). 2-player chief+science seat in `othersPhase` sees neither view. Surfaced by post-14.3 code review. | `src/Board.tsx` |
 
 ## Order
 
