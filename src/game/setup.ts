@@ -8,7 +8,7 @@
 // grid + per-cell tech stacks land in 05.1.
 
 import type { Ctx } from 'boardgame.io';
-import type { PlayerID, ResourceBag, SettlementState } from './types.ts';
+import type { PlayerID, ResourceBag, Role, SettlementState } from './types.ts';
 import { assignRoles } from './roles.ts';
 import { initialBank } from './resources/bank.ts';
 import { bagOf } from './resources/bag.ts';
@@ -22,12 +22,26 @@ import { setupWanderDeck } from './opponent/wanderDeck.ts';
 import { fromBgio, type BgioRandomLike } from './random.ts';
 import { TURN_CAP_DEFAULT } from './endConditions.ts';
 
-// Per-match tunables passed through bgio's `Match.setupData` (or directly
-// to `setup({ ctx, random }, setupData)` in headless tests). Today the
-// only knob is `turnCap`; future fields (e.g. seeded scenarios) get added
-// here.
+// Per-match tunables passed through bgio's `Match.setupData` (or
+// directly to `setup({ ctx, random }, setupData)` in headless tests).
+// This is the canonical declaration — `src/lobby/lobbyClient.ts`
+// re-exports it so the lobby form and the engine can't drift apart.
 export interface SettlementSetupData {
+  /** Round cap before time-up triggers (08.5). Engine default = 80. */
   turnCap?: number;
+  /** When true, the match is solo: the seat that owns `humanRole` is
+   * the only human; every other seat is driven by a server-side bot
+   * (10.9 idle-takeover hooks dispatch through buildBotMap from
+   * src/lobby/soloConfig.ts). The engine itself does nothing
+   * different — it persists the choice on G so the server-side bot
+   * driver can read it. */
+  soloMode?: boolean;
+  /** Required when `soloMode === true`: which role the human plays. */
+  humanRole?: Role;
+  /** Per-match override on the bank's starting fill. Replaces the
+   * default `{ gold: 3 }` rather than merging — matches initialBank's
+   * V1 contract from 03.2. */
+  startingBank?: Partial<ResourceBag>;
 }
 
 // bgio passes its plugin APIs alongside `ctx`. We accept the shape loosely
@@ -81,7 +95,7 @@ export const setup = (
   }
 
   return {
-    bank: initialBank(),
+    bank: initialBank(setupData?.startingBank),
     centerMat: initialMat(roleAssignments),
     roleAssignments,
     round: 0,
@@ -92,6 +106,13 @@ export const setup = (
     // 08.5 time-up cap: per-match override from `setupData.turnCap`, default
     // 80. Stored on G so `endIf` doesn't need to look back at setupData.
     turnCap: setupData?.turnCap ?? TURN_CAP_DEFAULT,
+    // 11.7 — solo-mode bookkeeping. The engine itself doesn't branch on
+    // this; it's persisted so server-side bot drivers (10.9) can decide
+    // which seats to mark `isBot` on the bgio match metadata.
+    _setup: {
+      soloMode: setupData?.soloMode === true,
+      humanRole: setupData?.humanRole,
+    },
     hands,
     wallets,
     // Phase-progress flags — flipped by 04.2's chiefEndPhase move and the

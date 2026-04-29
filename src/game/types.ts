@@ -93,6 +93,16 @@ export interface SettlementState {
   phaseDone?: boolean;
   othersDone?: Record<PlayerID, boolean>;
 
+  // 11.7 — flat snapshot of the lobby's setupData choices that affect
+  // server-side runtime (bot driving, etc.). The engine itself doesn't
+  // branch on these; the 10.9 idle-takeover path consults them when
+  // deciding which seats to mark `isBot` on the bgio match metadata.
+  // Optional so headless test fixtures don't need to seed it.
+  _setup?: {
+    soloMode: boolean;
+    humanRole?: Role;
+  };
+
   // Per-seat stack of the previous stage(s) before the seat entered a
   // short-lived `playingEvent` interrupt stage (02.2). Typed as `string[]`
   // here rather than `StageName[]` to avoid a circular import with

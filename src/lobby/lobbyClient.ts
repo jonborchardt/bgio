@@ -9,29 +9,15 @@
 // same endpoints.
 
 import { LobbyClient } from 'boardgame.io/client';
-import type { ResourceBag, Role } from '../game/index.ts';
 import { getServerURL } from '../clientMode.ts';
 
-/** Match-creation payload that rides on `lobbyClient.createMatch(..., { setupData })`.
- *
- * Settlement's `setup(ctx, setupData)` reads these fields to override per-match
- * defaults (turn cap, solo toggle, starting bank). Keep this in lockstep with
- * the game-side `setup` consumer so a typo at the lobby form fails the build,
- * not silently at game start. */
-export interface SettlementSetupData {
-  /** Round cap before time-up triggers (08.5). Engine default = 80. */
-  turnCap?: number;
-  /** When true, the match is solo — server-side runBot workers (10.9) drive
-   * every non-human seat using `buildBotMap({ numPlayers, humanRole })`
-   * from `src/lobby/soloConfig.ts`. */
-  soloMode?: boolean;
-  /** Required when `soloMode === true`: which role the human plays. The
-   * seat that owns this role becomes the human seat; every other seat is
-   * driven by a composed bot covering its assigned roles. */
-  humanRole?: Role;
-  /** Per-match override on the bank's starting fill. Partial = merge over default. */
-  startingBank?: Partial<ResourceBag>;
-}
+/** Match-creation payload that rides on
+ * `lobbyClient.createMatch(..., { setupData })`. Settlement's
+ * `setup(ctx, setupData)` is the canonical declaration; we re-export
+ * the type here so the lobby surface and engine surface can't drift —
+ * a typo at the lobby form fails the build, not silently at game
+ * start. */
+export type { SettlementSetupData } from '../game/setup.ts';
 
 /** Construct one LobbyClient at module load. The bgio server URL is
  * resolved through the same `getServerURL()` networked-mode path uses,
