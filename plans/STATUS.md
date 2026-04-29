@@ -210,7 +210,7 @@ null when no `playerID` is set.
 | [14.5](14.5-game-over-banner.md) | pending |  |  |  | 08.5, 09.1 | Reads `ctx.gameover`; sticky win/timeUp banner. |
 | [14.6](14.6-phase-hints.md) | pending |  |  |  | 09.1, 14.1 | One-line "what you can do now" hint. |
 | [14.7](14.7-hot-seat-hide-chat.md) | pending |  |  |  | 10.2, 10.5 | Hide chat in hot-seat (no transport). |
-| [14.8](14.8-favicon.md) | in_progress | claude | plan/14.8-favicon | 2026-04-28 |  | Silence the favicon 404. |
+| [14.8](14.8-favicon.md) | done | claude | plan/14.8-favicon | 2026-04-28 |  | Done. public/favicon.svg + index.html link. |
 | [14.9](14.9-readme-demo-claim.md) | pending |  |  |  | 13.4, 14.1, 14.2 | Update README "Demo" line. |
 | [14.10](14.10-foreign-assign-damage-dialog.md) | pending |  |  |  | 07.3, 07.4, 07.7 | Real per-round absorber UI. |
 | [14.11](14.11-networked-playtest.md) | pending |  |  |  | 10.x, 12.7, 13.3, 14.1, 14.2 | E2E networked playtest; produces a notes file. |
