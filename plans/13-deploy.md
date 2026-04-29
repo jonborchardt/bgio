@@ -1,5 +1,11 @@
 # 13 — Deployment & persistence
 
+> **Status: done** (all sub-plans landed; see
+> [STATUS.md](STATUS.md) for the canonical per-row state).
+> Pre-deploy step on a fresh host: `npm install` so the native
+> `better-sqlite3` build runs. Render free-tier sleep is accepted;
+> the 10.6 reconnect spinner covers wake.
+
 ## Goal
 
 Ship two deployment modes; **networked is the headline**, hot-seat is

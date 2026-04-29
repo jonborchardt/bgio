@@ -1,5 +1,8 @@
 # 02 — Engine: turns, phases, stages, events, randomness, secret state
 
+> **Status: done** (all sub-plans landed; see
+> [STATUS.md](STATUS.md) for the canonical per-row state).
+
 ## Goal
 
 Model a full round as bgio phases / stages so an empty round runs

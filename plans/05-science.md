@@ -1,5 +1,8 @@
 # 05 — Role: Science
 
+> **Status: done** (all sub-plans landed; see
+> [STATUS.md](STATUS.md) for the canonical per-row state).
+
 ## Goal
 
 Implement game-design.md §Science: science-card grid, partial payments toward

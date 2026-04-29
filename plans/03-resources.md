@@ -1,5 +1,8 @@
 # 03 — Resources & center mat
 
+> **Status: done** (all sub-plans landed; see
+> [STATUS.md](STATUS.md) for the canonical per-row state).
+
 ## Goal
 
 Model every token (gold, wood, stone, steel, worker, horse, …), the central

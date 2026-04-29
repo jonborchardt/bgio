@@ -1,5 +1,8 @@
 # 01 — Foundations
 
+> **Status: done** (all sub-plans landed; see
+> [STATUS.md](STATUS.md) for the canonical per-row state).
+
 ## Goal
 
 Replace the Card Sweep skeleton with a typed Settlement skeleton that compiles,

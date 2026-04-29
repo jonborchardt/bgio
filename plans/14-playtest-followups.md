@@ -1,5 +1,9 @@
 # 14 — Playtest follow-ups
 
+> **Status: pending** (none of the 11 sub-plans started; see
+> [STATUS.md](STATUS.md) for the canonical per-row state).
+> 14.1 + 14.2 are the unblockers.
+
 Stage 14 is the post-V1 punch list driven by the 2026-04-29 hot-seat
 playtest. The original `notes/` directory has been deleted; the full
 session context is preserved below so this plan stands on its own.

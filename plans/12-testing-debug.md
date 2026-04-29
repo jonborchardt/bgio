@@ -1,5 +1,11 @@
 # 12 — Testing & debugging
 
+> **Status: done** (all sub-plans landed; see
+> [STATUS.md](STATUS.md) for the canonical per-row state).
+> Coverage gate is currently 80/85/70 (lines/functions/branches);
+> plan target is 90/90/80 — see `tests/coverage.note.md` for the
+> ratchet plan as content fills in.
+
 ## Goal
 
 Continuous quality discipline. Not a one-time stage — milestones land

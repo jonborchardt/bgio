@@ -1,5 +1,8 @@
 # 08 — Cross-cutting: events, opponent, win / lose
 
+> **Status: done** (all sub-plans landed; see
+> [STATUS.md](STATUS.md) for the canonical per-row state).
+
 ## Goal
 
 Wire the gameplay layers that touch every role: per-color event card decks,

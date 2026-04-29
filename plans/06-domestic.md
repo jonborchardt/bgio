@@ -1,5 +1,8 @@
 # 06 — Role: Domestic
 
+> **Status: done** (all sub-plans landed; see
+> [STATUS.md](STATUS.md) for the canonical per-row state).
+
 ## Goal
 
 Implement game-design.md §Domestic: building hand, in-play grid (with optional

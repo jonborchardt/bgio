@@ -1,5 +1,8 @@
 # 04 — Role: Chief
 
+> **Status: done** (all sub-plans landed; see
+> [STATUS.md](STATUS.md) for the canonical per-row state).
+
 ## Goal
 
 The Chief turn from game-design.md §Chief: sweep mat → optional gold-event →

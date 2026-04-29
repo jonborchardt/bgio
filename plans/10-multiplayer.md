@@ -1,5 +1,12 @@
 # 10 — Multiplayer infra
 
+> **Status: done** (all sub-plans landed; see
+> [STATUS.md](STATUS.md) for the canonical per-row state).
+> Caveats: `/auth` REST routes are mounted (review fix), but the
+> accounts + runs stores are in-memory; the SQLite swap is a deploy
+> concern (see 13.3). End-to-end networked playtest is unverified —
+> [14.11](14.11-networked-playtest.md) schedules it.
+
 ## Goal
 
 Move from hot-seat-only to seat-per-browser networked play, with a lobby,
