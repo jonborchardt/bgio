@@ -105,12 +105,32 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
           Science
         </Typography>
 
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Button
+            variant="contained"
+            disabled={!canAct || alreadyDone}
+            onClick={handleSeatDone}
+            aria-label="End my Science turn"
+            sx={{
+              bgcolor: (t) => t.palette.role.science.main,
+              color: (t) => t.palette.role.science.contrastText,
+              '&:hover': {
+                bgcolor: (t) => t.palette.role.science.dark,
+              },
+            }}
+          >
+            {alreadyDone ? 'Turn ended' : 'End my turn'}
+          </Button>
+        </Box>
+
         <Box
           aria-label="Science grid"
           sx={{
             display: 'grid',
-            gridTemplateColumns: `repeat(${science.grid.length}, minmax(0, 1fr))`,
-            gap: 1,
+            gridTemplateColumns: `repeat(${science.grid.length}, minmax(8rem, 1fr))`,
+            gap: 0.75,
+            overflowX: 'auto',
+            pb: 0.5,
           }}
         >
           {science.grid.map((column, ci) => (
@@ -161,28 +181,6 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
               })}
             </Stack>
           ))}
-        </Box>
-
-        {/* 14.2 — "End my turn" footer. Without this move + button the
-            othersPhase endIf cannot trip from any UI (review fix #1
-            stripped the test-only `__testSetOthersDone` from the
-            production move set). */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <Button
-            variant="contained"
-            disabled={!canAct || alreadyDone}
-            onClick={handleSeatDone}
-            aria-label="End my Science turn"
-            sx={{
-              bgcolor: (t) => t.palette.role.science.main,
-              color: (t) => t.palette.role.science.contrastText,
-              '&:hover': {
-                bgcolor: (t) => t.palette.role.science.dark,
-              },
-            }}
-          >
-            {alreadyDone ? 'Turn ended' : 'End my turn'}
-          </Button>
         </Box>
       </Stack>
     </Paper>

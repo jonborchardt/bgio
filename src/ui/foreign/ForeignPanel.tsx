@@ -100,6 +100,39 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
           Foreign
         </Typography>
 
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+          <Button
+            variant="contained"
+            disabled={!canActOnTurn || upkeepPaid}
+            onClick={handleUpkeep}
+            aria-label="Pay upkeep"
+            sx={{
+              bgcolor: (t) => t.palette.role.foreign.main,
+              color: (t) => t.palette.role.foreign.contrastText,
+              '&:hover': {
+                bgcolor: (t) => t.palette.role.foreign.dark,
+              },
+            }}
+          >
+            {upkeepPaid ? 'Upkeep paid' : 'Pay Upkeep'}
+          </Button>
+          <Button
+            variant="contained"
+            disabled={(!canActOnTurn && !canAssignDamage) || alreadyDone}
+            onClick={handleSeatDone}
+            aria-label="End my Foreign turn"
+            sx={{
+              bgcolor: (t) => t.palette.role.foreign.main,
+              color: (t) => t.palette.role.foreign.contrastText,
+              '&:hover': {
+                bgcolor: (t) => t.palette.role.foreign.dark,
+              },
+            }}
+          >
+            {alreadyDone ? 'Turn ended' : 'End my turn'}
+          </Button>
+        </Box>
+
         <Stack
           direction="row"
           spacing={1}
@@ -155,44 +188,6 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
           canAssignDamage={canAssignDamage}
           onAssignDamage={handleAssignDamage}
         />
-
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-          <Button
-            variant="contained"
-            disabled={!canActOnTurn || upkeepPaid}
-            onClick={handleUpkeep}
-            aria-label="Pay upkeep"
-            sx={{
-              bgcolor: (t) => t.palette.role.foreign.main,
-              color: (t) => t.palette.role.foreign.contrastText,
-              '&:hover': {
-                bgcolor: (t) => t.palette.role.foreign.dark,
-              },
-            }}
-          >
-            {upkeepPaid ? 'Upkeep paid' : 'Pay Upkeep'}
-          </Button>
-          {/* 14.2 — "End my turn" — flips G.othersDone[seat]; bgio
-              transitions to endOfRound once every non-chief seat has.
-              Allowed from foreignTurn or foreignAwaitingDamage so the
-              seat is never stuck in a battle interrupt. 14.13 —
-              disables + relabels once the flag is set. */}
-          <Button
-            variant="contained"
-            disabled={(!canActOnTurn && !canAssignDamage) || alreadyDone}
-            onClick={handleSeatDone}
-            aria-label="End my Foreign turn"
-            sx={{
-              bgcolor: (t) => t.palette.role.foreign.main,
-              color: (t) => t.palette.role.foreign.contrastText,
-              '&:hover': {
-                bgcolor: (t) => t.palette.role.foreign.dark,
-              },
-            }}
-          >
-            {alreadyDone ? 'Turn ended' : 'End my turn'}
-          </Button>
-        </Box>
       </Stack>
     </Paper>
   );

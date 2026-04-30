@@ -96,6 +96,23 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
           Chief
         </Typography>
 
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Button
+            variant="contained"
+            disabled={!isChiefSeat || !isChiefPhase}
+            onClick={handleEndTurn}
+            sx={{
+              bgcolor: (t) => t.palette.role.chief.main,
+              color: (t) => t.palette.role.chief.contrastText,
+              '&:hover': {
+                bgcolor: (t) => t.palette.role.chief.dark,
+              },
+            }}
+          >
+            End my turn
+          </Button>
+        </Box>
+
         <Stack
           direction="row"
           spacing={1.5}
@@ -163,23 +180,6 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
             })
           )}
         </Stack>
-
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <Button
-            variant="contained"
-            disabled={!isChiefSeat || !isChiefPhase}
-            onClick={handleEndTurn}
-            sx={{
-              bgcolor: (t) => t.palette.role.chief.main,
-              color: (t) => t.palette.role.chief.contrastText,
-              '&:hover': {
-                bgcolor: (t) => t.palette.role.chief.dark,
-              },
-            }}
-          >
-            End my turn
-          </Button>
-        </Box>
       </Stack>
     </Paper>
   );

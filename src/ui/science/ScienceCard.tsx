@@ -53,14 +53,14 @@ export function ScienceCard({
     <Box
       aria-label={`Science card ${card.id}`}
       sx={{
-        px: 1.5,
-        py: 1,
+        px: 1,
+        py: 0.75,
         borderRadius: 1,
         border: '1px solid',
         borderColor: (t) => t.palette.eventColor[card.color].main,
         bgcolor: (t) => t.palette.card.surface,
         opacity: dimmed ? 0.45 : 1,
-        minWidth: '11rem',
+        minWidth: 0,
       }}
     >
       <Stack spacing={0.75}>
@@ -90,16 +90,17 @@ export function ScienceCard({
               <Stack
                 key={resource}
                 direction="row"
-                spacing={1}
-                sx={{ alignItems: 'center' }}
+                spacing={0.5}
+                sx={{ alignItems: 'center', minWidth: 0 }}
               >
                 <Box
                   aria-hidden
                   sx={{
-                    width: '0.625rem',
-                    height: '0.625rem',
+                    width: '0.5rem',
+                    height: '0.5rem',
                     borderRadius: '50%',
                     bgcolor: (t) => t.palette.resource[resource].main,
+                    flexShrink: 0,
                   }}
                 />
                 <Typography
@@ -108,7 +109,11 @@ export function ScienceCard({
                     color: (t) => t.palette.resource[resource].main,
                     fontWeight: 600,
                     textTransform: 'capitalize',
-                    minWidth: '5.5rem',
+                    flex: 1,
+                    minWidth: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   {resource}: {have}/{need}
@@ -119,6 +124,7 @@ export function ScienceCard({
                   disabled={!canAct || !isLowest || have >= need}
                   onClick={() => onContribute(resource, 1)}
                   aria-label={`Contribute +1 ${resource} to ${card.id}`}
+                  sx={{ flexShrink: 0, minWidth: '2rem', px: 0.5 }}
                 >
                   +1
                 </Button>

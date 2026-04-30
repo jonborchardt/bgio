@@ -100,18 +100,6 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
           Domestic
         </Typography>
 
-        <Hand
-          hand={[...domestic.hand]}
-          selectedName={selectedCardName}
-          onSelect={handleSelect}
-        />
-
-        <BuildingGrid
-          grid={domestic.grid}
-          activeCard={activeCard}
-          onPlace={handlePlace}
-        />
-
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
           <Button
             variant="contained"
@@ -128,9 +116,6 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
           >
             {alreadyProduced ? 'Produced' : 'Produce'}
           </Button>
-          {/* 14.2 — "End my turn" — flips G.othersDone[seat]; bgio
-              transitions to endOfRound once every non-chief seat has.
-              14.13 — disables + relabels once the flag is set. */}
           <Button
             variant="contained"
             disabled={!canAct || alreadyDone}
@@ -147,6 +132,19 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
             {alreadyDone ? 'Turn ended' : 'End my turn'}
           </Button>
         </Box>
+
+        <Hand
+          hand={[...domestic.hand]}
+          selectedName={selectedCardName}
+          onSelect={handleSelect}
+          playerGold={G.wallets[playerID]?.gold ?? 0}
+        />
+
+        <BuildingGrid
+          grid={domestic.grid}
+          activeCard={activeCard}
+          onPlace={handlePlace}
+        />
       </Stack>
     </Paper>
   );

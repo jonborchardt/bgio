@@ -11,9 +11,19 @@ export interface HandProps {
   hand: BuildingDef[];
   selectedName?: string;
   onSelect: (name: string) => void;
+  // Filter the visible hand to cards costing at most `playerGold + AFFORD_SLACK`,
+  // so the panel doesn't drown the seat in cards they can't realistically buy
+  // this round. The selected card is always shown so a stale selection stays
+  // visible (and clearable) even after gold drops below the slack window.
+  playerGold: number;
 }
 
-export function Hand({ hand, selectedName, onSelect }: HandProps) {
+const AFFORD_SLACK = 20;
+
+export function Hand({ hand, selectedName, onSelect, playerGold }: HandProps) {
+  const visible = hand.filter(
+    (card) => card.cost <= playerGold + AFFORD_SLACK || card.name === selectedName,
+  );
   return (
     <Stack
       direction="row"
@@ -21,8 +31,8 @@ export function Hand({ hand, selectedName, onSelect }: HandProps) {
       aria-label="Domestic hand"
       sx={{ flexWrap: 'wrap', rowGap: 1 }}
     >
-      {hand.length === 0 ? null : (
-        hand.map((card) => {
+      {visible.length === 0 ? null : (
+        visible.map((card) => {
           const isSelected = card.name === selectedName;
           return (
             <Button
