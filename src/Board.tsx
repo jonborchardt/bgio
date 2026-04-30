@@ -1,120 +1,181 @@
-import { Box, ButtonBase, Paper, Typography } from '@mui/material';
+// Board (04.5) — top-level board component.
+//
+// Linear, full-width stack:
+//   1. StatusBar (phase / player / round / mode)
+//   2. SeatPicker (debug seat chooser)
+//   3. CenterMat (per-seat player mats: in / out / stash + trade slot)
+//   4. Role panel(s) the local seat owns — the player's action surface
+
+import { useContext } from 'react';
+import { Box, Stack, Typography } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
-import type { CardSweepState } from './game.ts';
+import type { PlayerID, SettlementState } from './game/index.ts';
+import { rolesAtSeat } from './game/roles.ts';
+import { detectMode } from './clientMode.ts';
+import type { StatusBarMode } from './ui/layout/StatusBar.tsx';
+import { ChiefPanel } from './ui/chief/ChiefPanel.tsx';
+import { SciencePanel } from './ui/science/SciencePanel.tsx';
+import { DomesticPanel } from './ui/domestic/DomesticPanel.tsx';
+import { ForeignPanel } from './ui/foreign/ForeignPanel.tsx';
+import { GameOverBanner } from './ui/layout/GameOverBanner.tsx';
+import { PhaseHint } from './ui/layout/PhaseHint.tsx';
+import { SeatPicker } from './ui/layout/SeatPicker.tsx';
+import { SeatPickerContext } from './ui/layout/SeatPickerContext.ts';
+import { pickActiveSeat } from './ui/layout/activeSeat.ts';
+import { StatusBar } from './ui/layout/StatusBar.tsx';
+import type { GameOutcome } from './game/endConditions.ts';
+import { CenterMat } from './ui/mat/CenterMat.tsx';
+import { ChatSection } from './ui/chat/ChatSection.tsx';
 
-export function CardSweepBoard({ G, ctx, moves }: BoardProps<CardSweepState>) {
-  const winner = ctx.gameover?.winner as string | undefined;
-  const draw = ctx.gameover?.draw as boolean | undefined;
-  const gameOver = winner !== undefined || draw === true;
+export function SettlementBoard(props: BoardProps<SettlementState>) {
+  const { G, ctx, playerID } = props;
+  const gameOver = ctx.gameover !== undefined;
 
-  const status = gameOver
-    ? draw
-      ? 'Draw!'
-      : `Player ${Number(winner) + 1} wins!`
-    : `Player ${Number(ctx.currentPlayer) + 1}'s turn`;
+  // 14.1 — App.tsx owns the hot-seat seat state and exposes a setter
+  // through `SeatPickerContext`. In networked mode the provider is
+  // absent (the lobby is the authority on which seat you hold), so
+  // the picker falls back to its read-only badge.
+  const seatCtx = useContext(SeatPickerContext);
+
+  // 10.8 — spectator mode. `playerID === null` is bgio's "no seat,
+  // watching only" connection (02.4's `playerView(G, ctx, null)`
+  // redacts secret state). `undefined` happens under headless test
+  // Clients that don't bind a player; we treat that as "no local seat"
+  // for read-only purposes too (panels render summary view, no action
+  // buttons). We split the two:
+  //   - isSpectator: explicitly watching (null) — show "Spectating" tag.
+  //   - hasSeat: there is a local seat (defined and not null).
+  const isSpectator = playerID === null;
+  const hasSeat = playerID !== undefined && playerID !== null;
+
+  // 14.3 — actual client mode for the StatusBar "Mode" tag. A null
+  // local seat in networked mode is a spectator (10.8); everything
+  // else just reports the build-time mode.
+  const clientMode = detectMode();
+  const statusMode: StatusBarMode | undefined = isSpectator
+    ? 'spectating'
+    : clientMode === 'networked'
+      ? 'networked'
+      : 'hotseat';
+
+  // A role's panel is rendered when the local seat holds it OR when we're
+  // in a single-player game (hot-seat solo: everything visible).
+  const localRoles = hasSeat
+    ? rolesAtSeat(G.roleAssignments, playerID)
+    : [];
+  const isSolo = ctx.numPlayers === 1;
+  const expanded = (role: 'chief' | 'science' | 'domestic' | 'foreign') =>
+    isSolo || localRoles.includes(role);
 
   return (
-    <Box sx={{ width: 'min(100%, 36rem)', display: 'grid', gap: 3 }}>
+    <Box sx={{ width: 'min(100%, 60rem)', mx: 'auto', display: 'grid', gap: 3 }}>
       <Box component="header" sx={{ textAlign: 'center' }}>
         <Typography
           variant="h4"
           component="h1"
           sx={{ fontWeight: 700, letterSpacing: '0.02em', mb: 0.5 }}
         >
-          Card Sweep
+          Settlement
         </Typography>
         <Typography
           sx={{
             fontWeight: 500,
-            color: (t) => (gameOver ? t.palette.status.muted : t.palette.status.active),
+            color: (t) =>
+              gameOver ? t.palette.status.muted : t.palette.status.active,
           }}
         >
-          {status}
+          {gameOver
+            ? 'Game over'
+            : (() => {
+                const active = pickActiveSeat({
+                  activePlayers: ctx.activePlayers,
+                  currentPlayer: ctx.currentPlayer,
+                  roleAssignments: G.roleAssignments,
+                  othersDone: G.othersDone,
+                  localSeat: playerID,
+                });
+                return `${active.label}'s turn`;
+              })()}
         </Typography>
       </Box>
 
-      <Box
-        component="section"
-        sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}
-      >
-        {(['0', '1'] as const).map((pid) => {
-          const active = ctx.currentPlayer === pid && !gameOver;
-          return (
-            <Paper
-              key={pid}
-              elevation={0}
-              sx={{
-                display: 'grid',
-                gap: 0.5,
-                px: 2,
-                py: 1.5,
-                textAlign: 'center',
-                bgcolor: (t) => t.palette.card.surface,
-                border: '1px solid',
-                borderColor: (t) =>
-                  active ? t.palette.status.active : 'transparent',
-              }}
-            >
-              <Typography variant="body2" sx={{ color: (t) => t.palette.status.muted }}>
-                Player {Number(pid) + 1}
-              </Typography>
-              <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                {G.scores[pid] ?? 0}
-              </Typography>
-            </Paper>
-          );
-        })}
+      {gameOver ? (
+        <GameOverBanner
+          outcome={ctx.gameover as GameOutcome}
+          onPlayAgain={
+            typeof window !== 'undefined'
+              ? () => window.location.reload()
+              : undefined
+          }
+        />
+      ) : null}
+
+      {/* 1. Phase / player / round / mode bar. */}
+      <Box>
+        <StatusBar
+          phase={ctx.phase ?? null}
+          currentPlayer={ctx.currentPlayer}
+          round={G.round}
+          mode={statusMode}
+        />
+        <Box sx={{ mt: 0.5 }}>
+          <PhaseHint
+            phase={ctx.phase ?? null}
+            stage={hasSeat ? ctx.activePlayers?.[playerID] : undefined}
+            rolesAtSeat={localRoles}
+            isSpectator={isSpectator}
+          />
+        </Box>
       </Box>
 
-      <Box
-        component="section"
-        aria-label="Cards on the table"
-        sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5 }}
-      >
-        {G.cards.map((value, idx) => {
-          const taken = value === null;
-          return (
-            <ButtonBase
-              key={idx}
-              disabled={taken || gameOver}
-              onClick={() => moves.pickCard(idx)}
-              aria-label={taken ? 'Card already taken' : `Take card ${value}`}
-              focusRipple
-              sx={{
-                aspectRatio: '3 / 4',
-                fontSize: taken ? '1.5rem' : '2.5rem',
-                fontWeight: 700,
-                borderRadius: 1.5,
-                border: '2px solid transparent',
-                bgcolor: (t) =>
-                  taken ? t.palette.card.takenSurface : t.palette.card.surface,
-                color: (t) => (taken ? t.palette.card.takenText : t.palette.card.text),
-                transition:
-                  'transform 80ms ease, border-color 120ms ease, background 120ms ease',
-                '&:hover:not(.Mui-disabled)': {
-                  borderColor: (t) => t.palette.status.active,
-                  transform: 'translateY(-2px)',
-                },
-                '&.Mui-disabled': {
-                  cursor: 'not-allowed',
-                },
-              }}
-            >
-              {taken ? '·' : value}
-            </ButtonBase>
-          );
-        })}
-      </Box>
+      {/* 2. Debug player view chooser. Hot-seat: tab strip to switch seat.
+          Networked: read-only "You are Player N" badge. Spectators (null
+          playerID) get nothing — they have no seat to mirror. */}
+      {playerID !== undefined && playerID !== null ? (
+        <SeatPicker
+          numPlayers={ctx.numPlayers as 1 | 2 | 3 | 4}
+          current={playerID as PlayerID}
+          roleAssignments={G.roleAssignments}
+          onChange={
+            seatCtx ? (seat: PlayerID) => seatCtx.setSeat(seat) : undefined
+          }
+        />
+      ) : null}
 
-      <Box
-        component="footer"
-        sx={{ textAlign: 'center', color: (t) => t.palette.status.muted }}
-      >
-        <Typography variant="body2">
-          Pick the highest-value card on your turn. Take turns until all nine cards are gone — the
-          higher total score wins.
-        </Typography>
-      </Box>
+      {/* 3. Player mats / stats of all seats (incl. other players). */}
+      <CenterMat {...props} />
+
+      {/* 4. Chat — placed above the role action area so it's visible
+          while a player is deciding what to do. `chatMessages` and
+          `sendChatMessage` are bgio-Client-provided props under both
+          the SocketIO and Local transports, so hot-seat and networked
+          both render the panel. Spectators (no `sendChatMessage`) get
+          a read-only view. ChatSection adds an optimistic local outbox
+          so the sender always sees their own message even if bgio's
+          Local transport echo is dropped or duplicated under hot-seat
+          seat-switching. */}
+      {props.sendChatMessage !== undefined || (props.chatMessages?.length ?? 0) > 0 ? (
+        <ChatSection
+          chatMessages={props.chatMessages ?? []}
+          sendChatMessage={props.sendChatMessage}
+          localSender={playerID ?? null}
+          roleAssignments={G.roleAssignments}
+        />
+      ) : null}
+
+      {/* 5. The local seat's action element(s) — the role panel(s) the
+          local player owns. In solo mode (hot-seat 1p), all four render. */}
+      <Stack spacing={3}>
+        {expanded('chief') ? <ChiefPanel {...props} /> : null}
+        {expanded('science') ? <SciencePanel {...props} /> : null}
+        {expanded('domestic') ? <DomesticPanel {...props} /> : null}
+        {expanded('foreign') ? <ForeignPanel {...props} /> : null}
+      </Stack>
+
+      {/* 14.2 removed the legacy bottom "End my turn" stub that called
+          `pass()`. Chief uses ChiefPanel's own "End my turn" button
+          (chiefEndPhase); every non-chief role uses the matching
+          per-panel `<role>SeatDone` button. */}
     </Box>
   );
 }

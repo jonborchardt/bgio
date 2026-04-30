@@ -1,0 +1,52 @@
+# 13.2 — Server deploy validator.
+#
+# The actual deploy is git-driven by Render via `render.yaml`: Render watches
+# the `main` branch and rebuilds whenever it changes. This workflow's job is
+# to fail loudly on a server build break **before** Render attempts deploy,
+# so a broken push doesn't sit in the Render build queue waiting to fail.
+#
+# We only run on changes that could affect the server (server/, shared
+# src/game/, server-relevant configs). The Pages-only paths trigger
+# deploy-pages.yml separately.
+
+name: deploy-server
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "server/**"
+      - "src/game/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig*.json"
+      - "render.yaml"
+      - ".github/workflows/deploy-server.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-server-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Typecheck-only build for V1 — emit is handled at runtime by `tsx`,
+      # matching the server Dockerfile. Once we move to a compiled bundle
+      # this step can swap to a real build.
+      - name: Server typecheck
+        run: npm run server:build

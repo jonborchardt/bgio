@@ -1,0 +1,53 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    // Plan 10.1 calls for `module: nodenext`, but our shared `src/` tree
+    // already imports `*.json` and uses `.ts` suffix on relative imports
+    // (matching the Vite-side `bundler` resolution that the React app
+    // uses). Switching the whole tree to nodenext-strict ESM would require
+    // import attributes (`with { type: 'json' }`) on every JSON import,
+    // which would split the conventions the React app already lives with.
+    //
+    // For V1 we use bundler-style resolution here too and rely on `tsx`
+    // (`server:dev`) to execute. 13.2 (deploy) is where the build story
+    // gets resolved — likely by running through `tsx` in production or
+    // by adding a small esbuild bundle step.
+    "module": "esnext",
+    "moduleResolution": "bundler",
+
+    "jsx": "react-jsx",
+
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "composite": true,
+    "noEmit": true,
+    "rootDir": "..",
+    "outDir": "./dist",
+
+    "types": []
+  },
+  "include": [
+    "index.ts",
+    "storage/**/*.ts",
+    "auth/**/*.ts",
+    "runs/**/*.ts",
+    "idle/**/*.ts",
+    "../src/game/**/*.ts",
+    "../src/data/**/*.ts",
+    "../src/data/**/*.json"
+  ]
+}

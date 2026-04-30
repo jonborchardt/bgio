@@ -4,30 +4,109 @@ Project-specific guidance for Claude Code working in this repo.
 
 ## What this project is
 
-A minimal **boardgame.io + React + TypeScript + Vite** starter that ships a working two-player
-hot-seat card game (Card Sweep) and deploys to GitHub Pages via the workflow at
+A **boardgame.io + React + TypeScript + Vite** implementation of a four-role co-op-ish
+strategy game, codenamed **Settlement**. It ships two builds out of the same `src/`:
+
+- a **networked** build (the primary delivery) that talks to a bgio Koa `Server` under
+  `server/`, and
+- a **hot-seat** build (a fallback for local play / quick QA) that wires `Client` with the
+  `Local` transport.
+
+The repo is a single Vite app with a sibling `server/` directory — no monorepo, no extra
+package boundaries. The hot-seat build deploys to GitHub Pages via
 `.github/workflows/deploy-pages.yml`.
 
-The whole thing is intentionally small: a single Vite app at the repo root, no monorepo, no
-backend. boardgame.io runs entirely client-side via its React `Client` factory.
+## Project stance
+
+These are load-bearing assumptions. If a sub-plan or PR contradicts one, flag it before
+implementing.
+
+- **Network play is the primary delivery.** The bgio `Server` under `server/` is the
+  source of truth; the hot-seat build is a fallback, not the design target. UI / state
+  decisions should assume per-player views and per-player credentials.
+- **Default game is 4 players, 1 human + 3 bots.** Bots run server-side via
+  `Server({ bots })` driven by each role's `ai.enumerate(G, ctx, playerID)`. Don't design
+  flows that only make sense with 4 humans.
+- **No fail mode — only a win condition.** `endIf` / `onEnd` in
+  `src/game/endConditions.ts` only encode wins. Don't introduce loss states; pressure
+  systems should degrade outcomes, not end the match.
+- **"Settlement" is a codename.** A real name is deferred until the user picks one. Until
+  then, `Settlement` is the symbol exported from `src/game/`, but don't sprinkle the name
+  through unrelated copy — a future rename pass will be easier with fewer references.
 
 ## Layout you should know
 
-- `src/game.ts` — the pure game definition. Anything turn-order, state-shape, or win-condition
-  related goes here. It must stay free of React imports so the same logic can run in headless
-  tests via `boardgame.io/client`.
-- `src/Board.tsx` — the React board component. Receives `BoardProps<CardSweepState>` from
-  boardgame.io and dispatches moves via `moves.<name>(...)`.
-- `src/App.tsx` — wires `game` + `board` into a `Client({ ... })` instance. This is the only
-  place `boardgame.io/react` is imported.
+The game logic lives under `src/game/`, the React UI lives under `src/ui/`, JSON content
+plus typed loaders live under `src/data/`, and the bgio Koa server lives under `server/`.
+Tests under `tests/` mirror the `src/` shape, with shared factories in `tests/helpers/`.
+
+- `src/game/` — barrel; `src/game/index.ts` exports the `Settlement` game object plus the
+  public types. This is the only entry point UI / tests / server should import the game
+  from. It must stay free of React imports so the same logic runs headless via
+  `boardgame.io/client`.
+- `src/game/types.ts` — `SettlementState`, role / phase / stage enums, move payload types.
+- `src/game/setup.ts`, `src/game/moves.ts` — `setup(ctx, setupData)` and the move
+  implementations referenced from phases / stages.
+- `src/game/random.ts` — `RandomAPI` wrapper around bgio's `PluginRandom` so call sites
+  read as `random.shuffle(...)` / `random.d6()` etc. without reaching for `ctx.random`
+  directly.
+- `src/game/playerView.ts` — per-role redaction layered over `PlayerView.STRIP_SECRETS`.
+- `src/game/hooks.ts` — `registerRoundEndHook` / `runRoundEndHooks`; the queue role
+  modules push end-of-round callbacks into instead of cross-importing each other.
+- `src/game/endConditions.ts` — `endIf` / `onEnd` for the win condition. There is no
+  fail mode (see "Project stance"), so this file only encodes wins.
+- `src/game/roles.ts` — `assignRoles`, `seatOfRole`, `rolesAtSeat`. The single source of
+  truth for the seat <-> role mapping.
+- `src/game/phases/{chief,others,endOfRound,stages,index}.ts` — the bgio `phases` config.
+  `chief` is the chief's solo turn (its `turn.onBegin` adds the per-round chief gold
+  stipend and sweeps every non-chief seat's `mats[seat].out` into `G.bank`); `others`
+  runs the non-chief role stages in parallel via `turn.activePlayers` (its `turn.onBegin`
+  drains every `mats[seat].in` into `mats[seat].stash` and auto-fires `runProduceForSeat`
+  for every domestic seat — produce is engine plumbing, not a player-driven button);
+  `endOfRound` runs hooks + advances the round; `stages.ts` centralizes stage names.
+- `src/game/roles/{chief,science,domestic,foreign}/` — each role owns its move
+  implementations and any role-local helpers. Cross-role coordination goes through
+  `hooks.ts`, not direct imports. Notable shared moves: `chief/distribute.ts` accepts
+  signed amounts (push bank→`mats[target].in` and pull-back `in`→bank during the chief
+  phase); `foreign/tradeFulfill.ts` is open to **any** active seat with the goods (any
+  seat can fulfill the public trade slot and tick `settlementsJoined`); `foreign/
+  undoRelease.ts` reverses the most recent `foreignReleaseUnit` (a real move because
+  bgio's UNDO action is blocked under `setActivePlayers`).
+- `src/game/resources/{types,bag,bank,centerMat,playerMat,bankLog,moves}.ts` — resource
+  primitives. `playerMat.ts` defines the per-non-chief-seat `{ in, out, stash }` shape
+  populated by `setup` (chief acts on `G.bank` directly and owns no mat). `bankLog.ts`
+  is the audit trail: every mutation that touches `G.bank` calls `appendBankLog` so the
+  ChiefPanel tooltip can answer "where did the bank's current balance come from?".
+  `centerMat.ts` is now reduced to the single `tradeRequest` slot — the per-seat
+  resource circles it used to own were folded into `mats[seat].in` / `out`. `moves.ts`
+  exports `payFromStash`, the canonical spend helper used by every non-chief role's
+  purchase moves.
+- `src/game/events/`, `src/game/opponent/`, `src/game/ai/`, `src/game/plugins/` — event
+  cards, opponent / threat tracker, bgio `ai.enumerate` definitions, and any custom
+  bgio `Plugin`s the game needs.
+- `src/data/` — JSON content (`buildings.json`, `units.json`, `technologies.json`) plus
+  the typed loaders in `src/data/schema.ts` and `src/data/index.ts`. Imports always go
+  through the loaders (`BUILDINGS`, `UNITS`, `TECHNOLOGIES`, `BENEFIT_TOKENS`) — never
+  the raw JSON.
+- `src/ui/{layout,cards,resources,mat,deck,hand,chief,science,domestic,foreign,chat}/` —
+  React components, MUI primitives only. Per-role panels live under
+  `src/ui/<role>/`; shared chrome (board layout, card primitives, resource chips,
+  center mat, decks, hand) sits alongside.
+- `src/App.tsx` — wires `Settlement` + the active board into a `Client({ ... })`
+  instance. The only place `boardgame.io/react` is imported.
 - `src/main.tsx` — React root; mounts `<App />` into `#root` and wraps it in MUI's
   `ThemeProvider` + `CssBaseline`.
-- `src/theme.ts` — the single source of truth for visual tokens (ramps, semantic colors,
-  MUI palette module augmentation, the `theme` export consumed by `ThemeProvider`).
-- `tests/game.test.ts` — headless tests using `Client` from `boardgame.io/client` (NOT the React
-  one). When adding game logic, prefer adding tests here over UI tests.
-- `vite.config.ts` — also holds the Vitest config (jsdom, globals on). There is no separate
-  `vitest.config.ts`.
+- `src/theme.ts` — single source of truth for visual tokens (ramps, semantic colors,
+  per-role accents, MUI palette module augmentation, the `theme` export consumed by
+  `ThemeProvider`).
+- `server/` — bgio Koa `Server` plus storage adapters (`FlatFile` by default; pluggable
+  for `bgio-postgres` / `bgio-sqlite`). The networked build talks to this; the hot-seat
+  build does not.
+- `tests/` — mirrors `src/`; headless tests use `Client` from `boardgame.io/client`
+  (NOT the React one). Shared factories live in `tests/helpers/{makeClient,runMoves,seed}.ts`
+  — prefer those over rolling a new client per test.
+- `vite.config.ts` — also holds the Vitest config (jsdom, globals on). There is no
+  separate `vitest.config.ts`.
 
 ## Working conventions
 
@@ -39,9 +118,67 @@ backend. boardgame.io runs entirely client-side via its React `Client` factory.
 - Game state is mutated directly inside moves — boardgame.io wraps moves in Immer, so direct
   mutation is the idiomatic style. Don't return a new state object.
 - Use `INVALID_MOVE` from `boardgame.io/core` to reject illegal moves rather than throwing.
-- Hot-seat play is the default: `App.tsx` does not pass a `playerID` to `Client`, so whichever
-  player's turn it is can move from the same browser. If you add network multiplayer, that's
-  where to wire it.
+- Network play is the primary delivery (see "Project stance"). The hot-seat build wires
+  `Client` without a `playerID` so whichever player's turn it is can move from the same
+  browser; the networked build wires the SocketIO transport against `server/`.
+- ESLint bans `Math.random` inside `src/`. All randomness goes through `src/game/random.ts`
+  (which wraps bgio's `PluginRandom`) so games are deterministic and replayable.
+
+## Use boardgame.io when reasonable
+
+This project's premise is that **boardgame.io is the engine, not a starting point we
+outgrow**. Before writing infrastructure code, check whether bgio already ships it and
+prefer the built-in. We accept extra glue and small ergonomic cost in exchange for not
+maintaining a parallel system.
+
+Reach for the bgio export first for:
+
+- **Engine plumbing.** `phases`, `turn.order` / `turn.stages` / `turn.activePlayers`,
+  `events.endTurn` / `endPhase` / `setActivePlayers` / `endStage`, `playerView`,
+  `setup(ctx, setupData)`, `endIf`, `onEnd`. Don't hand-roll a state machine over moves
+  when phases/stages express it.
+- **Randomness.** The `random` plugin (`ctx.random.Shuffle`, `D6`, `Number`). `Math.random`
+  is banned in `src/`.
+- **Secret state.** `playerView` (with `PlayerView.STRIP_SECRETS` as a starting point) —
+  not a custom redactor.
+- **Client.** `Client` from `boardgame.io/react` for UI, `Client` from `boardgame.io/client`
+  for headless tests / replay drivers.
+- **Transports.** `Local` for hot-seat, `SocketIO` from `boardgame.io/multiplayer` for
+  networked. Don't write a custom transport.
+- **Server.** `Server` from `boardgame.io/server` (Koa). It already exposes the lobby REST
+  endpoints (`/games/:name/create`, `:matchID/join`, `:matchID/leave`,
+  `:matchID/playAgain`, etc.) — don't add parallel handlers.
+- **Lobby.** `Lobby` component from `boardgame.io/react` for the matchmaking UI;
+  `LobbyClient` from `boardgame.io/client` for headless REST calls. Customize via
+  `Lobby`'s `renderer` prop rather than rebuilding the flow.
+- **Storage.** Adapters that implement bgio's `Async` interface (`FlatFile` is built-in;
+  `bgio-postgres`, `bgio-sqlite`, etc. are community drop-ins). Don't define a parallel
+  `Storage` type — `Async` *is* the contract, and `new Server({ db })` accepts it directly.
+- **Chat.** `client.chatMessages` and `client.sendChatMessage(payload)` are built into
+  bgio 0.50.x. The Server transports and persists them. No custom plugin or move.
+- **Spectators.** `playerID === null` is automatically a spectator on both client and
+  server; `playerView` redacts for them. No special spectator infrastructure.
+- **Reconnect.** SocketIO transport already reconnects; we only persist credentials in
+  `localStorage`. Don't write a custom reconnect loop.
+- **Auth.** `authenticateCredentials` hook on `Server` is the integration point for
+  account systems. The `playerCredentials` returned by `joinMatch` is the token bgio
+  validates on every move.
+- **AI / bots.** `RandomBot` and `MCTSBot` from `boardgame.io/ai`; bots are configured
+  via the game's `ai.enumerate(G, ctx, playerID)` and via `Server({ bots })` /
+  `match.metadata.bots` so the server drives them. No client-side bot loops.
+- **Move log / replay.** `state.deltalog` and `client.log` are bgio's authoritative move
+  log; replay drives a headless `Client` through them. Don't invent a parallel event log.
+- **Debug panel.** bgio's `Client` accepts `debug={true}` — that's the panel. Don't build
+  a custom one unless a real gap appears.
+- **Plugins.** When a feature genuinely needs to live in match state (e.g., per-player
+  private hands beyond what `playerView` covers), write a bgio `Plugin` rather than a
+  parallel store. `PluginPlayer`, `PluginRandom`, `PluginEvents`, `PluginImmer` are the
+  canonical examples to imitate.
+
+When bgio's built-in falls short of a real requirement, layer a thin shell *over* the
+built-in (custom `renderer` prop, custom `Plugin`, wrapper component) — don't replace
+it. If a sub-plan or PR proposes hand-rolling something on this list, it should explain
+the specific reason bgio's version doesn't fit.
 
 ## UI + styling rules
 
@@ -56,11 +193,16 @@ peer deps). Do not introduce a parallel styling system.
   grouped by hue, step numbers = perceived luminance), the semantic `colors` object (`card`,
   `status`, `surface`, …), the MUI palette module augmentation (`declare module
   '@mui/material/styles'`), and the `theme` export consumed by `ThemeProvider`. New colors
-  must be added as a ramp slot first, then referenced from a semantic token — never a raw
-  hex literal in component code.
+  must be added as a ramp slot first, then referenced from a semantic token — **never a raw
+  hex literal in component code**. The 09.4 token pass made this a hard rule; the lint /
+  review bar is "no `#` hex outside `theme.ts`".
 - Read tokens through the theme: `sx={{ color: t => t.palette.card.takenText }}`. This stays
   type-safe via the module augmentation in `theme.ts`. Don't reach into `colors` or `ramps`
   directly from components when the value is already exposed on the palette.
+- **Per-role accents come from `palette.role.<role>`** (`palette.role.chief`,
+  `palette.role.science`, `palette.role.domestic`, `palette.role.foreign`). Role panels
+  under `src/ui/<role>/` should pull their primary accent from there rather than picking
+  a ramp slot inline, so the palette stays the one place a designer changes a role's color.
 - MUI's defaults handle spacing (`sx={{ p: 1.5 }}`), typography variants
   (`<Typography variant="h4">`), and breakpoints — use them. Don't redefine spacing scales
   or font sizes per component.
@@ -68,25 +210,88 @@ peer deps). Do not introduce a parallel styling system.
 ## Common commands
 
 ```bash
-npm run dev        # dev server (HMR)
-npm run build      # tsc -b && vite build → dist/
-npm run preview    # serve dist/ locally
-npm test           # vitest run
-npm run typecheck  # tsc -b --noEmit
+npm run dev               # Vite dev server (HMR) — hot-seat client
+npm run server:dev        # vite-node server/start.ts — bgio Koa server for networked
+npm run dev:full          # one-command bootstrap: server + client (concurrently)
+npm run build             # tsc -b && vite build → dist/ (default = hot-seat)
+npm run build:hotseat     # explicit hot-seat build (Local transport)
+npm run build:networked   # networked build (SocketIO transport, talks to server/)
+npm run preview           # serve dist/ locally
+npm test                  # vitest run
+npm run test:coverage     # vitest run --coverage
+npm run e2e:smoke         # Playwright smoke run (4-player, 1 human + 3 bots)
+npm run typecheck         # tsc -b --noEmit
 npm run lint
 ```
 
 ## When changing the game
 
-1. Update `CardSweepState` and the move signatures in `src/game.ts`.
-2. Update `src/Board.tsx` to render the new state and call the new moves.
-3. Update `tests/game.test.ts` — the headless client makes it easy to drive a full game from a
-   test.
+Game changes are role-scoped. The workflow is:
 
-When the game is no longer Card Sweep, also update the title in `index.html` and the README.
+1. **Pick the role's folder** under `src/game/roles/<role>/` (chief / science / domestic /
+   foreign). If the change is genuinely cross-role, it belongs in `src/game/hooks.ts` (for
+   end-of-round coordination), `src/game/phases/`, or `src/game/endConditions.ts` — not in
+   another role's folder.
+2. **Update types + moves.** Extend `SettlementState` (or a role-local slice of it) in
+   `src/game/types.ts`, then add / change the move implementations in the role folder.
+   Wire any new moves into the appropriate stage in `src/game/phases/`. If the move needs
+   randomness, take a `RandomAPI` from `src/game/random.ts` rather than touching
+   `ctx.random` directly.
+3. **Update tests** under `tests/` — they mirror `src/`, so a chief-stage move change goes
+   in `tests/game/roles/chief/`. Use the helpers in `tests/helpers/{makeClient,runMoves,seed}.ts`
+   instead of building a fresh client by hand. Headless client tests are cheaper than UI
+   tests; reach for them first.
+4. **Update the matching panel** under `src/ui/<role>/` so the role's UI surfaces the new
+   state and dispatches the new moves. Shared chrome (cards, resource chips, center mat)
+   lives outside the role folders — touch those only when the change is genuinely shared.
+5. If you add a card / unit / building / tech, edit the JSON under `src/data/` and let the
+   loader in `src/data/index.ts` re-export it. Don't import the JSON directly from game or
+   UI code — go through the typed loader.
+
+A future rename pass will move the codename "Settlement" to a real name; until then, leave
+the symbol alone and don't propagate the codename into copy.
 
 ## Deployment
 
-`.github/workflows/deploy-pages.yml` is a single-job-then-deploy workflow that runs on push to
-`main` and on manual dispatch. The repo's GitHub Pages source must be set to "GitHub Actions" in
-repo settings the first time.
+The hot-seat build deploys to GitHub Pages via
+`.github/workflows/deploy-pages.yml` (single-job-then-deploy, runs on push to `main` and on
+manual dispatch). The repo's GitHub Pages source must be set to "GitHub Actions" in repo
+settings the first time.
+
+The networked build deploys to Render as a Docker web service via `render.yaml` and
+`.github/workflows/deploy-server.yml` (push-triggered build validation; Render auto-deploys
+from the repo). Free-tier sleeps after ~15 min idle; the 10.6 reconnect spinner covers the
+wake window. Persistent disk at `/data` holds the SQLite DB.
+
+**Pre-deploy on a fresh host:** `npm install` so `better-sqlite3` (native build),
+`@playwright/test`, `@vitest/coverage-v8`, and `concurrently` resolve. The Dockerfile already
+installs Python 3 / make / g++ for the SQLite native compile.
+
+## Known V1 caveats / open follow-ups
+
+- **Hot-seat is single-tab playable end-to-end.** The seat picker tab strip lets the
+  local viewer drive any seat, the role panels ship real "End my turn" moves, and the
+  header reflects the active seat (not just `ctx.currentPlayer`). `Board.tsx` is now a
+  linear stack: status bar → seat picker → CenterMat (every seat's `mats[seat]` summary
+  + the trade slot, always rendered) → the local seat's role panel(s) → chat. The
+  CenterMat is the player-mat dashboard, not a chief-only widget — gated only by
+  player presence, not phase.
+- **Server runner is `vite-node`, not `tsx`.** 14.14 swapped it because tsx 4.x mis-resolves
+  bgio subpath imports (`boardgame.io/server`, `/core`, …). `npm run dev:server` now points at
+  `server/start.ts`, a thin wrapper that always boots — no ambient-detection block. The
+  Render Dockerfile uses the same runner.
+- **`__test*` moves** are gated behind `NODE_ENV=test` (review fix #1). Production builds
+  ship `<role>SeatDone` moves (14.2) and `chiefEndPhase` (04.2) — no test scaffolding leaks
+  into prod.
+- **Auth + accounts are in-memory.** The plan calls for SQLite-backed users / runs (10.7
+  follow-up); the V1 server boots with a Map-backed `accounts.ts`. The /auth REST routes
+  are mounted; rate-limit + body cap landed in review fix #10.
+- **In-flight content gaps:** events.json migrated to typed `gainResource` shape (review
+  fix ride-along). Tech / wander / event content is a starter set; balancing comes after
+  Stage 14.
+- **Networked playtest is still unverified end-to-end** in production-like conditions.
+  Resume steps for a human run: `npm install`, `npm run dev:full`, build the client with
+  `VITE_CLIENT_MODE=networked` (or visit the dev URL), register two accounts via
+  `<AuthForms>`, create a 2-player match in tab A, join from tab B, drive a round. The
+  server runner switch (vite-node) cleared the original boot blocker; the live run is the
+  next validation step.

@@ -1,37 +1,79 @@
-import { describe, expect, it } from 'vitest';
-import { Client } from 'boardgame.io/client';
-import { CardSweep } from '../src/game.ts';
+import { describe, expect, it, vi } from 'vitest';
+import { makeClient } from './helpers/makeClient.ts';
+import { runMoves } from './helpers/runMoves.ts';
+import { seedAfterChiefDistribution } from './helpers/seed.ts';
 
-describe('CardSweep', () => {
-  it('initializes nine non-null cards summing to 45', () => {
-    const client = Client({ game: CardSweep });
-    const { G } = client.getState()!;
-    expect(G.cards).toHaveLength(9);
-    expect(G.cards.every((c) => typeof c === 'number')).toBe(true);
-    expect(G.cards.reduce((a, b) => (a ?? 0) + (b ?? 0), 0)).toBe(45);
-    expect(G.scores).toEqual({ '0': 0, '1': 0 });
+describe('game smoke', () => {
+  it('boots a 2-player headless client with role assignments', () => {
+    const client = makeClient();
+    const state = client.getState()!;
+    expect(state.G.roleAssignments).toEqual({
+      '0': ['chief', 'science'],
+      '1': ['domestic', 'foreign'],
+    });
   });
 
-  it('awards a picked card to the current player and rejects re-picks', () => {
-    const client = Client({ game: CardSweep });
-    const before = client.getState()!.G.cards[0]!;
+  it('pass resolves cleanly under the phase skeleton', () => {
+    // Pre-02.1 this test asserted that `pass` rotated currentPlayer to '1'.
+    // That was the transitional `turn: { minMoves: 1, maxMoves: 1 }` cycling
+    // behavior; 02.1's phase skeleton pins active players to specific seats
+    // (chiefPhase -> chief seat only) so a cycle from 0 -> 1 is no longer
+    // legal. We just check that `pass` resolves without error and leaves the
+    // game in chiefPhase with the chief still active.
+    const client = makeClient();
+    expect(client.getState()!.ctx.currentPlayer).toBe('0');
+    expect(client.getState()!.ctx.phase).toBe('chiefPhase');
+    runMoves(client, [{ player: '0', move: 'pass' }]);
+    const after = client.getState()!;
+    expect(after.ctx.phase).toBe('chiefPhase');
+    // Chief seat (player '0' in a 2-player game) remains the lone active seat.
+    expect(Object.keys(after.ctx.activePlayers ?? {})).toEqual(['0']);
+  });
+});
 
-    client.moves.pickCard(0);
-    let state = client.getState()!;
-    expect(state.G.cards[0]).toBeNull();
-    expect(state.G.scores['0']).toBe(before);
-
-    client.moves.pickCard(0);
-    state = client.getState()!;
-    expect(state.G.scores['1'] ?? 0).toBe(0);
+describe('test helpers', () => {
+  it('makeClient() returns a client whose G matches Settlement setup for numPlayers=2', () => {
+    const client = makeClient();
+    const G = client.getState()!.G;
+    expect(G.roleAssignments).toEqual({
+      '0': ['chief', 'science'],
+      '1': ['domestic', 'foreign'],
+    });
+    expect(G.bank.gold).toBe(3);
+    expect(G.round).toBe(0);
+    expect(Object.keys(G.hands).sort()).toEqual(['0', '1']);
+    // Player mats: one per non-chief seat (2-player game → seat '1' is
+    // the only non-chief seat). centerMat just holds the trade slot.
+    expect(Object.keys(G.mats).sort()).toEqual(['1']);
+    expect(G.centerMat.tradeRequest).toBeNull();
   });
 
-  it('ends with a winner once every card is taken', () => {
-    const client = Client({ game: CardSweep });
-    for (let i = 0; i < 9; i++) client.moves.pickCard(i);
-    const { ctx, G } = client.getState()!;
-    expect(ctx.gameover).toBeDefined();
-    const total = (G.scores['0'] ?? 0) + (G.scores['1'] ?? 0);
-    expect(total).toBe(45);
+  it('runMoves with an unknown move leaves state unchanged', () => {
+    const client = makeClient();
+    // playerView (02.4) redacts per the active playerID, so snapshot
+    // before/after from the SAME viewing seat — runMoves switches the
+    // client's playerID to '0' for its first call, and getState() for
+    // an unset playerID would render the spectator-redacted view.
+    client.updatePlayerID('0');
+    const before = client.getState()!;
+    // Suppress the expected "unknown move" error so the test output stays clean.
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      runMoves(client, [{ player: '0', move: 'doesNotExist' }]);
+    } finally {
+      errSpy.mockRestore();
+    }
+    const after = client.getState()!;
+    expect(after.G).toEqual(before.G);
+    expect(after.ctx.currentPlayer).toBe(before.ctx.currentPlayer);
+    expect(after.ctx.turn).toBe(before.ctx.turn);
+  });
+
+  it('seedAfterChiefDistribution() returns deeply-equal states across two calls', () => {
+    const a = seedAfterChiefDistribution();
+    const b = seedAfterChiefDistribution();
+    expect(a).toEqual(b);
+    // Different object identity — pure factory, not a shared singleton.
+    expect(a).not.toBe(b);
   });
 });

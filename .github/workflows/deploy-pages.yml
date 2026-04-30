@@ -32,7 +32,11 @@ jobs:
         run: npm test
 
       - name: Build
-        run: npm run build
+        # 13.4 — pin to the explicit `build:hotseat` script so a future
+        # rename of `build` to default-networked doesn't silently change
+        # what GitHub Pages publishes. Pages is the demo path: hot-seat,
+        # no login, no run history.
+        run: npm run build:hotseat
 
       - uses: actions/configure-pages@v5
         with:
