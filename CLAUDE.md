@@ -16,6 +16,24 @@ The repo is a single Vite app with a sibling `server/` directory — no monorepo
 package boundaries. The hot-seat build deploys to GitHub Pages via
 `.github/workflows/deploy-pages.yml`.
 
+## Game design and rules
+
+The game's rules and design notes live under `docs/`, **not** under `src/data/`:
+
+- **`docs/Rules.md`** — the canonical end-user rules. Roles, seats, the round structure
+  (chief / others-in-parallel / end-of-round), resource flow (bank + per-seat
+  `in`/`out`/`stash`), per-role actions, the deterministic battle resolver, events,
+  trade requests, the win condition (`settlementsJoined >= 10`, no fail mode). When
+  you change a rule, update this file.
+- **`docs/game-design.md`** — designer-facing companion: the design premise, alternative
+  options that were considered for each role, balance levers + tunables (with code
+  locations and defaults), content size targets, open design questions, and known V1
+  caveats. **Not** a rulebook — if it disagrees with `Rules.md`, the rule wins.
+
+The previous `src/data/game-design.md` has been split into these two files and is being
+removed. If a code comment still references "game-design.md" without a path, treat the
+two `docs/` files as the replacement.
+
 ## Project stance
 
 These are load-bearing assumptions. If a sub-plan or PR contradicts one, flag it before
@@ -283,9 +301,14 @@ installs Python 3 / make / g++ for the SQLite native compile.
 - **`__test*` moves** are gated behind `NODE_ENV=test` (review fix #1). Production builds
   ship `<role>SeatDone` moves (14.2) and `chiefEndPhase` (04.2) — no test scaffolding leaks
   into prod.
-- **Auth + accounts are in-memory.** The plan calls for SQLite-backed users / runs (10.7
-  follow-up); the V1 server boots with a Map-backed `accounts.ts`. The /auth REST routes
-  are mounted; rate-limit + body cap landed in review fix #10.
+- **Accounts persist to SQLite when `STORAGE_KIND=sqlite`** (the production default, set
+  in `render.yaml`). The accounts module reads / writes through an `AccountsStore` seam
+  (`server/auth/accountsStore.ts`); the SQLite implementation in
+  `server/auth/sqliteAccountsStore.ts` opens its own connection to the same DB file the
+  bgio match-storage adapter uses, so users + tokens survive container restarts. The
+  default at boot stays in-memory — `setAccountsStore(...)` is the one-line swap. The
+  `runs` history table from migration `002_users_and_runs.sql` is the remaining 10.7
+  follow-up; everything else under that plan has landed.
 - **In-flight content gaps:** events.json migrated to typed `gainResource` shape (review
   fix ride-along). Tech / wander / event content is a starter set; balancing comes after
   Stage 14.

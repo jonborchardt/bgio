@@ -103,15 +103,6 @@ Python 3 / make / a C++ toolchain. The Dockerfile installs them automatically.
 └── eslint.config.js           # bans Math.random in src/
 ```
 
-## History
-
-The repo carries a `plans/` directory with the historical execution playbook + the
-sub-plan files that drove each commit. It's purely archival now — every shipped piece
-is reflected in [`CLAUDE.md`](CLAUDE.md), the file headers under `src/`, and the test
-suite. Numeric tags in source-file headers (e.g. `// 14.1 — seat picker`) point at the
-sub-plan that introduced the slice; the plan files themselves can be deleted without
-breaking the build, the tests, or the deploys.
-
 ## Deploying
 
 - **Hot-seat (GH Pages):** push to `main` → `.github/workflows/deploy-pages.yml` builds

@@ -15,7 +15,7 @@ import type { BuildingDef, UnitDef, TechnologyDef } from './schema.ts';
 
 export type { BuildingDef, UnitDef, TechnologyDef } from './schema.ts';
 
-import type { BuildingDef as _BuildingDef } from './schema.ts';
+import type { BuildingDef as _BuildingDef, UnitDef as _UnitDef } from './schema.ts';
 import type { ResourceBag } from '../game/resources/types.ts';
 
 /**
@@ -27,6 +27,17 @@ import type { ResourceBag } from '../game/resources/types.ts';
  */
 export const buildingCost = (
   def: _BuildingDef,
+): Partial<ResourceBag> => def.costBag ?? { gold: def.cost };
+
+/**
+ * Single source of truth for "what does recruiting one of this unit cost?"
+ * Mirrors `buildingCost`: returns `def.costBag` when present, else
+ * `{ gold: def.cost }`. Domestic-side recruit-cost modifiers (Forge: -1
+ * gold) are layered on top in [src/game/roles/foreign/recruit.ts] — this
+ * helper is the **base** cost, before any in-play discount.
+ */
+export const unitCost = (
+  def: _UnitDef,
 ): Partial<ResourceBag> => def.costBag ?? { gold: def.cost };
 
 // Freeze both the array and every entry so accidental mutation in game logic

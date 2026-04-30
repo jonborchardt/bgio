@@ -1,10 +1,10 @@
-// 10.7 — accounts: register / login / verify against an in-memory store.
+// 10.7 — accounts: register / login / verify against a pluggable store.
 //
-// **V1 deviation:** the plan wants users + tokens persisted in SQLite
-// (per the schema in 13.3). Our V1 keeps SQLite deferred — see
-// `passwordHash.ts` for the rationale — so we live in plain JS Maps for
-// now. The shape of `User` and the public surface match the plan
-// exactly so the SQLite swap is a private-only refactor.
+// V1 shipped a Map-backed in-memory store inline; the 10.7 follow-up
+// (this rewrite) extracts the storage seam into `./accountsStore.ts` so
+// production can swap in the SQLite-backed store from
+// `./sqliteAccountsStore.ts`. The default at boot stays in-memory so
+// nothing changes for tests / ad-hoc dev runs that don't opt in.
 //
 // Tokens:
 //   - 32 random bytes, hex-encoded (64 chars).
@@ -19,6 +19,10 @@
 
 import { randomBytes, randomUUID } from 'node:crypto';
 import { hashPassword, verifyPassword } from './passwordHash.ts';
+import {
+  type AccountsStore,
+  createMemoryAccountsStore,
+} from './accountsStore.ts';
 
 export interface User {
   /** uuid v4 */
@@ -29,18 +33,6 @@ export interface User {
   createdAt: number;
 }
 
-interface UserRow extends User {
-  passwordHash: string;
-}
-
-interface TokenRow {
-  userID: string;
-  /** Epoch ms when this token was issued. Used to decide rotation. */
-  issuedAt: number;
-  /** Epoch ms when this token stops being valid. */
-  expiresAt: number;
-}
-
 /** 24h. */
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 /** Tokens older than this on `verify` get rotated. */
@@ -49,16 +41,20 @@ const TOKEN_ROTATE_AGE_MS = 60 * 60 * 1000;
 const USERNAME_RE = /^[A-Za-z0-9_-]{3,20}$/;
 const MIN_PASSWORD_LEN = 8;
 
-// Keyed by username.toLowerCase() — `username TEXT UNIQUE COLLATE NOCASE`
-// in the future SQLite table. The lowercase key matches that semantics.
-const usersByLower = new Map<string, UserRow>();
-const tokens = new Map<string, TokenRow>();
+let store: AccountsStore = createMemoryAccountsStore();
+
+/** Swap the backing store. Call once at server boot — production wires
+ * the SQLite-backed store from `./sqliteAccountsStore.ts`. Tests can
+ * also call this to pin a fresh store per `describe` block. */
+export const setAccountsStore = (next: AccountsStore): void => {
+  store = next;
+};
 
 const newToken = (): string => randomBytes(32).toString('hex');
 
 const issueToken = (userID: string, now: number): string => {
   const token = newToken();
-  tokens.set(token, {
+  store.insertToken(token, {
     userID,
     issuedAt: now,
     expiresAt: now + TOKEN_TTL_MS,
@@ -80,6 +76,12 @@ const validatePassword = (password: string): void => {
   }
 };
 
+const publicProjection = (row: {
+  id: string;
+  username: string;
+  createdAt: number;
+}): User => ({ id: row.id, username: row.username, createdAt: row.createdAt });
+
 /** Create a new user. Trims `username`. Throws on validation failure or
  * if the username (case-insensitive) is already taken. */
 export const register = async (
@@ -90,19 +92,18 @@ export const register = async (
   validateUsername(trimmed);
   validatePassword(password);
   const lower = trimmed.toLowerCase();
-  if (usersByLower.has(lower)) {
+  if (store.findUserByLower(lower) !== undefined) {
     throw new Error('username already taken');
   }
   const passwordHash = await hashPassword(password);
-  const row: UserRow = {
+  const row = {
     id: randomUUID(),
     username: trimmed,
     createdAt: Date.now(),
     passwordHash,
   };
-  usersByLower.set(lower, row);
-  // Return the public projection (without passwordHash).
-  return { id: row.id, username: row.username, createdAt: row.createdAt };
+  store.insertUser(row);
+  return publicProjection(row);
 };
 
 /** Verify a username/password pair and mint a fresh token. */
@@ -112,7 +113,7 @@ export const login = async (
 ): Promise<{ user: User; token: string }> => {
   const trimmed = (username ?? '').trim();
   const lower = trimmed.toLowerCase();
-  const row = usersByLower.get(lower);
+  const row = store.findUserByLower(lower);
   if (!row) {
     throw new Error('invalid credentials');
   }
@@ -123,7 +124,7 @@ export const login = async (
   const now = Date.now();
   const token = issueToken(row.id, now);
   return {
-    user: { id: row.id, username: row.username, createdAt: row.createdAt },
+    user: publicProjection(row),
     token,
   };
 };
@@ -142,48 +143,36 @@ export interface VerifyResult {
 /** Look up a user by token. Rotates the token if older than 1h. */
 export const verify = async (token: string): Promise<VerifyResult> => {
   if (!token) return { user: null, token };
-  const row = tokens.get(token);
+  const row = store.findToken(token);
   if (!row) return { user: null, token };
   const now = Date.now();
   if (row.expiresAt <= now) {
-    tokens.delete(token);
+    store.deleteToken(token);
     return { user: null, token };
   }
-  // Look up the underlying user. The user could have been removed in
-  // tests (__resetAccountsForTest) — treat that as an invalid token.
-  let userRow: UserRow | undefined;
-  for (const candidate of usersByLower.values()) {
-    if (candidate.id === row.userID) {
-      userRow = candidate;
-      break;
-    }
-  }
+  // Look up the underlying user. Could have been removed in tests
+  // (__resetAccountsForTest); treat that as an invalid token.
+  const userRow = store.findUserById(row.userID);
   if (!userRow) {
-    tokens.delete(token);
+    store.deleteToken(token);
     return { user: null, token };
   }
   let outToken = token;
   if (now - row.issuedAt > TOKEN_ROTATE_AGE_MS) {
-    // Rotate: issue a new token and invalidate the old. The same userID
-    // gets a fresh issuedAt + expiresAt window.
-    tokens.delete(token);
+    // Rotate: issue a new token and invalidate the old.
+    store.deleteToken(token);
     outToken = issueToken(row.userID, now);
   }
   return {
-    user: {
-      id: userRow.id,
-      username: userRow.username,
-      createdAt: userRow.createdAt,
-    },
+    user: publicProjection(userRow),
     token: outToken,
   };
 };
 
-/** Test helper — wipe all in-memory state. Tests call this in
+/** Test helper — wipe all backing-store state. Tests call this in
  * `beforeEach` to avoid leaking users / tokens between cases. */
 export const __resetAccountsForTest = (): void => {
-  usersByLower.clear();
-  tokens.clear();
+  store.clear();
 };
 
 /** Test helper — backdate a token's `issuedAt` (and `expiresAt`,
@@ -193,10 +182,4 @@ export const __resetAccountsForTest = (): void => {
 export const __backdateTokenForTest = (
   token: string,
   ageMs: number,
-): boolean => {
-  const row = tokens.get(token);
-  if (!row) return false;
-  row.issuedAt -= ageMs;
-  row.expiresAt -= ageMs;
-  return true;
-};
+): boolean => store.backdateToken(token, ageMs);

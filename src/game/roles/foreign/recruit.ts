@@ -1,12 +1,15 @@
-// foreignRecruit (07.2) — the Foreign seat pays gold from their stash to
+// foreignRecruit (07.2) — the Foreign seat pays from their stash to
 // recruit a unit (or `count` copies of one) into `G.foreign.inPlay`.
 //
-// The cost is `def.cost * count` gold, reduced by any in-play Domestic
-// buildings whose benefit string parses to a `unitCost` BenefitEffect (the
-// canonical example is the Forge: "units cost 1 less"). Multiple Forges (or
-// other unit-cost-modifying buildings) stack additively. The reduction is
-// clamped at zero — a glut of Forges does not turn recruiting into a free
-// transfer from the bank.
+// The base cost comes from `unitCost(def)` (gold-only when `def.costBag`
+// is absent, full bag when present), scaled by `count`. The Domestic
+// `unitCost` modifier (Forge: "units cost 1 less") subtracts from the
+// **gold portion only** — non-gold inputs (steel, wood, food, ...) are
+// not discountable, since the Forge fiction is "the smithy makes gold-
+// equivalents go further" and not "the smithy invents iron." Multiple
+// Forges stack additively. The gold reduction is clamped at zero — a
+// glut of Forges does not turn recruiting into a free transfer from
+// the bank.
 //
 // Stage gating: the move requires the caller to hold `foreign` AND be in the
 // `foreignTurn` stage so event-stage interrupts (which push `playingEvent`
@@ -17,8 +20,11 @@ import { INVALID_MOVE } from 'boardgame.io/core';
 import type { SettlementState } from '../../types.ts';
 import { rolesAtSeat } from '../../roles.ts';
 import { UNITS, BUILDINGS } from '../../../data/index.ts';
+import type { UnitDef } from '../../../data/index.ts';
 import { payFromStash } from '../../resources/moves.ts';
 import { canAfford } from '../../resources/bag.ts';
+import { RESOURCES } from '../../resources/types.ts';
+import type { Resource, ResourceBag } from '../../resources/types.ts';
 import { parseBenefit } from '../domestic/parseBenefit.ts';
 
 /**
@@ -52,16 +58,67 @@ export const sumUnitCostModifier = (G: SettlementState): number => {
 };
 
 /**
- * Per-unit gold cost to recruit `defID` right now, after the Domestic
- * `unitCost` modifier (Forge: -1). Returns 0 if the unit isn't in `UNITS`,
- * matching the move's INVALID_MOVE path so panels don't paint a phantom
- * "free" button.
+ * Pure helper: apply the Domestic `unitCost` modifier (Forge: -1 gold)
+ * to a UnitDef's base cost bag. Exposed for direct unit-testing without
+ * threading a full SettlementState fixture.
+ *
+ * Multi-resource units carry a `costBag`; the modifier only adjusts the
+ * gold portion (clamped at zero). Single-resource units fall back to
+ * `{ gold: def.cost }`.
+ */
+export const applyUnitCostModifier = (
+  def: Pick<UnitDef, 'cost' | 'costBag'>,
+  modifier: number,
+): Partial<ResourceBag> => {
+  const base = def.costBag ?? { gold: def.cost };
+  if (modifier === 0) return { ...base };
+  // Forge-style discount: subtract from gold only, clamp at zero.
+  const out: Partial<ResourceBag> = { ...base };
+  const goldBase = out.gold ?? 0;
+  out.gold = Math.max(0, goldBase + modifier);
+  return out;
+};
+
+/**
+ * Per-unit cost bag to recruit `defID` right now, after the Domestic
+ * `unitCost` modifier. Returns an empty bag if the unit isn't in
+ * `UNITS`, matching the move's INVALID_MOVE path so panels don't paint
+ * a phantom "free" button.
+ */
+export const computeUnitRecruitCostBag = (
+  G: SettlementState,
+  defID: string,
+): Partial<ResourceBag> => {
+  const def = UNITS.find((u) => u.name === defID);
+  if (def === undefined) return {};
+  return applyUnitCostModifier(def, sumUnitCostModifier(G));
+};
+
+/**
+ * Backwards-compat shim: returns the **gold portion** of the per-unit
+ * recruit cost. Existing UI / AI call sites that only know about a scalar
+ * gold cost continue to work; new call sites should prefer
+ * `computeUnitRecruitCostBag` so they can paint multi-resource costs.
  */
 export const computeUnitRecruitCost = (G: SettlementState, defID: string): number => {
-  const def = UNITS.find((u) => u.name === defID);
-  if (def === undefined) return 0;
-  const modifier = sumUnitCostModifier(G);
-  return Math.max(0, def.cost + modifier);
+  return computeUnitRecruitCostBag(G, defID).gold ?? 0;
+};
+
+/**
+ * Multiply a (small) cost bag by a positive integer. Local helper so the
+ * recruit move can scale the per-unit bag by `count` without leaking a
+ * `multiply` primitive into the resource module.
+ */
+const scaleBag = (
+  bag: Partial<ResourceBag>,
+  n: number,
+): Partial<ResourceBag> => {
+  const out: Partial<ResourceBag> = {};
+  for (const r of RESOURCES as ReadonlyArray<Resource>) {
+    const v = bag[r];
+    if (v !== undefined && v !== 0) out[r] = v * n;
+  }
+  return out;
 };
 
 export const foreignRecruit: Move<SettlementState> = (
@@ -85,15 +142,15 @@ export const foreignRecruit: Move<SettlementState> = (
   const n = count ?? 1;
   if (!Number.isInteger(n) || n < 1) return INVALID_MOVE;
 
-  // Base gold cost, reduced by the sum of Domestic `unitCost` modifiers
-  // (Forge: -1). Per-unit reduction stacks additively across `n` units —
-  // matches the boardgame intuition that each unit benefits from the
-  // discount, not just the batch.
-  const adjustedCost = computeUnitRecruitCost(G, defID) * n;
+  // Per-unit cost bag (multi-resource when the def carries a costBag),
+  // already discounted by the Domestic `unitCost` modifier on its gold
+  // portion. Scale by `n` so each unit benefits from the discount, not
+  // just the batch.
+  const perUnit = computeUnitRecruitCostBag(G, defID);
+  const cost = scaleBag(perUnit, n);
 
   const mat = G.mats?.[playerID];
   if (mat === undefined) return INVALID_MOVE;
-  const cost = { gold: adjustedCost };
   if (!canAfford(mat.stash, cost)) return INVALID_MOVE;
 
   payFromStash(G, playerID, cost);

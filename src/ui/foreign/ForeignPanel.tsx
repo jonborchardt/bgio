@@ -28,7 +28,10 @@ import {
   computeForeignUpkeepGold,
   upkeepableUnits,
 } from '../../game/roles/foreign/upkeep.ts';
-import { computeUnitRecruitCost } from '../../game/roles/foreign/recruit.ts';
+import { computeUnitRecruitCostBag } from '../../game/roles/foreign/recruit.ts';
+import { canAfford } from '../../game/resources/bag.ts';
+import { RESOURCES } from '../../game/resources/types.ts';
+import type { Resource, ResourceBag } from '../../game/resources/types.ts';
 import { Army } from './Army.tsx';
 import { Decks } from './Decks.tsx';
 import { BattlePanel } from './BattlePanel.tsx';
@@ -36,6 +39,33 @@ import { RolePanel } from '../layout/RolePanel.tsx';
 import { StashBar } from '../resources/StashBar.tsx';
 import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
 import { nextSeatAfterDone } from '../layout/nextSeat.ts';
+
+// Compact "5g" / "5g 2 steel" formatter for the recruit button label.
+// Gold renders as "Ng" with no space; other resources render as "N <name>".
+const formatCostBag = (bag: Partial<ResourceBag>): string => {
+  const parts: string[] = [];
+  for (const r of RESOURCES as ReadonlyArray<Resource>) {
+    const v = bag[r];
+    if (v === undefined || v === 0) continue;
+    parts.push(r === 'gold' ? `${v}g` : `${v} ${r}`);
+  }
+  return parts.length === 0 ? '0g' : parts.join(' ');
+};
+
+// "wood, steel" — comma-joined list of resources where stash falls short
+// of the cost bag. Used in the "not enough resources" tooltip so the player
+// can see which input is blocking the recruit.
+const listShortfall = (
+  stash: ResourceBag,
+  cost: Partial<ResourceBag>,
+): string => {
+  const short: string[] = [];
+  for (const r of RESOURCES as ReadonlyArray<Resource>) {
+    const need = cost[r] ?? 0;
+    if (need > 0 && stash[r] < need) short.push(r);
+  }
+  return short.length === 0 ? '—' : short.join(', ');
+};
 
 export function ForeignPanel(props: BoardProps<SettlementState>) {
   const { G, ctx, moves, playerID } = props;
@@ -211,12 +241,18 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
             </Typography>
           ) : (
             foreign.hand.map((unit) => {
-              const cost = computeUnitRecruitCost(G, unit.name);
-              const canAfford = playerGold >= cost;
+              const costBag = computeUnitRecruitCostBag(G, unit.name);
+              const stash = G.mats?.[playerID]?.stash;
+              const affordable =
+                stash !== undefined && canAfford(stash, costBag);
+              const costLabel = formatCostBag(costBag);
+              const shortfall = stash
+                ? listShortfall(stash, costBag)
+                : 'no stash';
               const tooltip = !canActOnTurn
                 ? "Wait for the Foreign seat's turn"
-                : !canAfford
-                  ? `Not enough gold: costs ${cost}g, you have ${playerGold}g`
+                : !affordable
+                  ? `Not enough resources: costs ${costLabel}, short on ${shortfall}`
                   : '';
               return (
                 <Tooltip
@@ -229,7 +265,7 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
                     <Button
                       size="small"
                       variant="outlined"
-                      disabled={!canActOnTurn || !canAfford}
+                      disabled={!canActOnTurn || !affordable}
                       onClick={() => handleRecruit(unit.name)}
                       aria-label={`Recruit one ${unit.name}`}
                       sx={{
@@ -237,7 +273,7 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
                         borderColor: (t) => t.palette.role.foreign.main,
                       }}
                     >
-                      + {unit.name} ({cost}g)
+                      + {unit.name} ({costLabel})
                     </Button>
                   </Box>
                 </Tooltip>
