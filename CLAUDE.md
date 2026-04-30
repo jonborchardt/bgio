@@ -16,6 +16,24 @@ The repo is a single Vite app with a sibling `server/` directory — no monorepo
 package boundaries. The hot-seat build deploys to GitHub Pages via
 `.github/workflows/deploy-pages.yml`.
 
+## Game design and rules
+
+The game's rules and design notes live under `docs/`, **not** under `src/data/`:
+
+- **`docs/Rules.md`** — the canonical end-user rules. Roles, seats, the round structure
+  (chief / others-in-parallel / end-of-round), resource flow (bank + per-seat
+  `in`/`out`/`stash`), per-role actions, the deterministic battle resolver, events,
+  trade requests, the win condition (`settlementsJoined >= 10`, no fail mode). When
+  you change a rule, update this file.
+- **`docs/game-design.md`** — designer-facing companion: the design premise, alternative
+  options that were considered for each role, balance levers + tunables (with code
+  locations and defaults), content size targets, open design questions, and known V1
+  caveats. **Not** a rulebook — if it disagrees with `Rules.md`, the rule wins.
+
+The previous `src/data/game-design.md` has been split into these two files and is being
+removed. If a code comment still references "game-design.md" without a path, treat the
+two `docs/` files as the replacement.
+
 ## Project stance
 
 These are load-bearing assumptions. If a sub-plan or PR contradicts one, flag it before
