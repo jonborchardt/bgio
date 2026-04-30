@@ -25,8 +25,7 @@ import { pickActiveSeat } from './ui/layout/activeSeat.ts';
 import { StatusBar } from './ui/layout/StatusBar.tsx';
 import type { GameOutcome } from './game/endConditions.ts';
 import { CenterMat } from './ui/mat/CenterMat.tsx';
-import { ChatPane } from './ui/chat/ChatPane.tsx';
-import { ChatComposer } from './ui/chat/ChatComposer.tsx';
+import { ChatSection } from './ui/chat/ChatSection.tsx';
 
 export function SettlementBoard(props: BoardProps<SettlementState>) {
   const { G, ctx, playerID } = props;
@@ -146,7 +145,25 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
       {/* 3. Player mats / stats of all seats (incl. other players). */}
       <CenterMat {...props} />
 
-      {/* 4. The local seat's action element(s) — the role panel(s) the
+      {/* 4. Chat — placed above the role action area so it's visible
+          while a player is deciding what to do. `chatMessages` and
+          `sendChatMessage` are bgio-Client-provided props under both
+          the SocketIO and Local transports, so hot-seat and networked
+          both render the panel. Spectators (no `sendChatMessage`) get
+          a read-only view. ChatSection adds an optimistic local outbox
+          so the sender always sees their own message even if bgio's
+          Local transport echo is dropped or duplicated under hot-seat
+          seat-switching. */}
+      {props.sendChatMessage !== undefined || (props.chatMessages?.length ?? 0) > 0 ? (
+        <ChatSection
+          chatMessages={props.chatMessages ?? []}
+          sendChatMessage={props.sendChatMessage}
+          localSender={playerID ?? null}
+          roleAssignments={G.roleAssignments}
+        />
+      ) : null}
+
+      {/* 5. The local seat's action element(s) — the role panel(s) the
           local player owns. In solo mode (hot-seat 1p), all four render. */}
       <Stack spacing={3}>
         {expanded('chief') ? <ChiefPanel {...props} /> : null}
@@ -154,27 +171,6 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
         {expanded('domestic') ? <DomesticPanel {...props} /> : null}
         {expanded('foreign') ? <ForeignPanel {...props} /> : null}
       </Stack>
-
-      {/* Chat lives below the role panels. `chatMessages` and
-          `sendChatMessage` are bgio-Client-provided props that only
-          exist under the multiplayer transport — hot-seat has no
-          transport, so we render nothing rather than a permanently-
-          empty pane.
-          (Headless test Clients also see no transport; the gate is
-          the same. Spectators in networked mode keep chat visible
-          read-only — `sendChatMessage` is undefined for them and
-          ChatComposer disables itself.) */}
-      {clientMode === 'networked' ? (
-        <Stack component="section" aria-label="Chat" spacing={1}>
-          <ChatPane chatMessages={props.chatMessages ?? []} />
-          <ChatComposer
-            onSend={(t) =>
-              props.sendChatMessage?.({ text: t, ts: Date.now() })
-            }
-            disabled={props.sendChatMessage === undefined}
-          />
-        </Stack>
-      ) : null}
 
       {/* 14.2 removed the legacy bottom "End my turn" stub that called
           `pass()`. Chief uses ChiefPanel's own "End my turn" button

@@ -10,8 +10,9 @@
 // else, so a stray sender that forgot the shape still renders something
 // debuggable.
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Box, Paper, Stack, Typography } from '@mui/material';
+import type { Role } from '../../game/types.ts';
 
 /** Single chat envelope, narrowed from bgio's `ChatMessage`. We only
  * type the fields the pane reads — the bgio `payload` is `any`. */
@@ -23,6 +24,15 @@ export interface ChatMessageView {
 
 export interface ChatPaneProps {
   chatMessages: ReadonlyArray<ChatMessageView>;
+  /** Optional sender-label resolver — e.g. `'0' -> 'Chief (P1)'`. Defaults
+   * to `P{1+n}` when not supplied so the pane keeps working without role
+   * context (tests, future spectator views, etc.). */
+  formatSender?: (sender: string) => string;
+  /** Optional sender → primary `Role` resolver. When provided, the sender
+   * label is colored with `palette.role[role].main`; otherwise the label
+   * falls back to `palette.status.active`. ChatSection wires this from
+   * `roleAssignments` (the first role at the sender's seat). */
+  senderRole?: (sender: string) => Role | undefined;
 }
 
 const extractText = (payload: unknown): string => {
@@ -41,13 +51,30 @@ const extractText = (payload: unknown): string => {
   }
 };
 
-export function ChatPane({ chatMessages }: ChatPaneProps) {
-  // Auto-scroll to bottom whenever the list grows. We anchor on a sentinel
-  // div at the end and call `scrollIntoView` — works regardless of the
-  // pane's flex/grid context.
-  const endRef = useRef<HTMLDivElement | null>(null);
+const defaultFormat = (sender: string): string => {
+  const n = Number(sender);
+  return Number.isFinite(n) ? `P${n + 1}` : sender;
+};
+
+export function ChatPane({
+  chatMessages,
+  formatSender,
+  senderRole,
+}: ChatPaneProps) {
+  const fmt = formatSender ?? defaultFormat;
+  // Newest messages render at the top of the pane, so the latest entry is
+  // visible without scrolling. We reverse a copy so we don't mutate the
+  // caller's array.
+  const ordered = useMemo(
+    () => [...chatMessages].reverse(),
+    [chatMessages],
+  );
+  // When the list grows, the newest row sits at the top of the scrollable
+  // area — snap the pane to its top so the user sees the new message even
+  // if they had scrolled down to read older history.
+  const topRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: 'end', behavior: 'auto' });
+    topRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' });
   }, [chatMessages.length]);
 
   return (
@@ -64,7 +91,7 @@ export function ChatPane({ chatMessages }: ChatPaneProps) {
         overflowY: 'auto',
       }}
     >
-      {chatMessages.length === 0 ? (
+      {ordered.length === 0 ? (
         <Typography
           variant="body2"
           sx={{ color: (t) => t.palette.status.muted, fontStyle: 'italic' }}
@@ -73,25 +100,31 @@ export function ChatPane({ chatMessages }: ChatPaneProps) {
         </Typography>
       ) : (
         <Stack spacing={0.5}>
-          {chatMessages.map((m) => (
-            <Box key={m.id}>
-              <Typography
-                component="span"
-                variant="caption"
-                sx={{
-                  color: (t) => t.palette.status.active,
-                  fontWeight: 700,
-                  mr: 1,
-                }}
-              >
-                {`P${m.sender}:`}
-              </Typography>
-              <Typography component="span" variant="body2">
-                {extractText(m.payload)}
-              </Typography>
-            </Box>
-          ))}
-          <Box ref={endRef} />
+          <Box ref={topRef} />
+          {ordered.map((m) => {
+            const role = senderRole?.(m.sender);
+            return (
+              <Box key={m.id}>
+                <Typography
+                  component="span"
+                  variant="caption"
+                  sx={{
+                    color: (t) =>
+                      role !== undefined
+                        ? t.palette.role[role].main
+                        : t.palette.status.active,
+                    fontWeight: 700,
+                    mr: 1,
+                  }}
+                >
+                  {`${fmt(m.sender)}:`}
+                </Typography>
+                <Typography component="span" variant="body2">
+                  {extractText(m.payload)}
+                </Typography>
+              </Box>
+            );
+          })}
         </Stack>
       )}
     </Paper>

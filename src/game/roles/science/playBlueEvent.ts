@@ -1,15 +1,10 @@
-// sciencePlayBlueEvent (05.4) — STUB.
+// sciencePlayBlueEvent (05.4) — promoted to a real move in 08.3.
 //
 // Mirrors 04.4 chiefPlayGoldEvent for the Science seat / blue color. All
-// the gating + per-cycle / per-round bookkeeping logic lives in the
-// shared `playEventStub` factory in src/game/events/playEventStub.ts; this
-// file just binds (role, color, flagKey).
-//
-// TODO(08.3): once the typed effect dispatcher and concrete blue card
-// surfaces exist, this move should also resolve the card's effects
-// (calling into 08.2's dispatcher, and possibly entering the
-// `playingEvent` stage via `enterEventStage` if the effects need user
-// follow-up). Until then we just mark the play.
+// the gating, per-cycle / per-round bookkeeping, and 08.2-dispatcher
+// effect resolution live in the shared `playEventStub` factory in
+// src/game/events/playEventStub.ts; this file just binds
+// (role, color, flagKey).
 
 import type { Move } from 'boardgame.io';
 import type { SettlementState } from '../../types.ts';
