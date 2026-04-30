@@ -1,4 +1,4 @@
-// foreignRecruit (07.2) — the Foreign seat pays gold from their wallet to
+// foreignRecruit (07.2) — the Foreign seat pays gold from their stash to
 // recruit a unit (or `count` copies of one) into `G.foreign.inPlay`.
 //
 // The cost is `def.cost * count` gold, reduced by any in-play Domestic
@@ -17,7 +17,7 @@ import { INVALID_MOVE } from 'boardgame.io/core';
 import type { SettlementState } from '../../types.ts';
 import { rolesAtSeat } from '../../roles.ts';
 import { UNITS, BUILDINGS } from '../../../data/index.ts';
-import { payFromWallet } from '../../resources/moves.ts';
+import { payFromStash } from '../../resources/moves.ts';
 import { canAfford } from '../../resources/bag.ts';
 import { parseBenefit } from '../domestic/parseBenefit.ts';
 
@@ -27,7 +27,7 @@ import { parseBenefit } from '../domestic/parseBenefit.ts';
  * increase it. Returns 0 when Domestic state is missing or no matching
  * buildings have been placed.
  */
-const sumUnitCostModifier = (G: SettlementState): number => {
+export const sumUnitCostModifier = (G: SettlementState): number => {
   if (G.domestic === undefined) return 0;
   let total = 0;
   for (const placed of Object.values(G.domestic.grid)) {
@@ -49,6 +49,19 @@ const sumUnitCostModifier = (G: SettlementState): number => {
     }
   }
   return total;
+};
+
+/**
+ * Per-unit gold cost to recruit `defID` right now, after the Domestic
+ * `unitCost` modifier (Forge: -1). Returns 0 if the unit isn't in `UNITS`,
+ * matching the move's INVALID_MOVE path so panels don't paint a phantom
+ * "free" button.
+ */
+export const computeUnitRecruitCost = (G: SettlementState, defID: string): number => {
+  const def = UNITS.find((u) => u.name === defID);
+  if (def === undefined) return 0;
+  const modifier = sumUnitCostModifier(G);
+  return Math.max(0, def.cost + modifier);
 };
 
 export const foreignRecruit: Move<SettlementState> = (
@@ -76,16 +89,14 @@ export const foreignRecruit: Move<SettlementState> = (
   // (Forge: -1). Per-unit reduction stacks additively across `n` units —
   // matches the boardgame intuition that each unit benefits from the
   // discount, not just the batch.
-  const modifier = sumUnitCostModifier(G);
-  const perUnitCost = Math.max(0, def.cost + modifier);
-  const adjustedCost = perUnitCost * n;
+  const adjustedCost = computeUnitRecruitCost(G, defID) * n;
 
-  const wallet = G.wallets[playerID];
-  if (!wallet) return INVALID_MOVE;
+  const mat = G.mats?.[playerID];
+  if (mat === undefined) return INVALID_MOVE;
   const cost = { gold: adjustedCost };
-  if (!canAfford(wallet, cost)) return INVALID_MOVE;
+  if (!canAfford(mat.stash, cost)) return INVALID_MOVE;
 
-  payFromWallet(G, playerID, cost);
+  payFromStash(G, playerID, cost);
 
   // Increment existing entry or append a new one — the invariant is that no
   // two entries in `inPlay` share a `defID`.
@@ -95,4 +106,14 @@ export const foreignRecruit: Move<SettlementState> = (
   } else {
     foreign.inPlay.push({ defID, count: n });
   }
+
+  // Tag this batch as recruited-this-turn so it's exempt from upkeep until
+  // next round. Cleared at endOfRound by the foreign:reset-upkeep hook.
+  if (foreign._recruitedThisTurn === undefined) {
+    foreign._recruitedThisTurn = {};
+  }
+  foreign._recruitedThisTurn[defID] =
+    (foreign._recruitedThisTurn[defID] ?? 0) + n;
+
+  foreign._lastRelease = undefined;
 };

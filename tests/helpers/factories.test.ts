@@ -19,7 +19,7 @@ describe('seedFreshGame', () => {
   it('returns a state shape that matches setup() for 2 players', () => {
     const G = seedFreshGame(2);
     expect(G.bank).toBeDefined();
-    expect(G.centerMat.circles).toBeDefined();
+    expect(G.mats).toBeDefined();
     expect(G.roleAssignments).toBeDefined();
     expect(G.science).toBeDefined();
     expect(G.foreign).toBeDefined();
@@ -54,16 +54,16 @@ describe('seedAfterChiefDistribute', () => {
     expect(() => assertNoNegativeResources(G)).not.toThrow();
   });
 
-  it('drops resources into the named seat circles', () => {
+  it('drops resources into the named seat stash slots', () => {
     const G = seedFreshGame(2);
     // Pick the first non-chief seat as our target.
-    const targetSeat = Object.keys(G.centerMat.circles)[0];
+    const targetSeat = Object.keys(G.mats)[0];
     expect(targetSeat).toBeDefined();
     const distributed = seedAfterChiefDistribute({
       [targetSeat as string]: { gold: 2, wood: 1 },
     });
-    expect(distributed.centerMat.circles[targetSeat as string]?.gold).toBe(2);
-    expect(distributed.centerMat.circles[targetSeat as string]?.wood).toBe(1);
+    expect(distributed.mats[targetSeat as string]?.stash.gold).toBe(2);
+    expect(distributed.mats[targetSeat as string]?.stash.wood).toBe(1);
     expect(() => assertNoNegativeResources(distributed)).not.toThrow();
   });
 });

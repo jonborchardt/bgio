@@ -58,14 +58,29 @@ Tests under `tests/` mirror the `src/` shape, with shared factories in `tests/he
 - `src/game/roles.ts` — `assignRoles`, `seatOfRole`, `rolesAtSeat`. The single source of
   truth for the seat <-> role mapping.
 - `src/game/phases/{chief,others,endOfRound,stages,index}.ts` — the bgio `phases` config.
-  `chief` is the chief's solo turn, `others` runs the non-chief role stages in parallel
-  via `turn.activePlayers`, `endOfRound` runs hooks + advances the round, `stages.ts`
-  centralizes stage names.
+  `chief` is the chief's solo turn (its `turn.onBegin` adds the per-round chief gold
+  stipend and sweeps every non-chief seat's `mats[seat].out` into `G.bank`); `others`
+  runs the non-chief role stages in parallel via `turn.activePlayers` (its `turn.onBegin`
+  drains every `mats[seat].in` into `mats[seat].stash` and auto-fires `runProduceForSeat`
+  for every domestic seat — produce is engine plumbing, not a player-driven button);
+  `endOfRound` runs hooks + advances the round; `stages.ts` centralizes stage names.
 - `src/game/roles/{chief,science,domestic,foreign}/` — each role owns its move
   implementations and any role-local helpers. Cross-role coordination goes through
-  `hooks.ts`, not direct imports.
-- `src/game/resources/{types,bag,bank,centerMat}.ts` — resource bag, central bank, and
-  center-mat data structures plus their pure helpers.
+  `hooks.ts`, not direct imports. Notable shared moves: `chief/distribute.ts` accepts
+  signed amounts (push bank→`mats[target].in` and pull-back `in`→bank during the chief
+  phase); `foreign/tradeFulfill.ts` is open to **any** active seat with the goods (any
+  seat can fulfill the public trade slot and tick `settlementsJoined`); `foreign/
+  undoRelease.ts` reverses the most recent `foreignReleaseUnit` (a real move because
+  bgio's UNDO action is blocked under `setActivePlayers`).
+- `src/game/resources/{types,bag,bank,centerMat,playerMat,bankLog,moves}.ts` — resource
+  primitives. `playerMat.ts` defines the per-non-chief-seat `{ in, out, stash }` shape
+  populated by `setup` (chief acts on `G.bank` directly and owns no mat). `bankLog.ts`
+  is the audit trail: every mutation that touches `G.bank` calls `appendBankLog` so the
+  ChiefPanel tooltip can answer "where did the bank's current balance come from?".
+  `centerMat.ts` is now reduced to the single `tradeRequest` slot — the per-seat
+  resource circles it used to own were folded into `mats[seat].in` / `out`. `moves.ts`
+  exports `payFromStash`, the canonical spend helper used by every non-chief role's
+  purchase moves.
 - `src/game/events/`, `src/game/opponent/`, `src/game/ai/`, `src/game/plugins/` — event
   cards, opponent / threat tracker, bgio `ai.enumerate` definitions, and any custom
   bgio `Plugin`s the game needs.
@@ -254,11 +269,13 @@ installs Python 3 / make / g++ for the SQLite native compile.
 
 ## Known V1 caveats / open follow-ups
 
-- **Hot-seat is now single-tab playable end-to-end** (post-14.1 + 14.2 + 14.12 + 14.13 +
-  14.16). The seat picker tab strip lets the local viewer drive any seat, the role panels
-  ship real "End my turn" moves, the header reflects the active seat (not just
-  `ctx.currentPlayer`), and the CenterMat shows whenever the chief panel isn't actually
-  rendering.
+- **Hot-seat is single-tab playable end-to-end.** The seat picker tab strip lets the
+  local viewer drive any seat, the role panels ship real "End my turn" moves, and the
+  header reflects the active seat (not just `ctx.currentPlayer`). `Board.tsx` is now a
+  linear stack: status bar → seat picker → CenterMat (every seat's `mats[seat]` summary
+  + the trade slot, always rendered) → the local seat's role panel(s) → chat. The
+  CenterMat is the player-mat dashboard, not a chief-only widget — gated only by
+  player presence, not phase.
 - **Server runner is `vite-node`, not `tsx`.** 14.14 swapped it because tsx 4.x mis-resolves
   bgio subpath imports (`boardgame.io/server`, `/core`, …). `npm run dev:server` now points at
   `server/start.ts`, a thin wrapper that always boots — no ambient-detection block. The

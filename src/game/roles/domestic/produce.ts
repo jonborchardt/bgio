@@ -1,24 +1,22 @@
-// domesticProduce (06.4) — the Domestic seat's once-per-round move that
-// totals the parsed `BuildingDef.benefit` yields across every placed
-// building (with an extra "doubling" for cells holding a worker token), and
-// deposits the result into `G.bank`.
+// Domestic produce: sums parsed `BuildingDef.benefit` yields across every
+// placed building (worker token doubles a cell's contribution), then layers
+// in the adjacency bonus and deposits the bag into the Domestic seat's
+// `out` slot. The chief sweeps `out` into `G.bank` on the next chief turn,
+// so the bank sees production after a turn delay — matching the physical
+// board flow.
 //
-// game-design.md §Domestic: "Calculate all produced goods … if a building
-// has a worker, the worker goods are in addition to the normal default
-// goods." V1 worker bonus = same as the default yield — i.e. a worker
-// doubles the cell's contribution. Future content can layer a typed
-// `WorkerBonusDef` on top; the parser already exposes the structured
-// `BenefitYield` we'd need to mix richer bonuses in.
+// Auto-fire: `runProduceForSeat` runs at `othersPhase.turn.onBegin` for
+// every seat that holds the domestic role (see `phases/others.ts`), so
+// produce is no longer a player-driven decision. The `domesticProduce`
+// move is kept as a callable surface (for tests / future scripted flows),
+// but in normal play the latch is already set by the time the seat enters
+// `domesticTurn`.
 //
-// `parsed.effects` are intentionally *not* applied here — they affect other
-// moves (Foreign upkeep / recruit, combat, happiness). This move only
-// flushes the resource side of each benefit.
+// `parsed.effects` are intentionally not applied here — they affect other
+// moves (Foreign upkeep / recruit, combat, happiness).
 //
-// Stage gating mirrors the other Domestic moves (06.2): caller must hold
-// `domestic` and be in stage `domesticTurn`. Idempotency is enforced via a
-// per-round `producedThisRound` flag on `DomesticState`, cleared at
-// endOfRound by the `domestic:reset-produced` hook registered below at
-// module load.
+// Idempotency: `producedThisRound` on `DomesticState`, cleared at
+// endOfRound by the `domestic:reset-produced` hook registered below.
 
 import type { Move } from 'boardgame.io';
 import { INVALID_MOVE } from 'boardgame.io/core';
@@ -29,28 +27,30 @@ import { add } from '../../resources/bag.ts';
 import { EMPTY_BAG } from '../../resources/types.ts';
 import type { ResourceBag } from '../../resources/types.ts';
 import { registerRoundEndHook } from '../../hooks.ts';
+import { placeIntoOut } from '../../resources/playerMat.ts';
 import { parseBenefit, type BenefitYield } from './parseBenefit.ts';
 import { adjacencyRules, yieldAdjacencyBonus } from './adjacency.ts';
 
-export const domesticProduce: Move<SettlementState> = ({ G, ctx, playerID }) => {
-  // bgio passes the acting seat as a top-level `playerID` on the move args.
-  if (playerID === undefined || playerID === null) return INVALID_MOVE;
-
-  if (!rolesAtSeat(G.roleAssignments, playerID).includes('domestic')) {
-    return INVALID_MOVE;
-  }
-  if (ctx.activePlayers?.[playerID] !== 'domesticTurn') return INVALID_MOVE;
-
+/**
+ * Pure produce step: sums building yields (with worker doubling and
+ * adjacency bonus) and deposits the bag into the seat's `out` slot, then
+ * sets the per-round latch. No gating — callers must ensure the seat
+ * actually holds the domestic role and hasn't already produced this round.
+ *
+ * Returns `true` on a successful produce, `false` when the state is
+ * malformed (no `G.domestic`, no seat mat) or the latch was already set.
+ */
+export const runProduceForSeat = (
+  G: SettlementState,
+  playerID: string,
+): boolean => {
   const domestic = G.domestic;
-  if (domestic === undefined) return INVALID_MOVE;
+  if (domestic === undefined) return false;
+  if (domestic.producedThisRound === true) return false;
 
-  // Idempotency latch: cleared at endOfRound by the hook below.
-  if (domestic.producedThisRound === true) return INVALID_MOVE;
+  const seatMat = G.mats?.[playerID];
+  if (seatMat === undefined) return false;
 
-  // Cache parses across the move so a building type that appears twice in
-  // the grid only walks the parser once. Skip silently on a missing
-  // BuildingDef (data drift / hand-built fixture) — the move shouldn't
-  // crash the round.
   const parseCache = new Map<string, BenefitYield>();
   let runningYield: ResourceBag = { ...EMPTY_BAG };
 
@@ -60,33 +60,32 @@ export const domesticProduce: Move<SettlementState> = ({ G, ctx, playerID }) => 
 
     let parsed = parseCache.get(placed.defID);
     if (parsed === undefined) {
-      // An empty benefit string is legal (no current building has one,
-      // but defensively avoid throwing). `parseBenefit` already returns
-      // `{ resources: {}, effects: [] }` for the empty string, so the
-      // cache entry is a degenerate but correct yield.
       parsed = parseBenefit(def.benefit);
       parseCache.set(placed.defID, parsed);
     }
 
     runningYield = add(runningYield, parsed.resources);
-    // V1 worker bonus = same as default → workered cells contribute
-    // their parsed resources twice. `effects` are not applied here.
     if (placed.worker !== null) {
       runningYield = add(runningYield, parsed.resources);
     }
   }
 
-  // 06.5: layer in the adjacency-bonus bag. Pure helper; reads the live
-  // module-level registry so 06.8's content (and tests) flow through.
   runningYield = add(runningYield, yieldAdjacencyBonus(domestic.grid, adjacencyRules));
 
-  // Deposit straight into the bank — there's no source bag to debit (the
-  // resources are conjured out of the production model). 06.4 plan calls
-  // for `transfer(EMPTY_BAG, G.bank, total)` semantically; we use `add`
-  // directly to avoid mutating the frozen `EMPTY_BAG` constant.
-  G.bank = add(G.bank, runningYield);
-
+  placeIntoOut(seatMat, runningYield);
   domestic.producedThisRound = true;
+  return true;
+};
+
+export const domesticProduce: Move<SettlementState> = ({ G, ctx, playerID }) => {
+  if (playerID === undefined || playerID === null) return INVALID_MOVE;
+
+  if (!rolesAtSeat(G.roleAssignments, playerID).includes('domestic')) {
+    return INVALID_MOVE;
+  }
+  if (ctx.activePlayers?.[playerID] !== 'domesticTurn') return INVALID_MOVE;
+
+  if (!runProduceForSeat(G, playerID)) return INVALID_MOVE;
 };
 
 // Round-end hook: clear the per-round produce latch so next round's

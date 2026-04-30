@@ -47,6 +47,18 @@ export interface ForeignState {
   // occupied. Held here until the chief decides which card to keep via
   // `chiefDecideTradeDiscard`. Paired with `G._awaitingChiefTradeDiscard`.
   pendingTrade?: TradeCardDef;
+  // Last release transaction, retained so `foreignUndoRelease` can reverse
+  // it. Set by `foreignReleaseUnit` on success; consumed (and cleared) by
+  // `foreignUndoRelease`. bgio's own UNDO action is blocked at the master
+  // level whenever multiple players are simultaneously active via
+  // `setActivePlayers`, so we model release-undo as a real player move.
+  _lastRelease?: { defID: string; count: number; refundTotal: number };
+  // Per-defID count of units recruited during the current foreign turn.
+  // Newly recruited units are exempt from upkeep on the turn they were
+  // bought, so this map is subtracted from `inPlay` when computing the
+  // upkeep bill and when gating `foreignSeatDone`. Cleared at end-of-round
+  // alongside `_upkeepPaid`.
+  _recruitedThisTurn?: Record<string, number>;
 }
 
 /**

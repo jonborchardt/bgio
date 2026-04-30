@@ -157,7 +157,7 @@ describe('setupScience (05.1)', () => {
         happiness: 0,
         worker: 0,
       },
-      centerMat: { circles: {}, tradeRequest: null },
+      centerMat: { tradeRequest: null },
       roleAssignments: { '0': ['chief'], '1': ['science'] } as Record<
         string,
         ('chief' | 'science' | 'domestic' | 'foreign')[]
@@ -165,7 +165,7 @@ describe('setupScience (05.1)', () => {
       round: 0,
       settlementsJoined: 0,
       hands: {},
-      wallets: {},
+      mats: {},
       science,
     };
 

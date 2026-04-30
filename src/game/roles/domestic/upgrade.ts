@@ -18,7 +18,7 @@ import type { SettlementState } from '../../types.ts';
 import { rolesAtSeat } from '../../roles.ts';
 import { BUILDINGS } from '../../../data/index.ts';
 import { canAfford } from '../../resources/bag.ts';
-import { payFromWallet } from '../../resources/moves.ts';
+import { payFromStash } from '../../resources/moves.ts';
 import { cellKey } from './grid.ts';
 
 export const domesticUpgradeBuilding: Move<SettlementState> = (
@@ -56,15 +56,15 @@ export const domesticUpgradeBuilding: Move<SettlementState> = (
   // V1 stub: delta cost = floor(originalCost * 0.5).
   const deltaCost = Math.floor(originalDef.cost * 0.5);
 
-  const wallet = G.wallets[playerID];
-  if (!wallet) return INVALID_MOVE;
+  const mat = G.mats?.[playerID];
+  if (mat === undefined) return INVALID_MOVE;
   const cost = { gold: deltaCost };
-  if (!canAfford(wallet, cost)) return INVALID_MOVE;
+  if (!canAfford(mat.stash, cost)) return INVALID_MOVE;
 
   // Pay the bank if the delta is non-zero (a 0-cost upgrade is a no-op
   // payment but still legitimately bumps the counter — e.g. `cost=1` →
-  // floor(0.5) = 0). `payFromWallet` would underflow on a negative amount;
+  // floor(0.5) = 0). `payFromStash` would underflow on a negative amount;
   // `canAfford` already guards against that.
-  if (deltaCost > 0) payFromWallet(G, playerID, cost);
+  if (deltaCost > 0) payFromStash(G, playerID, cost);
   building.upgrades += 1;
 };

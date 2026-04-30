@@ -16,7 +16,8 @@
 // The completion button also requires `paid >= cost` and that the seat
 // hasn't already used its one-completion-per-round allowance.
 
-import { Box, Button, Paper, Stack, Typography } from '@mui/material';
+import { useContext } from 'react';
+import { Box, Button, Stack } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
 import type { SettlementState } from '../../game/types.ts';
 import type {
@@ -24,12 +25,18 @@ import type {
   ResourceBag,
 } from '../../game/resources/types.ts';
 import { canAfford } from '../../game/resources/bag.ts';
+import { EMPTY_BAG } from '../../game/resources/types.ts';
 import { rolesAtSeat } from '../../game/roles.ts';
 import type { ScienceCardDef } from '../../data/scienceCards.ts';
 import { ScienceCard } from './ScienceCard.tsx';
+import { RolePanel } from '../layout/RolePanel.tsx';
+import { StashBar } from '../resources/StashBar.tsx';
+import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
+import { nextSeatAfterDone } from '../layout/nextSeat.ts';
 
 export function SciencePanel(props: BoardProps<SettlementState>) {
   const { G, ctx, moves, playerID } = props;
+  const seatCtx = useContext(SeatPickerContext);
 
   if (playerID === undefined || playerID === null) return null;
 
@@ -38,6 +45,8 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
 
   const science = G.science;
   if (science === undefined) return null;
+
+  const stash = G.mats?.[playerID]?.stash ?? { ...EMPTY_BAG };
 
   const canAct = ctx.activePlayers?.[playerID] === 'scienceTurn';
   const completionsLeft = science.perRoundCompletions < 1;
@@ -76,52 +85,34 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
 
   const handleSeatDone = (): void => {
     moves.scienceSeatDone();
+    if (seatCtx) seatCtx.setSeat(nextSeatAfterDone(G, playerID));
   };
 
   // Visualize as columns side-by-side. Each column = one color, with row 0
   // (lowest tier) at the top.
   return (
-    <Paper
-      elevation={0}
-      sx={{
-        px: 2,
-        py: 2,
-        bgcolor: (t) => t.palette.card.surface,
-        border: '1px solid',
-        borderColor: (t) => t.palette.role.science.main,
-      }}
-      aria-label="Science panel"
-    >
-      <Stack spacing={1.5}>
-        <Typography
-          variant="h5"
-          component="h2"
+    <RolePanel
+      role="science"
+      actions={
+        <Button
+          variant="contained"
+          disabled={!canAct || alreadyDone}
+          onClick={handleSeatDone}
+          aria-label="End my Science turn"
           sx={{
-            color: (t) => t.palette.role.science.main,
-            fontWeight: 700,
-            letterSpacing: '0.02em',
+            bgcolor: (t) => t.palette.role.science.main,
+            color: (t) => t.palette.role.science.contrastText,
+            '&:hover': {
+              bgcolor: (t) => t.palette.role.science.dark,
+            },
           }}
         >
-          Science
-        </Typography>
-
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <Button
-            variant="contained"
-            disabled={!canAct || alreadyDone}
-            onClick={handleSeatDone}
-            aria-label="End my Science turn"
-            sx={{
-              bgcolor: (t) => t.palette.role.science.main,
-              color: (t) => t.palette.role.science.contrastText,
-              '&:hover': {
-                bgcolor: (t) => t.palette.role.science.dark,
-              },
-            }}
-          >
-            {alreadyDone ? 'Turn ended' : 'End my turn'}
-          </Button>
-        </Box>
+          {alreadyDone ? 'Turn ended' : 'End my turn'}
+        </Button>
+      }
+    >
+      <Stack spacing={1.5}>
+        <StashBar stash={stash} ariaLabel="Science stash" />
 
         <Box
           aria-label="Science grid"
@@ -164,14 +155,17 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
                   !isCompleted &&
                   canAfford(paid, card.cost);
 
+                const underTechs = science.underCards[card.id] ?? [];
                 return (
                   <ScienceCard
                     key={card.id}
                     card={card}
                     paid={paid}
+                    stash={stash}
                     canAct={canAct && !isCompleted}
                     canComplete={completable}
                     isLowest={isLowest}
+                    underTechs={underTechs}
                     onContribute={(resource, amount) =>
                       handleContribute(card.id, resource, amount)
                     }
@@ -183,7 +177,7 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
           ))}
         </Box>
       </Stack>
-    </Paper>
+    </RolePanel>
   );
 }
 

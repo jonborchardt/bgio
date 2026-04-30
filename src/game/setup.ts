@@ -8,11 +8,12 @@
 // grid + per-cell tech stacks land in 05.1.
 
 import type { Ctx } from 'boardgame.io';
-import type { PlayerID, ResourceBag, Role, SettlementState } from './types.ts';
+import type { ResourceBag, Role, SettlementState } from './types.ts';
 import { assignRoles } from './roles.ts';
 import { initialBank } from './resources/bank.ts';
-import { bagOf } from './resources/bag.ts';
-import { initialMat } from './resources/centerMat.ts';
+import type { BankLogEntry } from './resources/bankLog.ts';
+import { initialCenterMat } from './resources/centerMat.ts';
+import { initialMats } from './resources/playerMat.ts';
 import { setupScience } from './roles/science/setup.ts';
 import { buildBattleDeck, buildTradeDeck } from './roles/foreign/decks.ts';
 import { UNITS } from '../data/index.ts';
@@ -42,7 +43,15 @@ export interface SettlementSetupData {
    * default `{ gold: 3 }` rather than merging — matches initialBank's
    * V1 contract from 03.2. */
   startingBank?: Partial<ResourceBag>;
+  /** Per-match override on the chief's per-round gold stipend (added
+   * to `G.bank` at every chiefPhase.onBegin). Engine default = 2.
+   * Set to 0 to disable. */
+  chiefStipendPerRound?: number;
 }
+
+/** Default per-round chief gold stipend. Tunable via
+ *  `SettlementSetupData.chiefStipendPerRound`. */
+export const CHIEF_STIPEND_DEFAULT = 2;
 
 // bgio passes its plugin APIs alongside `ctx`. We accept the shape loosely
 // (any extra fields are ignored) and pull `random` off it explicitly so
@@ -58,19 +67,15 @@ export const setup = (
   const numPlayers = ctx.numPlayers as 1 | 2 | 3 | 4;
   const roleAssignments = assignRoles(numPlayers);
 
-  const hands: Record<PlayerID, unknown> = {};
+  const hands: Record<string, unknown> = {};
   for (const seat of Object.keys(roleAssignments)) {
     hands[seat] = {};
   }
 
-  // Per-seat wallets for every non-chief seat. The chief acts on the bank
-  // directly and is intentionally absent from the map (see types.ts).
-  const wallets: Record<PlayerID, ResourceBag> = {};
-  for (const [seat, roles] of Object.entries(roleAssignments)) {
-    if (!roles.includes('chief')) {
-      wallets[seat] = bagOf({});
-    }
-  }
+  // Per-seat player mats (in / out / stash) for every non-chief seat. The
+  // chief acts on `G.bank` directly and is intentionally absent from the
+  // map (see types.ts).
+  const mats = initialMats(roleAssignments);
 
   // Fallback random for paths where bgio hasn't plugged in its plugin yet
   // (e.g., direct unit tests of `setup`). Identity shuffle keeps the result
@@ -94,9 +99,37 @@ export const setup = (
     for (const tech of stack) techsAlreadyUsedBy.add(tech.name);
   }
 
+  const startingBank = initialBank(setupData?.startingBank);
+  // Seed the audit trail with the starting balance so the chief tooltip
+  // attributes the round-1 bank to "Starting bank" rather than leaving the
+  // pre-game gold unexplained.
+  const bankLog: BankLogEntry[] = [];
+  {
+    const seed: Partial<typeof startingBank> = {};
+    let nonZero = false;
+    for (const [k, v] of Object.entries(startingBank) as [
+      keyof typeof startingBank,
+      number,
+    ][]) {
+      if (v !== 0) {
+        seed[k] = v;
+        nonZero = true;
+      }
+    }
+    if (nonZero) {
+      bankLog.push({
+        round: 0,
+        source: 'setup',
+        delta: seed,
+        detail: 'Starting bank',
+      });
+    }
+  }
+
   return {
-    bank: initialBank(setupData?.startingBank),
-    centerMat: initialMat(roleAssignments),
+    bank: startingBank,
+    bankLog,
+    centerMat: initialCenterMat(),
     roleAssignments,
     round: 0,
     // 08.5 win condition: the village hasn't absorbed any settlements yet.
@@ -106,6 +139,10 @@ export const setup = (
     // 08.5 time-up cap: per-match override from `setupData.turnCap`, default
     // 80. Stored on G so `endIf` doesn't need to look back at setupData.
     turnCap: setupData?.turnCap ?? TURN_CAP_DEFAULT,
+    // Per-round chief gold stipend (added to bank at every chiefPhase.onBegin).
+    // Persisted on G so chief.ts doesn't need to re-read setupData.
+    chiefStipend:
+      setupData?.chiefStipendPerRound ?? CHIEF_STIPEND_DEFAULT,
     // 11.7 — solo-mode bookkeeping. The engine itself doesn't branch on
     // this; it's persisted so server-side bot drivers (10.9) can decide
     // which seats to mark `isBot` on the bgio match metadata.
@@ -114,7 +151,7 @@ export const setup = (
       humanRole: setupData?.humanRole,
     },
     hands,
-    wallets,
+    mats,
     // Phase-progress flags — flipped by 04.2's chiefEndPhase move and the
     // others-phase role stubs. Reset at the top of every `endOfRound` phase.
     phaseDone: false,

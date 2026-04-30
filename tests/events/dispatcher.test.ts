@@ -17,6 +17,7 @@ import { bagOf } from '../../src/game/resources/bag.ts';
 import type { SettlementState } from '../../src/game/types.ts';
 import type { Ctx } from 'boardgame.io';
 import { assignRoles } from '../../src/game/roles.ts';
+import { initialMats } from '../../src/game/resources/playerMat.ts';
 
 const identityRandom: BgioRandomLike = {
   Shuffle: <T>(arr: T[]): T[] => [...arr],
@@ -38,20 +39,16 @@ const build4pState = (
   partial: Partial<SettlementState> = {},
 ): SettlementState => {
   const roleAssignments = assignRoles(4);
-  const wallets: Record<string, ReturnType<typeof bagOf>> = {};
-  for (const [seat, roles] of Object.entries(roleAssignments)) {
-    if (!roles.includes('chief')) wallets[seat] = bagOf({});
-  }
   const hands: Record<string, unknown> = {};
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
   return {
     bank: bagOf({}),
-    centerMat: { circles: {}, tradeRequest: null },
+    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 1,
     settlementsJoined: 0,
     hands,
-    wallets,
+    mats: initialMats(roleAssignments),
     ...partial,
   };
 };
@@ -90,7 +87,7 @@ describe('dispatch — gainResource (08.2)', () => {
 
     dispatch(G, stubCtx(), fromBgio(identityRandom), blueCard);
 
-    expect(G.wallets['1']!.science).toBe(2);
+    expect(G.mats['1']!.stash.science).toBe(2);
     // Bank untouched.
     expect(G.bank.gold).toBe(0);
   });

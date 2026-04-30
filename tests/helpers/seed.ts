@@ -2,12 +2,13 @@
 // `setup()` through a full client.
 //
 // Today the only seed is `seedAfterChiefDistribution`, which models the
-// moment after the Chief has emptied the bank into the action circles.
-// Real circle/hand contents grow as later stages need them.
+// moment after the Chief has emptied the bank into the seat `in` slots.
+// Real mat / hand contents grow as later stages need them.
 
 import type { SettlementState } from '../../src/game/types.ts';
 import { assignRoles } from '../../src/game/roles.ts';
 import { EMPTY_BAG } from '../../src/game/resources/types.ts';
+import { initialMats } from '../../src/game/resources/playerMat.ts';
 
 const freshBag = () => ({ ...EMPTY_BAG });
 
@@ -21,22 +22,14 @@ export const seedAfterChiefDistribution = (
     hands[seat] = {};
   }
 
-  // Wallets default to one empty bag per non-chief seat — matches `setup`
-  // (chief has no wallet entry). Tests that need pre-credited wallets pass
-  // a `wallets` slice via `partial`.
-  const wallets: Record<string, ReturnType<typeof freshBag>> = {};
-  for (const [seat, roles] of Object.entries(roleAssignments)) {
-    if (!roles.includes('chief')) wallets[seat] = freshBag();
-  }
-
   const base: SettlementState = {
     bank: freshBag(), // bank fully distributed → empty
-    centerMat: { circles: {}, tradeRequest: null }, // empty mat — tests that need circles set them via partial
+    centerMat: { tradeRequest: null },
+    mats: initialMats(roleAssignments),
     roleAssignments,
     round: 1, // post-distribution → past round 0 setup
     settlementsJoined: 0,
     hands,
-    wallets,
   };
 
   if (partial === undefined) return base;

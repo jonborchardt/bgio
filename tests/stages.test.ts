@@ -90,12 +90,14 @@ describe('enterEventStage / exitEventStage (02.2)', () => {
   // strict-typed shape happy without booting a full client.
   const makeStubG = (): SettlementState => ({
     bank: { ...EMPTY_BAG },
-    centerMat: { circles: {}, tradeRequest: null },
+    centerMat: { tradeRequest: null },
     roleAssignments: { '0': ['chief'], '1': ['science'] },
     round: 0,
     settlementsJoined: 0,
     hands: { '0': {}, '1': {} },
-    wallets: { '1': { ...EMPTY_BAG } },
+    mats: {
+      '1': { in: { ...EMPTY_BAG }, out: { ...EMPTY_BAG }, stash: { ...EMPTY_BAG } },
+    },
     _stageStack: {},
   });
 

@@ -1,5 +1,5 @@
 // scienceContribute (05.2) — the Science role pays resources from their
-// wallet toward a science card on the grid. Per game-design.md §Science,
+// stash toward a science card on the grid. Per game-design.md §Science,
 // progress is tracked per card via the `paid` ledger and a card may not be
 // advanced until every lower-level card in the same color column is
 // completed (the "lowest-first" rule).
@@ -69,15 +69,15 @@ export const scienceContribute: Move<SettlementState> = (
   if (typeof amounts !== 'object' || amounts === null) return INVALID_MOVE;
   if (findInvalidAmount(amounts) !== null) return INVALID_MOVE;
 
-  // Wallet must cover the requested amounts.
-  const wallet = G.wallets[playerID];
-  if (!wallet) return INVALID_MOVE;
-  if (!canAfford(wallet, amounts)) return INVALID_MOVE;
+  // Stash must cover the requested amounts.
+  const mat = G.mats?.[playerID];
+  if (mat === undefined) return INVALID_MOVE;
+  if (!canAfford(mat.stash, amounts)) return INVALID_MOVE;
 
   // Cap each resource at the remaining cost. The plan calls this defensive
   // — a polite UI shouldn't request more than `remaining`, but if it does
   // we silently round down to `remaining` so the paid ledger never exceeds
-  // the cost. The leftover stays in the wallet (no transfer).
+  // the cost. The leftover stays in the stash (no transfer).
   const paid = science.paid[cardID]!;
   const capped: Partial<ResourceBag> = {};
   for (const r of RESOURCES) {
@@ -88,7 +88,7 @@ export const scienceContribute: Move<SettlementState> = (
     capped[r] = Math.min(requested, need);
   }
 
-  // Move the capped tokens from wallet → paid ledger. `transfer` re-checks
+  // Move the capped tokens from stash → paid ledger. `transfer` re-checks
   // affordability and mutates both bags directly under Immer.
-  transfer(wallet, paid, capped);
+  transfer(mat.stash, paid, capped);
 };

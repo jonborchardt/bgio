@@ -27,37 +27,37 @@
     "id": "evt-blue-001",
     "color": "blue",
     "name": "Insight",
-    "effects": [{ "kind": "gainResource", "bag": { "science": 1 }, "target": "wallet" }]
+    "effects": [{ "kind": "gainResource", "bag": { "science": 1 }, "target": "stash" }]
   },
   {
     "id": "evt-blue-002",
     "color": "blue",
     "name": "Discovery",
-    "effects": [{ "kind": "gainResource", "bag": { "science": 2 }, "target": "wallet" }]
+    "effects": [{ "kind": "gainResource", "bag": { "science": 2 }, "target": "stash" }]
   },
   {
     "id": "evt-blue-003",
     "color": "blue",
     "name": "Library Boon",
-    "effects": [{ "kind": "gainResource", "bag": { "science": 1 }, "target": "wallet" }]
+    "effects": [{ "kind": "gainResource", "bag": { "science": 1 }, "target": "stash" }]
   },
   {
     "id": "evt-blue-004",
     "color": "blue",
     "name": "Eureka",
-    "effects": [{ "kind": "gainResource", "bag": { "science": 3 }, "target": "wallet" }]
+    "effects": [{ "kind": "gainResource", "bag": { "science": 3 }, "target": "stash" }]
   },
   {
     "id": "evt-green-001",
     "color": "green",
     "name": "Harvest",
-    "effects": [{ "kind": "gainResource", "bag": { "food": 1 }, "target": "wallet" }]
+    "effects": [{ "kind": "gainResource", "bag": { "food": 1 }, "target": "stash" }]
   },
   {
     "id": "evt-green-002",
     "color": "green",
     "name": "Bountiful Crop",
-    "effects": [{ "kind": "gainResource", "bag": { "food": 2 }, "target": "wallet" }]
+    "effects": [{ "kind": "gainResource", "bag": { "food": 2 }, "target": "stash" }]
   },
   {
     "id": "evt-green-003",
@@ -69,30 +69,30 @@
     "id": "evt-green-004",
     "color": "green",
     "name": "Settlement",
-    "effects": [{ "kind": "gainResource", "bag": { "production": 1 }, "target": "wallet" }]
+    "effects": [{ "kind": "gainResource", "bag": { "production": 1 }, "target": "stash" }]
   },
   {
     "id": "evt-red-001",
     "color": "red",
     "name": "Skirmish",
-    "effects": [{ "kind": "gainResource", "bag": { "gold": 1 }, "target": "wallet" }]
+    "effects": [{ "kind": "gainResource", "bag": { "gold": 1 }, "target": "stash" }]
   },
   {
     "id": "evt-red-002",
     "color": "red",
     "name": "Raid",
-    "effects": [{ "kind": "gainResource", "bag": { "gold": 2 }, "target": "wallet" }]
+    "effects": [{ "kind": "gainResource", "bag": { "gold": 2 }, "target": "stash" }]
   },
   {
     "id": "evt-red-003",
     "color": "red",
     "name": "Fortify",
-    "effects": [{ "kind": "gainResource", "bag": { "horse": 1 }, "target": "wallet" }]
+    "effects": [{ "kind": "gainResource", "bag": { "horse": 1 }, "target": "stash" }]
   },
   {
     "id": "evt-red-004",
     "color": "red",
     "name": "Border Patrol",
-    "effects": [{ "kind": "gainResource", "bag": { "horse": 2 }, "target": "wallet" }]
+    "effects": [{ "kind": "gainResource", "bag": { "horse": 2 }, "target": "stash" }]
   }
 ]

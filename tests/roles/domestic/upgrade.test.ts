@@ -18,6 +18,7 @@ import type {
 } from '../../../src/game/types.ts';
 import type { DomesticBuilding } from '../../../src/game/roles/domestic/types.ts';
 import { cellKey } from '../../../src/game/roles/domestic/grid.ts';
+import { initialMats } from '../../../src/game/resources/playerMat.ts';
 
 // 2-player layout: seat '1' = domestic+foreign.
 const build2pState = (
@@ -25,27 +26,20 @@ const build2pState = (
   domestic: DomesticState,
 ): SettlementState => {
   const roleAssignments = assignRoles(2);
-  const matCircles: Record<string, ResourceBag> = {};
-  const wallets: Record<string, ResourceBag> = {};
-  for (const [seat, roles] of Object.entries(roleAssignments)) {
-    if (!roles.includes('chief')) {
-      matCircles[seat] = bagOf({});
-      wallets[seat] = bagOf({});
-    }
-  }
-  wallets['1'] = bagOf(walletOf);
+  const mats = initialMats(roleAssignments);
+  if (mats['1'] !== undefined) mats['1']!.stash = bagOf(walletOf);
 
   const hands: Record<string, unknown> = {};
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
 
   return {
     bank: bagOf({}),
-    centerMat: { circles: matCircles, tradeRequest: null },
+    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 1,
     settlementsJoined: 0,
     hands,
-    wallets,
+    mats,
     domestic,
   };
 };
@@ -98,7 +92,7 @@ describe('domesticUpgradeBuilding (06.2)', () => {
     // Counter bumped.
     expect(G.domestic!.grid[cellKey(2, 3)]!.upgrades).toBe(1);
     // Delta cost = 6 gold transferred wallet → bank.
-    expect(G.wallets['1']).toEqual(bagOf({ gold: 14 }));
+    expect(G.mats['1']?.stash).toEqual(bagOf({ gold: 14 }));
     expect(G.bank).toEqual(bagOf({ gold: 6 }));
   });
 
@@ -115,7 +109,7 @@ describe('domesticUpgradeBuilding (06.2)', () => {
 
     expect(result).toBe(INVALID_MOVE);
     // Nothing changed.
-    expect(G.wallets['1']).toEqual(bagOf({ gold: 50 }));
+    expect(G.mats['1']?.stash).toEqual(bagOf({ gold: 50 }));
     expect(G.bank).toEqual(bagOf({}));
     expect(G.domestic!.grid).toEqual({});
   });

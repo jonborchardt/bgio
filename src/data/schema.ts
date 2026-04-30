@@ -7,7 +7,16 @@ import { RESOURCES } from '../game/resources/types.ts';
 
 export interface BuildingDef {
   name: string;
+  // Gold-equivalent cost, used as a value heuristic (AI sort, refund math,
+  // upgrade pricing). When `costBag` is absent this is also the actual
+  // payment, treated as `{ gold: cost }`. When `costBag` is present that
+  // bag is the actual payment and `cost` is informational only.
   cost: number;
+  // Optional multi-resource cost. When defined, this is the bag the buy
+  // move charges instead of `{ gold: cost }`. Mirrors the TechnologyDef
+  // `costBag` pattern. The validator enforces only known resource keys
+  // and non-negative integers.
+  costBag?: Partial<ResourceBag>;
   benefit: string;
   note: string;
 }
@@ -119,12 +128,15 @@ export const validateBuildings = (raw: unknown): BuildingDef[] => {
   const arr = requireArray(raw, 'BuildingDef');
   return arr.map((entry, i) => {
     const obj = requireObject(entry, i, 'BuildingDef');
-    return {
+    const def: BuildingDef = {
       name: requireString(obj, 'name', i, 'BuildingDef'),
       cost: requireNumber(obj, 'cost', i, 'BuildingDef'),
       benefit: requireString(obj, 'benefit', i, 'BuildingDef'),
       note: requireString(obj, 'note', i, 'BuildingDef'),
     };
+    const costBag = optionalCostBag(obj, 'costBag', i, 'BuildingDef');
+    if (costBag !== undefined) def.costBag = costBag;
+    return def;
   });
 };
 

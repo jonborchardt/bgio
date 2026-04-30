@@ -21,7 +21,7 @@
 import type { ResourceBag } from '../resources/types.ts';
 
 export type EventEffect =
-  | { kind: 'gainResource'; bag: Partial<ResourceBag>; target: 'bank' | 'wallet' }
+  | { kind: 'gainResource'; bag: Partial<ResourceBag>; target: 'bank' | 'stash' }
   | { kind: 'doubleScience' } // sci pays 2x advancement this turn
   | { kind: 'forbidBuy' } // sci can't complete a card this turn
   | { kind: 'forceCheapestScience' }

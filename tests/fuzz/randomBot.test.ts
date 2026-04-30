@@ -56,11 +56,8 @@ const stubEnumerate = (
 
   out.push({ move: 'pass', args: [] });
 
-  // pullFromMat — non-chief seats only; engine guards.
-  out.push({ move: 'pullFromMat', args: [{ gold: 1 }] });
-
   // Chief moves with sensible args.
-  for (const target of Object.keys(G.centerMat.circles)) {
+  for (const target of Object.keys(G.mats)) {
     if (target === playerID) continue;
     out.push({ move: 'chiefDistribute', args: [target, { gold: 1 }] });
   }

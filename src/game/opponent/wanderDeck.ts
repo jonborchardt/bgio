@@ -27,7 +27,7 @@
 // the dispatcher a synthetic card whose color is unused for the
 // effects we ship today (target='bank' bypasses the color lookup;
 // modifier effects ignore color entirely). If a future wander card
-// uses `target: 'wallet'` or `addEventCard`, the synthetic color
+// uses `target: 'stash'` or `addEventCard`, the synthetic color
 // becomes load-bearing — the adapter call site documents that.
 
 import type { Ctx } from 'boardgame.io';
@@ -74,7 +74,7 @@ export const setupWanderDeck = (random: RandomAPI): WanderState => ({
 const wanderCardAsEventCard = (card: WanderCardDef): EventCardDef => ({
   id: card.id,
   // Synthetic color slot. See module-level note: only matters for
-  // effects that consult `card.color` (currently `gainResource.wallet`
+  // effects that consult `card.color` (currently `gainResource.stash`
   // and `addEventCard`).
   color: 'gold' satisfies EventColor,
   name: card.name,

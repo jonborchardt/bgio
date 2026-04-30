@@ -6,7 +6,6 @@ import type { SettlementState } from './types.ts';
 import { setup } from './setup.ts';
 import {
   pass,
-  pullFromMat,
   chiefDistribute,
   chiefEndPhase,
   chiefPlaceWorker,
@@ -18,9 +17,11 @@ import {
   foreignRecruit,
   foreignUpkeep,
   foreignReleaseUnit,
+  foreignUndoRelease,
   foreignFlipBattle,
   foreignAssignDamage,
   foreignFlipTrade,
+  foreignTradeFulfill,
   scienceContribute,
   scienceComplete,
   domesticBuyBuilding,
@@ -60,7 +61,6 @@ export { assignRoles, rolesAtSeat, seatOfRole } from './roles.ts';
 // for tests that want to mount the engine with the scaffolds enabled.
 const productionMoves = {
   pass,
-  pullFromMat,
   chiefDistribute,
   chiefEndPhase,
   chiefPlaceWorker,
@@ -72,9 +72,11 @@ const productionMoves = {
   foreignRecruit,
   foreignUpkeep,
   foreignReleaseUnit,
+  foreignUndoRelease,
   foreignFlipBattle,
   foreignAssignDamage,
   foreignFlipTrade,
+  foreignTradeFulfill,
   scienceContribute,
   scienceComplete,
   domesticBuyBuilding,

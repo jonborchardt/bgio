@@ -5,7 +5,7 @@
 // V1 simplification: trade flips are gated on `lastBattleOutcome === 'win'`
 // per the move's contract; we surface that here as a disabled state.
 
-import { Button, Paper, Stack, Typography } from '@mui/material';
+import { Box, Button, Paper, Stack, Tooltip, Typography } from '@mui/material';
 
 export interface DecksProps {
   battleDeckCount: number;
@@ -13,6 +13,7 @@ export interface DecksProps {
   battleInFlight: boolean;
   canFlipTrade: boolean;
   canAct: boolean;
+  hasUnits: boolean;
   onFlipBattle: () => void;
   onFlipTrade: () => void;
 }
@@ -23,9 +24,25 @@ export function Decks({
   battleInFlight,
   canFlipTrade,
   canAct,
+  hasUnits,
   onFlipBattle,
   onFlipTrade,
 }: DecksProps) {
+  const flipBattleTooltip = !canAct
+    ? "Wait for the Foreign seat's turn"
+    : battleInFlight
+      ? 'Resolve the current battle first'
+      : battleDeckCount === 0
+        ? 'Battle deck is empty'
+        : !hasUnits
+          ? 'Recruit at least one unit before flipping a battle'
+          : '';
+
+  const battleDeckExplainer =
+    'Battle cards are enemy forces. Flipping one starts a fight: assign damage from the enemy units to your committed army. Win and you take the reward (and may flip a trade card next). Lose and you owe tribute. Cards are ordered low-number first, so threats escalate as the round goes on.';
+
+  const tradeDeckExplainer =
+    'Trade cards are foreign offers — each asks for specific resources in exchange for a reward. You can only flip a trade card after winning a battle, once per win. The drawn card goes to the center mat for the Chief to fulfill or refuse on their turn.';
   return (
     <Stack
       direction="row"
@@ -45,12 +62,21 @@ export function Decks({
         }}
       >
         <Stack spacing={0.5}>
-          <Typography
-            variant="caption"
-            sx={{ color: (t) => t.palette.status.muted, fontWeight: 600 }}
-          >
-            Battle deck
-          </Typography>
+          <Tooltip title={battleDeckExplainer} placement="top">
+            <Typography
+              variant="caption"
+              sx={{
+                color: (t) => t.palette.status.muted,
+                fontWeight: 600,
+                cursor: 'help',
+                textDecoration: 'underline dotted',
+                textUnderlineOffset: '2px',
+                alignSelf: 'flex-start',
+              }}
+            >
+              Battle deck
+            </Typography>
+          </Tooltip>
           <Typography
             sx={{
               color: (t) => t.palette.role.foreign.main,
@@ -59,15 +85,28 @@ export function Decks({
           >
             {battleDeckCount}
           </Typography>
-          <Button
-            size="small"
-            variant="outlined"
-            disabled={!canAct || battleInFlight || battleDeckCount === 0}
-            onClick={onFlipBattle}
-            aria-label="Flip a battle card"
+          <Tooltip
+            title={flipBattleTooltip}
+            placement="top"
+            disableHoverListener={flipBattleTooltip === ''}
           >
-            Flip Battle
-          </Button>
+            <Box component="span" sx={{ display: 'inline-flex' }}>
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={
+                  !canAct ||
+                  battleInFlight ||
+                  battleDeckCount === 0 ||
+                  !hasUnits
+                }
+                onClick={onFlipBattle}
+                aria-label="Flip a battle card"
+              >
+                Flip Battle
+              </Button>
+            </Box>
+          </Tooltip>
         </Stack>
       </Paper>
 
@@ -83,12 +122,21 @@ export function Decks({
         }}
       >
         <Stack spacing={0.5}>
-          <Typography
-            variant="caption"
-            sx={{ color: (t) => t.palette.status.muted, fontWeight: 600 }}
-          >
-            Trade deck
-          </Typography>
+          <Tooltip title={tradeDeckExplainer} placement="top">
+            <Typography
+              variant="caption"
+              sx={{
+                color: (t) => t.palette.status.muted,
+                fontWeight: 600,
+                cursor: 'help',
+                textDecoration: 'underline dotted',
+                textUnderlineOffset: '2px',
+                alignSelf: 'flex-start',
+              }}
+            >
+              Trade deck
+            </Typography>
+          </Tooltip>
           <Typography
             sx={{
               color: (t) => t.palette.role.foreign.main,

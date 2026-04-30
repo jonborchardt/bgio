@@ -15,6 +15,20 @@ import type { BuildingDef, UnitDef, TechnologyDef } from './schema.ts';
 
 export type { BuildingDef, UnitDef, TechnologyDef } from './schema.ts';
 
+import type { BuildingDef as _BuildingDef } from './schema.ts';
+import type { ResourceBag } from '../game/resources/types.ts';
+
+/**
+ * Single source of truth for "what does buying this building actually cost?"
+ * Returns `def.costBag` when the data row carries a multi-resource cost,
+ * else falls back to `{ gold: def.cost }`. Callers pay/check via this helper
+ * so a future widening of `BuildingDef.cost` (e.g. removing the legacy
+ * scalar entirely) only touches one place.
+ */
+export const buildingCost = (
+  def: _BuildingDef,
+): Partial<ResourceBag> => def.costBag ?? { gold: def.cost };
+
 // Freeze both the array and every entry so accidental mutation in game logic
 // crashes loudly (frozen-object writes throw in module strict mode).
 const deepFreezeArray = <T extends object>(arr: T[]): ReadonlyArray<T> => {

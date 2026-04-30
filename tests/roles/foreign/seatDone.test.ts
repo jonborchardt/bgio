@@ -8,10 +8,8 @@ import { makeClient } from '../../helpers/makeClient.ts';
 import { runMoves } from '../../helpers/runMoves.ts';
 import { seatOfRole, assignRoles } from '../../../src/game/roles.ts';
 import { bagOf } from '../../../src/game/resources/bag.ts';
-import type {
-  ResourceBag,
-  SettlementState,
-} from '../../../src/game/types.ts';
+import type { SettlementState } from '../../../src/game/types.ts';
+import { initialMats } from '../../../src/game/resources/playerMat.ts';
 
 const ctxAt = (seat: string, stage: string): Ctx =>
   ({
@@ -21,24 +19,16 @@ const ctxAt = (seat: string, stage: string): Ctx =>
 
 const baseState = (): SettlementState => {
   const roleAssignments = assignRoles(4);
-  const wallets: Record<string, ResourceBag> = {};
-  const matCircles: Record<string, ResourceBag> = {};
-  for (const [seat, roles] of Object.entries(roleAssignments)) {
-    if (!roles.includes('chief')) {
-      wallets[seat] = bagOf({});
-      matCircles[seat] = bagOf({});
-    }
-  }
   const hands: Record<string, unknown> = {};
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
   return {
     bank: bagOf({}),
-    centerMat: { circles: matCircles, tradeRequest: null },
+    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 1,
     settlementsJoined: 0,
     hands,
-    wallets,
+    mats: initialMats(roleAssignments),
   };
 };
 
@@ -88,5 +78,78 @@ describe('foreignSeatDone (14.2)', () => {
     // must reject.
     const result = callSeatDone(G, '2', ctxAt('2', 'foreignTurn'));
     expect(result).toBe(INVALID_MOVE);
+  });
+
+  it('rejects when units are in play and upkeep is unpaid', () => {
+    const G = baseState();
+    G.foreign = {
+      hand: [],
+      inPlay: [{ defID: 'Militia', count: 2 }],
+      battleDeck: [],
+      tradeDeck: [],
+      inFlight: { battle: null, committed: [] },
+    };
+    const result = callSeatDone(G, '3', ctxAt('3', 'foreignTurn'));
+    expect(result).toBe(INVALID_MOVE);
+    expect(G.othersDone?.['3']).toBeUndefined();
+  });
+
+  it('passes when units are in play but upkeep has been paid', () => {
+    const G = baseState();
+    G.foreign = {
+      hand: [],
+      inPlay: [{ defID: 'Militia', count: 2 }],
+      battleDeck: [],
+      tradeDeck: [],
+      inFlight: { battle: null, committed: [] },
+      _upkeepPaid: true,
+    };
+    const result = callSeatDone(G, '3', ctxAt('3', 'foreignTurn'));
+    expect(result).toBeUndefined();
+    expect(G.othersDone?.['3']).toBe(true);
+  });
+
+  it('passes when there are no units even if upkeep is unpaid', () => {
+    const G = baseState();
+    G.foreign = {
+      hand: [],
+      inPlay: [],
+      battleDeck: [],
+      tradeDeck: [],
+      inFlight: { battle: null, committed: [] },
+    };
+    const result = callSeatDone(G, '3', ctxAt('3', 'foreignTurn'));
+    expect(result).toBeUndefined();
+    expect(G.othersDone?.['3']).toBe(true);
+  });
+
+  it('passes when every unit was recruited this turn (exempt from upkeep)', () => {
+    const G = baseState();
+    G.foreign = {
+      hand: [],
+      inPlay: [{ defID: 'Militia', count: 2 }],
+      battleDeck: [],
+      tradeDeck: [],
+      inFlight: { battle: null, committed: [] },
+      _recruitedThisTurn: { Militia: 2 },
+    };
+    const result = callSeatDone(G, '3', ctxAt('3', 'foreignTurn'));
+    expect(result).toBeUndefined();
+    expect(G.othersDone?.['3']).toBe(true);
+  });
+
+  it('rejects when only some units were recruited this turn (others still owe upkeep)', () => {
+    const G = baseState();
+    G.foreign = {
+      hand: [],
+      inPlay: [{ defID: 'Militia', count: 3 }],
+      battleDeck: [],
+      tradeDeck: [],
+      inFlight: { battle: null, committed: [] },
+      _recruitedThisTurn: { Militia: 1 },
+    };
+    const result = callSeatDone(G, '3', ctxAt('3', 'foreignTurn'));
+    expect(result).toBe(INVALID_MOVE);
+    expect(G.othersDone?.['3']).toBeUndefined();
   });
 });

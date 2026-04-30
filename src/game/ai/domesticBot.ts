@@ -1,23 +1,16 @@
-// 11.5 — DomesticBot.
+// DomesticBot.
 //
-// Pure heuristic for the Domestic role:
-//   1. If `producedThisRound` isn't set and the grid has at least one
-//      building, return `domesticProduce` so the bank harvests yield
-//      before any new placements happen this round.
-//   2. Else: sort the hand by cost ascending. For each affordable card,
+// Produce now fires automatically at `othersPhase.turn.onBegin`, so the
+// bot only has the buy/place decision to make:
+//   1. Sort the hand by cost ascending. For each affordable card,
 //      enumerate every legal placement cell and compute the hypothetical
 //      adjacency-bonus bag via `yieldAdjacencyBonus` against a draft
 //      grid that includes the proposed placement. Pick the cell with
 //      the maximum total adjacency bonus (sum of all resource amounts);
 //      ties broken by topmost-leftmost cell coordinate.
-//   3. Else: return null.
+//   2. Else: return null.
 //
-// The bot deliberately ignores upgrades for V1; the plan calls them out
-// as a fallback after no buys are affordable, but our test fixtures
-// don't currently exercise them, and a production-aware upgrade
-// heuristic adds more state-machine complexity than it pays back. The
-// hooks above (returning null when no buys fit) leave the door open
-// for a future revision to layer that in.
+// The bot deliberately ignores upgrades for V1.
 
 import type { Ctx } from 'boardgame.io';
 import type { PlayerID, SettlementState } from '../types.ts';
@@ -30,6 +23,7 @@ import {
 } from '../roles/domestic/adjacency.ts';
 import type { DomesticBuilding } from '../roles/domestic/types.ts';
 import type { BuildingDef } from '../../data/schema.ts';
+import { buildingCost } from '../../data/index.ts';
 import { RESOURCES } from '../resources/types.ts';
 import type { MoveCandidate } from './enumerate.ts';
 
@@ -147,28 +141,17 @@ const play = (state: BotState): BotAction | null => {
   const domestic = G.domestic;
   if (domestic === undefined) return null;
 
-  // Step 1: produce first if we haven't yet this round and the grid is
-  // non-empty (an empty grid produces nothing, no point spending the
-  // move).
-  if (
-    domestic.producedThisRound !== true &&
-    Object.keys(domestic.grid).length > 0
-  ) {
-    return { move: 'domesticProduce', args: [] };
-  }
+  const stash = G.mats?.[playerID]?.stash;
+  if (stash === undefined) return null;
 
-  const wallet = G.wallets[playerID];
-  if (wallet === undefined) return null;
-
-  // Step 2: sort hand by gold cost ascending; tie-break by name for
-  // determinism.
+  // Sort hand by gold cost ascending; tie-break by name for determinism.
   const sortedHand = [...domestic.hand].sort((a, b) => {
     if (a.cost !== b.cost) return a.cost - b.cost;
     return a.name.localeCompare(b.name);
   });
 
   for (const card of sortedHand) {
-    if (!canAfford(wallet, { gold: card.cost })) continue;
+    if (!canAfford(stash, buildingCost(card))) continue;
     const cell = bestCellFor(domestic.grid, card);
     if (cell !== null) {
       return {

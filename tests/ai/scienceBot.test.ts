@@ -39,7 +39,7 @@ const fillWallet = (
   seat: string,
   amounts: Partial<Record<Resource, number>>,
 ): void => {
-  const wallet = G.wallets[seat];
+  const wallet = G.mats[seat]?.stash;
   if (!wallet) throw new Error(`no wallet for seat ${seat}`);
   for (const r of RESOURCES) {
     if (amounts[r] !== undefined) wallet[r] = amounts[r] ?? 0;

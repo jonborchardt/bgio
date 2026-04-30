@@ -51,33 +51,16 @@ describe('domesticBot (11.5)', () => {
     expect(action).toBeNull();
   });
 
-  it('produces first when grid is non-empty and producedThisRound is unset', () => {
+  it('does not call produce — auto-produce in othersPhase.turn.onBegin owns it', () => {
     const G = setupG(4);
-    // Seed one placed building so producing has something to harvest.
     G.domestic!.grid['0,0'] = {
       defID: 'Granary',
       upgrades: 0,
       worker: null,
     };
     G.domestic!.producedThisRound = false;
-    const action = domesticBot.play({
-      G,
-      ctx: ctxFor('othersPhase', { '2': 'domesticTurn' }, 4),
-      playerID: '2',
-    });
-    expect(action).toEqual({ move: 'domesticProduce', args: [] });
-  });
-
-  it('does not call produce a second time after produced flag is set', () => {
-    const G = setupG(4);
-    G.domestic!.grid['0,0'] = {
-      defID: 'Granary',
-      upgrades: 0,
-      worker: null,
-    };
-    G.domestic!.producedThisRound = true;
-    // Empty wallet → bot can't buy. Should fall through to null (rather
-    // than calling produce again).
+    // Empty wallet → no buy is possible either. Bot should return null
+    // rather than dispatching domesticProduce.
     const action = domesticBot.play({
       G,
       ctx: ctxFor('othersPhase', { '2': 'domesticTurn' }, 4),
@@ -100,7 +83,7 @@ describe('domesticBot (11.5)', () => {
   it('buys the cheapest affordable building when something fits', () => {
     const G = setupG(4);
     // Wallet covers the cheapest: Granary at 10 gold.
-    G.wallets['2']!.gold = 10;
+    G.mats['2']!.stash.gold = 10;
     const action = domesticBot.play({
       G,
       ctx: ctxFor('othersPhase', { '2': 'domesticTurn' }, 4),
@@ -135,7 +118,7 @@ describe('domesticBot (11.5)', () => {
     // Wallet covers Mill (cost 13). Plus a sprinkle so we can also
     // afford something cheaper like Granary again — but Mill is the
     // one that nets a bonus.
-    G.wallets['2']!.gold = 13;
+    G.mats['2']!.stash.gold = 13;
 
     // Strip the hand down to just Mill so the cheapest-first sort
     // doesn't pick a different building. (Granary is cheaper, but
@@ -161,7 +144,7 @@ describe('domesticBot (11.5)', () => {
 
   it('determinism: same state produces same action', () => {
     const G = setupG(4);
-    G.wallets['2']!.gold = 50;
+    G.mats['2']!.stash.gold = 50;
     const ctx = ctxFor('othersPhase', { '2': 'domesticTurn' }, 4);
     const a = domesticBot.play({ G, ctx, playerID: '2' });
     const b = domesticBot.play({ G, ctx, playerID: '2' });
@@ -170,7 +153,7 @@ describe('domesticBot (11.5)', () => {
 
   it('does not hand-roll a building name not in the hand', () => {
     const G = setupG(4);
-    G.wallets['2']!.gold = 1000;
+    G.mats['2']!.stash.gold = 1000;
     const action = domesticBot.play({
       G,
       ctx: ctxFor('othersPhase', { '2': 'domesticTurn' }, 4),

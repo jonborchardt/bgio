@@ -75,6 +75,8 @@ export const foreignFlipBattle: Move<SettlementState> = ({
   // seat, which is the Foreign seat — exactly who we want to gate on.
   const evts = events as StageEvents | undefined;
   evts?.setStage?.(STAGES.foreignAwaitingDamage);
+
+  foreign._lastRelease = undefined;
 };
 
 export const foreignFlipTrade: Move<SettlementState> = ({
@@ -106,4 +108,6 @@ export const foreignFlipTrade: Move<SettlementState> = ({
   // can't flip a second trade card off the same battle. They'd need to
   // win another battle first.
   foreign.lastBattleOutcome = undefined;
+
+  foreign._lastRelease = undefined;
 };

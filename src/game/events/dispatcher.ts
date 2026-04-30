@@ -26,6 +26,7 @@ import type { EventCardDef, EventColor } from './state.ts';
 import type { EventEffect } from './effects.ts';
 import { EVENT_CARDS } from '../../data/events.ts';
 import { RESOURCES, type ResourceBag } from '../resources/types.ts';
+import { appendBankLog } from '../resources/bankLog.ts';
 import { seatOfRole } from '../roles.ts';
 import {
   enterEventStage,
@@ -36,8 +37,8 @@ import {
 
 // Color → role mapping. Mirrors the constant in `events/state.ts` but kept
 // local so the dispatcher doesn't reach into a private const there. Used
-// by `gainResource` with `target: 'wallet'` to find which seat's wallet
-// to credit.
+// by `gainResource` with `target: 'stash'` to find which seat's mat to
+// credit.
 const COLOR_TO_ROLE = {
   gold: 'chief',
   blue: 'science',
@@ -59,9 +60,9 @@ const addToBag = (
 /**
  * Apply each effect on `card` to `G`. The `playerID` argument is needed
  * for the awaiting-input flow (the dispatcher records *who* must
- * resolve the follow-up). Wallet credits use the seat that holds the
+ * resolve the follow-up). Stash credits use the seat that holds the
  * matching role for the card's color, NOT `playerID` — the chief plays
- * a blue card via a tech effect doesn't credit the chief's wallet.
+ * a blue card via a tech effect doesn't credit the chief's mat.
  *
  * `events` is bgio's `Events` API (typed loosely as `StageEvents` here
  * because we only need `setStage`). It's optional so headless tests can
@@ -96,12 +97,13 @@ export const dispatch = (
       case 'gainResource': {
         if (effect.target === 'bank') {
           addToBag(G.bank, effect.bag);
+          appendBankLog(G, 'eventCard', effect.bag, `Event ${card.id}`);
           break;
         }
-        // 'wallet': credit the seat that holds the role mapping to this
-        // card's color. The chief seat has no wallet, so a gold-card
-        // wallet effect intentionally no-ops (chief acts on the bank
-        // directly — see types.ts on the wallets map).
+        // 'stash': credit the seat that holds the role mapping to this
+        // card's color. The chief seat has no mat, so a gold-card
+        // stash effect intentionally no-ops (chief acts on the bank
+        // directly — see types.ts on the mats map).
         const role = COLOR_TO_ROLE[card.color];
         const seat = (() => {
           try {
@@ -111,9 +113,9 @@ export const dispatch = (
           }
         })();
         if (seat === null) break;
-        const wallet = G.wallets[seat];
-        if (wallet === undefined) break;
-        addToBag(wallet, effect.bag);
+        const mat = G.mats?.[seat];
+        if (mat === undefined) break;
+        addToBag(mat.stash, effect.bag);
         break;
       }
 

@@ -36,6 +36,7 @@ import type {
 import type { UnitInstance } from './types.ts';
 import { RESOURCES } from '../../resources/types.ts';
 import type { Resource, ResourceBag } from '../../resources/types.ts';
+import { appendBankLog } from '../../resources/bankLog.ts';
 import { UNITS } from '../../../data/index.ts';
 
 /**
@@ -111,10 +112,15 @@ export const foreignAssignDamage: Move<SettlementState> = (
   if (out.validationErrors.length > 0) return INVALID_MOVE;
   if (out.outcome === 'mid') return INVALID_MOVE;
 
+  foreign._lastRelease = undefined;
+
   const evts = events as StageEvents | undefined;
 
   if (out.outcome === 'win') {
-    if (battle.reward !== undefined) addInto(G.bank, battle.reward);
+    if (battle.reward !== undefined) {
+      addInto(G.bank, battle.reward);
+      appendBankLog(G, 'battleReward', battle.reward, `Battle ${battle.id}`);
+    }
 
     // V1: every battle counts as joining a settlement on win unless the
     // card explicitly opts out via `joins: false`. The BattleCardDef shape

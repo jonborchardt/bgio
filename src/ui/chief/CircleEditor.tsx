@@ -1,32 +1,48 @@
 // CircleEditor — per-target widget rendered by ChiefPanel for each non-chief
-// seat. Shows the resources currently in that seat's center-mat circle and
-// exposes +1 / +2 / +5 push buttons that route through the parent's
-// onPush(resource, amount) callback (which in turn calls the chiefDistribute
-// move).
+// seat. Each row shows a -2 / -1 / Current / +1 / +2 stepper for one
+// resource: positive presses push from bank into the seat's `in` slot,
+// negative presses pull back. The middle "Current" pill shows what is
+// currently sitting in the seat's `in` for that resource. Buttons that
+// would underflow the bank or the in-slot are disabled.
 //
-// 14.4: rows are now per-non-zero-bank-resource rather than gold-only. The
-// chief sees one row per resource the bank actually holds, plus always-show
-// `gold` (so the panel doesn't go empty in the rare case the bank only has
-// gold-zero — gives the chief a stable surface). When the bank holds zero
-// gold AND zero of every other resource, we render a small "Bank is empty"
-// note so the chief knows there's nothing to push.
+// Rows render per-non-zero-bank-resource, plus gold is always shown (the
+// canonical chief output). When everything is zero we keep the rows
+// rendered so the chief still sees the seat's current `in` values; no
+// extra placeholder text is emitted.
 //
 // All visual choices route through the theme tokens added in 09.4
 // (palette.resource.<r>.main / .contrastText) — no raw hex literals.
 
 import { Box, Button, ButtonGroup, Stack, Typography } from '@mui/material';
-import type { PlayerID } from '../../game/types.ts';
+import type { PlayerID, Role } from '../../game/types.ts';
 import {
   RESOURCES,
   type Resource,
   type ResourceBag,
 } from '../../game/resources/types.ts';
 
-const PUSH_AMOUNTS: readonly number[] = [1, 2, 5] as const;
+// Mirrors SeatPicker / Circle ROLE_ACCENT_PRIORITY so the editor's
+// title and accent match the mat tile for the same seat.
+const ROLE_ACCENT_PRIORITY: ReadonlyArray<Role> = [
+  'chief',
+  'science',
+  'domestic',
+  'foreign',
+];
+
+const accentRoleFor = (roles: ReadonlyArray<Role>): Role | undefined =>
+  ROLE_ACCENT_PRIORITY.find((r) => roles.includes(r));
+
+const titleCase = (s: string): string =>
+  s.length === 0 ? s : s[0]!.toUpperCase() + s.slice(1);
+
+const STEP_AMOUNTS: readonly number[] = [-2, -1, 1, 2] as const;
 
 export interface CircleEditorProps {
   seat: PlayerID;
-  circle: ResourceBag;
+  roles: ReadonlyArray<Role>;
+  /** Tokens already in this seat's `in` slot this round. */
+  inBag: ResourceBag;
   bank: ResourceBag;
   canPush: boolean;
   onPush: (resource: Resource, amount: number) => void;
@@ -34,18 +50,20 @@ export interface CircleEditorProps {
 
 export function CircleEditor({
   seat,
-  circle,
+  roles,
+  inBag,
   bank,
   canPush,
   onPush,
 }: CircleEditorProps) {
-  // 14.4 — render every resource the bank holds. Gold is forced visible
-  // (it's the canonical chief output) so the row layout doesn't flicker
-  // when other resources transiently drain to zero between rounds.
+  const accent = accentRoleFor(roles);
+  const label = roles.length > 0 ? roles.map(titleCase).join(' · ') : '—';
+  // Render every resource the bank holds. Gold is forced visible (it's
+  // the canonical chief output) so the row layout doesn't flicker when
+  // other resources transiently drain to zero between rounds.
   const resourcesShown: Resource[] = RESOURCES.filter(
     (r) => r === 'gold' || (bank[r] ?? 0) > 0,
   );
-  const bankEmpty = RESOURCES.every((r) => (bank[r] ?? 0) === 0);
 
   return (
     <Box
@@ -54,30 +72,27 @@ export function CircleEditor({
         py: 1.5,
         borderRadius: 1,
         border: '1px solid',
-        borderColor: (t) => t.palette.status.muted,
+        borderColor: (t) =>
+          accent ? t.palette.role[accent].main : t.palette.status.muted,
         bgcolor: (t) => t.palette.card.surface,
       }}
-      aria-label={`Circle editor for seat ${seat}`}
+      aria-label={`${label} mat editor (Player ${Number(seat) + 1})`}
     >
       <Typography
-        variant="body2"
-        sx={{ color: (t) => t.palette.status.muted, mb: 0.5 }}
+        sx={{
+          color: (t) =>
+            accent ? t.palette.role[accent].main : t.palette.card.text,
+          fontWeight: 700,
+          letterSpacing: '0.02em',
+          mb: 0.5,
+        }}
       >
-        Player {Number(seat) + 1}
+        {label}
       </Typography>
-
-      {bankEmpty ? (
-        <Typography
-          variant="caption"
-          sx={{ color: (t) => t.palette.status.muted, fontStyle: 'italic' }}
-        >
-          Bank is empty.
-        </Typography>
-      ) : null}
 
       <Stack spacing={1}>
         {resourcesShown.map((resource) => {
-          const inCircle = circle[resource] ?? 0;
+          const placed = inBag[resource] ?? 0;
           const inBank = bank[resource] ?? 0;
           return (
             <Stack
@@ -113,23 +128,41 @@ export function CircleEditor({
                   {resource}
                 </Typography>
               </Box>
-              <Typography
-                variant="body2"
-                sx={{ color: (t) => t.palette.status.muted, minWidth: '4rem' }}
-              >
-                in circle: {inCircle}
-              </Typography>
               <ButtonGroup size="small" variant="outlined">
-                {PUSH_AMOUNTS.map((amount) => {
+                {STEP_AMOUNTS.slice(0, 2).map((amount) => {
+                  const disabled = !canPush || placed < -amount;
+                  return (
+                    <Button
+                      key={amount}
+                      disabled={disabled}
+                      onClick={() => onPush(resource, amount)}
+                      aria-label={`Pull ${amount} ${resource} from ${label}`}
+                    >
+                      {amount}
+                    </Button>
+                  );
+                })}
+                <Button
+                  disabled
+                  aria-label={`Current ${resource} placed: ${placed}`}
+                  sx={{
+                    minWidth: '2.5rem',
+                    fontWeight: 700,
+                    '&.Mui-disabled': {
+                      color: (t) => t.palette.resource[resource].main,
+                    },
+                  }}
+                >
+                  {placed}
+                </Button>
+                {STEP_AMOUNTS.slice(2).map((amount) => {
                   const disabled = !canPush || inBank < amount;
                   return (
                     <Button
                       key={amount}
                       disabled={disabled}
                       onClick={() => onPush(resource, amount)}
-                      aria-label={`Push +${amount} ${resource} to player ${
-                        Number(seat) + 1
-                      }`}
+                      aria-label={`Push +${amount} ${resource} to ${label}`}
                     >
                       +{amount}
                     </Button>

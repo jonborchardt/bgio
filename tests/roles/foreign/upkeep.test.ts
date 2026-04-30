@@ -3,12 +3,17 @@
 import { describe, expect, it } from 'vitest';
 import type { Ctx } from 'boardgame.io';
 import { INVALID_MOVE } from 'boardgame.io/core';
-import { foreignUpkeep } from '../../../src/game/roles/foreign/upkeep.ts';
+import {
+  foreignUpkeep,
+  computeForeignUpkeepGold,
+  upkeepableUnits,
+} from '../../../src/game/roles/foreign/upkeep.ts';
 import { bagOf } from '../../../src/game/resources/bag.ts';
 import { assignRoles } from '../../../src/game/roles.ts';
 import type { ResourceBag } from '../../../src/game/resources/types.ts';
 import type { SettlementState, ForeignState } from '../../../src/game/types.ts';
 import type { DomesticBuilding } from '../../../src/game/roles/domestic/types.ts';
+import { initialMats } from '../../../src/game/resources/playerMat.ts';
 
 const emptyForeign = (): ForeignState => ({
   hand: [],
@@ -19,31 +24,24 @@ const emptyForeign = (): ForeignState => ({
 });
 
 const build2pState = (
-  walletOf: Partial<ResourceBag>,
+  stashOf: Partial<ResourceBag>,
   partial: Partial<SettlementState> = {},
 ): SettlementState => {
   const roleAssignments = assignRoles(2);
-  const matCircles: Record<string, ResourceBag> = {};
-  const wallets: Record<string, ResourceBag> = {};
-  for (const [seat, roles] of Object.entries(roleAssignments)) {
-    if (!roles.includes('chief')) {
-      matCircles[seat] = bagOf({});
-      wallets[seat] = bagOf({});
-    }
-  }
-  wallets['1'] = bagOf(walletOf);
+  const mats = initialMats(roleAssignments);
+  if (mats['1'] !== undefined) mats['1']!.stash = bagOf(stashOf);
 
   const hands: Record<string, unknown> = {};
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
 
   return {
     bank: bagOf({}),
-    centerMat: { circles: matCircles, tradeRequest: null },
+    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 1,
     settlementsJoined: 0,
     hands,
-    wallets,
+    mats,
     foreign: emptyForeign(),
     ...partial,
   };
@@ -80,7 +78,7 @@ describe('foreignUpkeep (07.2)', () => {
     const result = callUpkeep(G, '1', ctxForeignTurn('1'));
 
     expect(result).toBeUndefined();
-    expect(G.wallets['1']).toEqual(bagOf({ gold: 2 }));
+    expect(G.mats['1']?.stash).toEqual(bagOf({ gold: 2 }));
     expect(G.bank).toEqual(bagOf({ gold: 8 }));
     expect(G.foreign!._upkeepPaid).toBe(true);
   });
@@ -94,6 +92,37 @@ describe('foreignUpkeep (07.2)', () => {
 
     expect(result).toBe(INVALID_MOVE);
     expect(G).toEqual(before);
+  });
+
+  it('units recruited this turn are exempt from upkeep', () => {
+    // Two Brutes total, one of which was recruited this turn. Only the
+    // pre-existing Brute owes upkeep (cost 3).
+    const G = build2pState({ gold: 10 });
+    G.foreign!.inPlay = [{ defID: 'Brute', count: 2 }];
+    G.foreign!._recruitedThisTurn = { Brute: 1 };
+
+    expect(computeForeignUpkeepGold(G)).toBe(3);
+    expect(upkeepableUnits(G)).toEqual([{ defID: 'Brute', count: 1 }]);
+
+    const result = callUpkeep(G, '1', ctxForeignTurn('1'));
+
+    expect(result).toBeUndefined();
+    expect(G.mats['1']?.stash).toEqual(bagOf({ gold: 7 }));
+    expect(G.bank).toEqual(bagOf({ gold: 3 }));
+  });
+
+  it('all units recruited this turn → upkeep due is 0; move is a no-op pay that still flips _upkeepPaid', () => {
+    const G = build2pState({ gold: 10 });
+    G.foreign!.inPlay = [{ defID: 'Brute', count: 2 }];
+    G.foreign!._recruitedThisTurn = { Brute: 2 };
+
+    expect(computeForeignUpkeepGold(G)).toBe(0);
+
+    const result = callUpkeep(G, '1', ctxForeignTurn('1'));
+
+    expect(result).toBeUndefined();
+    expect(G.mats['1']?.stash).toEqual(bagOf({ gold: 10 }));
+    expect(G.foreign!._upkeepPaid).toBe(true);
   });
 
   it('Walls in domestic grid (unitMaintenance -2) reduces per-unit upkeep', () => {
@@ -119,7 +148,7 @@ describe('foreignUpkeep (07.2)', () => {
     const result = callUpkeep(G, '1', ctxForeignTurn('1'));
 
     expect(result).toBeUndefined();
-    expect(G.wallets['1']).toEqual(bagOf({ gold: 4 }));
+    expect(G.mats['1']?.stash).toEqual(bagOf({ gold: 4 }));
     expect(G.bank).toEqual(bagOf({ gold: 1 }));
   });
 });

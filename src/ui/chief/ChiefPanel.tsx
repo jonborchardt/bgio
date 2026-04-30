@@ -3,47 +3,44 @@
 //
 // Renders nothing when:
 //   - No `playerID` is bound to this client (spectator / unauthenticated), OR
-//   - The local seat doesn't hold the `chief` role, OR
-//   - The engine isn't currently in `chiefPhase`.
+//   - The local seat doesn't hold the `chief` role.
 //
-// In all other cases it shows a header, a bank summary, one CircleEditor per
-// non-chief seat (push +N gold via `chiefDistribute`), and an "End my turn"
-// button (`chiefEndPhase`). The "End my turn" button is also rendered when
-// the panel itself is visible, which by construction means the local seat is
-// chief and we are in chiefPhase — so disabling it is theoretical, but we
-// keep the disabled-state guard for symmetry with the plan's spec and to
-// stay correct if the parent ever loosens the gating around the panel.
-//
-// All visual choices route through theme tokens (`palette.role.chief`,
-// `palette.resource.gold`, …) — no raw hex literals.
+// During `chiefPhase` it shows the role header, one CircleEditor per
+// non-chief seat (push or pull resources via `chiefDistribute`), and an
+// "End my turn" button (`chiefEndPhase`). Outside `chiefPhase` the panel
+// stays mounted but only renders the resource bar (income for the round)
+// so the chief can watch their take accumulate; distribution UI is hidden.
 
-import { Box, Button, Paper, Stack, Typography } from '@mui/material';
+import { useContext } from 'react';
+import { Button, Stack, Typography } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
 import type { PlayerID, SettlementState } from '../../game/types.ts';
-import {
-  RESOURCES,
-  type Resource,
-  type ResourceBag,
-} from '../../game/resources/types.ts';
+import type { Resource, ResourceBag } from '../../game/resources/types.ts';
+import { computeBankView } from '../../game/resources/bankLog.ts';
 import { rolesAtSeat } from '../../game/roles.ts';
 import { CircleEditor } from './CircleEditor.tsx';
+import { RolePanel } from '../layout/RolePanel.tsx';
+import { StashBar } from '../resources/StashBar.tsx';
+import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
+import { firstNonChiefSeat } from '../layout/nextSeat.ts';
 
 export function ChiefPanel(props: BoardProps<SettlementState>) {
   const { G, ctx, moves, playerID } = props;
+  const seatCtx = useContext(SeatPickerContext);
 
-  // Without a bound seat (spectator) we can't be the chief — render nothing.
   if (playerID === undefined || playerID === null) return null;
 
   const localRoles = rolesAtSeat(G.roleAssignments, playerID);
   const isChiefSeat = localRoles.includes('chief');
+  if (!isChiefSeat) return null;
+
   const isChiefPhase = ctx.phase === 'chiefPhase';
-
-  // Panel is gated by "you are the chief AND it's your phase". The plan
-  // notes "render nothing or a disabled-state notice"; we go with nothing
-  // so the rest of the board stays uncluttered for non-chief seats.
-  if (!isChiefSeat || !isChiefPhase) return null;
-
-  const canPush = isChiefSeat && isChiefPhase;
+  const canPush = isChiefPhase;
+  // Off-turn: show what the chief is collecting this round (income).
+  // On-turn: show the full bank — everything available to distribute,
+  // which is income + carryover combined.
+  const barBag = isChiefPhase ? G.bank : computeBankView(G).income;
+  const barLabel = isChiefPhase ? 'Stash' : 'Income';
 
   // Sort seats deterministically; render every non-chief seat (the chief's
   // own seat owns no circle on the mat, so there's nothing to distribute to).
@@ -62,44 +59,17 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
 
   const handleEndTurn = (): void => {
     moves.chiefEndPhase();
+    if (seatCtx) seatCtx.setSeat(firstNonChiefSeat(G));
   };
 
-  // 14.4 — bank summary now shows every non-zero resource (with gold
-  // always visible as the chief's canonical output) so the chief knows
-  // what they can distribute.
-  const bankResourcesShown: Resource[] = RESOURCES.filter(
-    (r) => r === 'gold' || (G.bank[r] ?? 0) > 0,
-  );
-
   return (
-    <Paper
-      elevation={0}
-      sx={{
-        px: 2,
-        py: 2,
-        bgcolor: (t) => t.palette.card.surface,
-        border: '1px solid',
-        borderColor: (t) => t.palette.role.chief.main,
-      }}
-      aria-label="Chief panel"
-    >
-      <Stack spacing={1.5}>
-        <Typography
-          variant="h5"
-          component="h2"
-          sx={{
-            color: (t) => t.palette.role.chief.main,
-            fontWeight: 700,
-            letterSpacing: '0.02em',
-          }}
-        >
-          Chief
-        </Typography>
-
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+    <RolePanel
+      role="chief"
+      actions={
+        isChiefPhase ? (
           <Button
             variant="contained"
-            disabled={!isChiefSeat || !isChiefPhase}
+            disabled={!isChiefPhase}
             onClick={handleEndTurn}
             sx={{
               bgcolor: (t) => t.palette.role.chief.main,
@@ -111,77 +81,48 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
           >
             End my turn
           </Button>
-        </Box>
+        ) : null
+      }
+    >
+      <Stack spacing={1.5}>
+        <StashBar
+          stash={barBag}
+          label={barLabel}
+          ariaLabel={`Chief ${barLabel.toLowerCase()}`}
+        />
 
-        <Stack
-          direction="row"
-          spacing={1.5}
-          aria-label="Bank summary"
-          sx={{ alignItems: 'center' }}
-        >
-          <Typography
-            variant="body2"
-            sx={{ color: (t) => t.palette.status.muted }}
-          >
-            Bank
-          </Typography>
-          {bankResourcesShown.map((resource) => (
-            <Stack
-              key={resource}
-              direction="row"
-              spacing={0.5}
-              sx={{ alignItems: 'center' }}
-            >
-              <Box
-                aria-hidden
-                sx={{
-                  width: '0.75rem',
-                  height: '0.75rem',
-                  borderRadius: '50%',
-                  bgcolor: (t) => t.palette.resource[resource].main,
-                }}
-              />
+        {isChiefPhase ? (
+          <Stack spacing={1} aria-label="Non-chief seats">
+            {nonChiefSeats.length === 0 ? (
               <Typography
-                sx={{
-                  color: (t) => t.palette.resource[resource].main,
-                  fontWeight: 600,
-                }}
+                variant="body2"
+                sx={{ color: (t) => t.palette.status.muted }}
               >
-                {G.bank[resource] ?? 0}
+                No non-chief seats to distribute to.
               </Typography>
-            </Stack>
-          ))}
-        </Stack>
-
-        <Stack spacing={1} aria-label="Non-chief seats">
-          {nonChiefSeats.length === 0 ? (
-            <Typography
-              variant="body2"
-              sx={{ color: (t) => t.palette.status.muted }}
-            >
-              No non-chief seats to distribute to.
-            </Typography>
-          ) : (
-            nonChiefSeats.map((seat) => {
-              const circle = G.centerMat.circles[seat];
-              if (!circle) return null;
-              return (
-                <CircleEditor
-                  key={seat}
-                  seat={seat}
-                  circle={circle}
-                  bank={G.bank}
-                  canPush={canPush}
-                  onPush={(resource, amount) =>
-                    handlePush(seat, resource, amount)
-                  }
-                />
-              );
-            })
-          )}
-        </Stack>
+            ) : (
+              nonChiefSeats.map((seat) => {
+                const mat = G.mats?.[seat];
+                if (!mat) return null;
+                return (
+                  <CircleEditor
+                    key={seat}
+                    seat={seat}
+                    roles={rolesAtSeat(G.roleAssignments, seat)}
+                    inBag={mat.in}
+                    bank={G.bank}
+                    canPush={canPush}
+                    onPush={(resource, amount) =>
+                      handlePush(seat, resource, amount)
+                    }
+                  />
+                );
+              })
+            )}
+          </Stack>
+        ) : null}
       </Stack>
-    </Paper>
+    </RolePanel>
   );
 }
 

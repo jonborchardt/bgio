@@ -23,6 +23,7 @@ import type {
   EventCardDef,
   EventsState,
 } from '../../../src/game/events/state.ts';
+import { initialMats } from '../../../src/game/resources/playerMat.ts';
 
 // A single blue card in the science seat's hand. Sized 1-of-1 so any
 // `cycleAdvance` triggered by the move completes the cycle and resets
@@ -70,25 +71,17 @@ const build2pState = (
   partial: Partial<SettlementState> = {},
 ): SettlementState => {
   const roleAssignments = assignRoles(2);
-  const matCircles: Record<string, ReturnType<typeof bagOf>> = {};
-  const wallets: Record<string, ReturnType<typeof bagOf>> = {};
-  for (const [seat, roles] of Object.entries(roleAssignments)) {
-    if (!roles.includes('chief')) {
-      matCircles[seat] = bagOf({});
-      wallets[seat] = bagOf({});
-    }
-  }
   const hands: Record<string, unknown> = {};
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
 
   return {
     bank: bagOf({}),
-    centerMat: { circles: matCircles, tradeRequest: null },
+    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 1,
     settlementsJoined: 0,
     hands,
-    wallets,
+    mats: initialMats(roleAssignments),
     ...partial,
   };
 };

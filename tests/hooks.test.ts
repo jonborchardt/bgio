@@ -18,12 +18,14 @@ import { EMPTY_BAG } from '../src/game/resources/types.ts';
 
 const makeStubG = (): SettlementState => ({
   bank: { ...EMPTY_BAG },
-  centerMat: { circles: {}, tradeRequest: null },
+  centerMat: { tradeRequest: null },
   roleAssignments: { '0': ['chief'], '1': ['science'] },
   round: 0,
   settlementsJoined: 0,
   hands: { '0': {}, '1': {} },
-  wallets: { '1': { ...EMPTY_BAG } },
+  mats: {
+    '1': { in: { ...EMPTY_BAG }, out: { ...EMPTY_BAG }, stash: { ...EMPTY_BAG } },
+  },
 });
 
 // Minimal Ctx stub. The hooks under test never read these fields; they

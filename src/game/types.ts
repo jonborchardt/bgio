@@ -2,10 +2,16 @@
 // Pure types only — no runtime, no boardgame.io imports.
 
 import type { ResourceBag } from './resources/types.ts';
+// Type-only edge for the bank audit trail (chief-tooltip provenance).
+// `./resources/bankLog.ts` imports `SettlementState` back from this file,
+// so the `import type` keeps the cycle erased.
+import type { BankLogEntry } from './resources/bankLog.ts';
 // Type-only edge into `./resources/centerMat.ts`. That module imports
 // `PlayerID` / `Role` back from this file, but because both edges are
 // `import type`-only there is no runtime cycle — TypeScript erases them.
 import type { CenterMat } from './resources/centerMat.ts';
+// Per-seat player mat (in / out / stash). Same cycle-erasing trick.
+import type { PlayerMat } from './resources/playerMat.ts';
 // Type-only edge for the canonical TechnologyDef shape — referenced from
 // the per-role hand fields (chief/domestic) populated by `scienceComplete`
 // in 05.3 when a science card's underlying tech cards are distributed.
@@ -43,6 +49,7 @@ export type PlayerID = string;
 export type {
   ResourceBag,
   CenterMat,
+  PlayerMat,
   ScienceState,
   ForeignState,
   EventsState,
@@ -53,6 +60,12 @@ export type {
 export interface SettlementState {
   // Public, shared state.
   bank: ResourceBag;
+  // Audit trail for every mutation that touches `G.bank`. Powers the
+  // ChiefPanel tooltip ("how did we get this number to give out?"). Each
+  // entry is a signed delta tagged with `G.round` at the time of the
+  // mutation. Optional so older test fixtures stay source-compatible —
+  // `appendBankLog` lazily initializes the slot.
+  bankLog?: BankLogEntry[];
   centerMat: CenterMat;
   roleAssignments: Record<PlayerID, Role[]>;
   round: number;
@@ -69,6 +82,11 @@ export interface SettlementState {
   // a match without rebuilding the game config.
   turnCap?: number;
 
+  // Per-round gold stipend the bank receives at every chiefPhase.onBegin.
+  // Set at `setup` from `setupData.chiefStipendPerRound` (default
+  // `CHIEF_STIPEND_DEFAULT`). 0 disables the stipend entirely.
+  chiefStipend?: number;
+
   // Optional snapshot of `G.round` at the moment the win condition fired.
   // Reserved for the persistence hook (10.7) so the server can write the
   // win-time score even if `G.round` advances further before `endIf` is
@@ -79,13 +97,13 @@ export interface SettlementState {
   // Decks belong to whoever owns them and live under those players' hands.
   hands: Record<PlayerID, unknown>;
 
-  // Per-seat resource wallet — the buffer between "I pulled tokens from my
-  // mat circle" and "I spent them on a card / unit / tech". Populated for
-  // every non-chief seat by `setup` (chief acts on the bank directly and
-  // never owns a wallet). The map intentionally omits the chief seat so any
-  // accidental `wallets[chiefSeat]` lookup surfaces as `undefined` rather
-  // than silently spending from a phantom bag.
-  wallets: Record<PlayerID, ResourceBag>;
+  // Per-seat player mat: `in` (chief just dropped here), `out` (this seat
+  // produced for the chief to sweep), `stash` (working pool spent from).
+  // Populated for every non-chief seat by `setup` — the chief operates on
+  // `G.bank` directly and never owns a mat. The map intentionally omits the
+  // chief seat so any accidental `mats[chiefSeat]` lookup surfaces as
+  // `undefined` rather than silently spending from a phantom bag.
+  mats: Record<PlayerID, PlayerMat>;
 
   // Phase-progress flags consumed by 02.1's phase `endIf` checks. The real
   // moves that flip these land in 04.2 (chiefEndPhase) and the others-phase

@@ -44,9 +44,9 @@ export interface TechEffect {
  * The synthetic `color` field is `'gold'` — chosen arbitrarily because
  * tech cards have no intrinsic color (the science-card color decides
  * where the tech is *delivered*, not what role it then belongs to).
- * Effect kinds that consult `card.color` are `gainResource.wallet` and
+ * Effect kinds that consult `card.color` are `gainResource.stash` and
  * `addEventCard`; if a tech's effects use either, the destination is
- * fixed to the chief seat's wallet / the gold deck via this synthetic.
+ * fixed to the chief seat's mat / the gold deck via this synthetic.
  * Author content accordingly, or thread an explicit `target` on the
  * effect (see 08.2 dispatcher).
  */

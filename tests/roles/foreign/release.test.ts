@@ -8,6 +8,7 @@ import { bagOf } from '../../../src/game/resources/bag.ts';
 import { assignRoles } from '../../../src/game/roles.ts';
 import type { ResourceBag } from '../../../src/game/resources/types.ts';
 import type { SettlementState, ForeignState } from '../../../src/game/types.ts';
+import { initialMats } from '../../../src/game/resources/playerMat.ts';
 
 const emptyForeign = (): ForeignState => ({
   hand: [],
@@ -23,27 +24,20 @@ const build2pState = (
   partial: Partial<SettlementState> = {},
 ): SettlementState => {
   const roleAssignments = assignRoles(2);
-  const matCircles: Record<string, ResourceBag> = {};
-  const wallets: Record<string, ResourceBag> = {};
-  for (const [seat, roles] of Object.entries(roleAssignments)) {
-    if (!roles.includes('chief')) {
-      matCircles[seat] = bagOf({});
-      wallets[seat] = bagOf({});
-    }
-  }
-  wallets['1'] = bagOf(walletOf);
+  const mats = initialMats(roleAssignments);
+  if (mats['1'] !== undefined) mats['1']!.stash = bagOf(walletOf);
 
   const hands: Record<string, unknown> = {};
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
 
   return {
     bank: bagOf(bankOf),
-    centerMat: { circles: matCircles, tradeRequest: null },
+    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 1,
     settlementsJoined: 0,
     hands,
-    wallets,
+    mats,
     foreign: emptyForeign(),
     ...partial,
   };
@@ -80,8 +74,28 @@ describe('foreignReleaseUnit (07.2)', () => {
     const result = callRelease(G, '1', ctxForeignTurn('1'), 'Brute');
 
     expect(result).toBeUndefined();
-    expect(G.wallets['1']).toEqual(bagOf({ gold: 1 }));
+    expect(G.mats['1']?.stash).toEqual(bagOf({ gold: 1 }));
     expect(G.bank).toEqual(bagOf({ gold: 4 }));
     expect(G.foreign!.inPlay).toEqual([{ defID: 'Brute', count: 1 }]);
+  });
+
+  it('release proceeds with a clamped refund when the bank cannot cover it', () => {
+    // Bank empty: release must still succeed (it's the escape hatch when
+    // upkeep is unaffordable). Player gets whatever the bank can pay — 0
+    // here — and the unit is removed.
+    const G = build2pState({ gold: 0 }, { gold: 0 });
+    G.foreign!.inPlay = [{ defID: 'Brute', count: 1 }];
+
+    const result = callRelease(G, '1', ctxForeignTurn('1'), 'Brute');
+
+    expect(result).toBeUndefined();
+    expect(G.mats['1']?.stash).toEqual(bagOf({ gold: 0 }));
+    expect(G.bank).toEqual(bagOf({ gold: 0 }));
+    expect(G.foreign!.inPlay).toEqual([]);
+    expect(G.foreign!._lastRelease).toEqual({
+      defID: 'Brute',
+      count: 1,
+      refundTotal: 0,
+    });
   });
 });

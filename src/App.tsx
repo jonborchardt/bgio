@@ -33,6 +33,12 @@ import type { PlayerID } from './game/index.ts';
 const debugEnabled: boolean =
   (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true;
 
+/** When the debug panel is enabled, start it collapsed so it doesn't cover
+ * the board on every load. The `.` key (bgio's debug toggle) still opens it. */
+const debugOpt: { collapseOnLoad: true } | false = debugEnabled
+  ? { collapseOnLoad: true }
+  : false;
+
 /** The hot-seat client — single tab driving all seats. This is the GH Pages
  * default and the fallback whenever networked mode is selected but we don't
  * yet have lobby-provided match coordinates.
@@ -46,7 +52,7 @@ const HotSeatApp = Client({
   game: Settlement,
   board: SettlementBoard,
   numPlayers: 4,
-  debug: debugEnabled,
+  debug: debugOpt,
 }) as unknown as ComponentType<{ playerID?: string }>;
 
 /** Read `?matchID=...&playerID=...&credentials=...` from the page URL.

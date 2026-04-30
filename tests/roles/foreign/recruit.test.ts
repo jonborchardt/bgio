@@ -15,6 +15,7 @@ import { UNITS } from '../../../src/data/index.ts';
 import type { ResourceBag } from '../../../src/game/resources/types.ts';
 import type { SettlementState, ForeignState } from '../../../src/game/types.ts';
 import type { DomesticBuilding } from '../../../src/game/roles/domestic/types.ts';
+import { initialMats } from '../../../src/game/resources/playerMat.ts';
 
 const emptyForeign = (): ForeignState => ({
   hand: [],
@@ -32,28 +33,21 @@ const build2pState = (
   partial: Partial<SettlementState> = {},
 ): SettlementState => {
   const roleAssignments = assignRoles(2);
-  const matCircles: Record<string, ResourceBag> = {};
-  const wallets: Record<string, ResourceBag> = {};
-  for (const [seat, roles] of Object.entries(roleAssignments)) {
-    if (!roles.includes('chief')) {
-      matCircles[seat] = bagOf({});
-      wallets[seat] = bagOf({});
-    }
-  }
   // Seat '1' is the foreign seat in 2p.
-  wallets['1'] = bagOf(walletOf);
+  const mats = initialMats(roleAssignments);
+  if (mats['1'] !== undefined) mats['1']!.stash = bagOf(walletOf);
 
   const hands: Record<string, unknown> = {};
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
 
   return {
     bank: bagOf({}),
-    centerMat: { circles: matCircles, tradeRequest: null },
+    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 1,
     settlementsJoined: 0,
     hands,
-    wallets,
+    mats,
     foreign: emptyForeign(),
     ...partial,
   };
@@ -91,7 +85,7 @@ describe('foreignRecruit (07.2)', () => {
     const result = callRecruit(G, '1', ctxForeignTurn('1'), 'Brute');
 
     expect(result).toBeUndefined();
-    expect(G.wallets['1']).toEqual(bagOf({ gold: 2 }));
+    expect(G.mats['1']?.stash).toEqual(bagOf({ gold: 2 }));
     expect(G.bank).toEqual(bagOf({ gold: 3 }));
     expect(G.foreign!.inPlay).toEqual([{ defID: 'Brute', count: 1 }]);
   });
@@ -103,8 +97,17 @@ describe('foreignRecruit (07.2)', () => {
     callRecruit(G, '1', ctxForeignTurn('1'), 'Brute');
 
     expect(G.foreign!.inPlay).toEqual([{ defID: 'Brute', count: 2 }]);
-    expect(G.wallets['1']).toEqual(bagOf({ gold: 4 }));
+    expect(G.mats['1']?.stash).toEqual(bagOf({ gold: 4 }));
     expect(G.bank).toEqual(bagOf({ gold: 6 }));
+  });
+
+  it('tags newly recruited units in _recruitedThisTurn so they are exempt from upkeep this turn', () => {
+    const G = build2pState({ gold: 10 });
+
+    callRecruit(G, '1', ctxForeignTurn('1'), 'Brute');
+    callRecruit(G, '1', ctxForeignTurn('1'), 'Brute');
+
+    expect(G.foreign!._recruitedThisTurn).toEqual({ Brute: 2 });
   });
 
   it('Forge in domestic grid reduces unit cost by 1', () => {
@@ -129,7 +132,7 @@ describe('foreignRecruit (07.2)', () => {
     const result = callRecruit(G, '1', ctxForeignTurn('1'), 'Brute');
 
     expect(result).toBeUndefined();
-    expect(G.wallets['1']).toEqual(bagOf({ gold: 3 }));
+    expect(G.mats['1']?.stash).toEqual(bagOf({ gold: 3 }));
     expect(G.bank).toEqual(bagOf({ gold: 2 }));
     expect(G.foreign!.inPlay).toEqual([{ defID: 'Brute', count: 1 }]);
   });

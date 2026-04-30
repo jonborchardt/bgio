@@ -8,9 +8,12 @@ networked play.
 > 490+ tests, typecheck + lint clean, Playwright smoke green. The hot-seat board ships
 > a seat-picker tab strip, per-role "End my turn" buttons, a `ctx.activePlayers`-driven
 > "Player N: role's turn" header, a phase hint, a game-over banner, a favicon, and a
-> per-event damage absorber UI for Foreign battles. The networked stack assembles
-> end-to-end (lobby + accounts + chat + idle bot takeover) but the live two-tab playtest
-> hasn't been driven through yet.
+> per-event damage absorber UI for Foreign battles. Per-seat resources live on a player
+> mat (`in` / `out` / `stash`); the chief sweeps `out` into the bank at every chief
+> turn, drops resources into seats' `in`, and `in` empties into `stash` automatically
+> when a seat begins its turn. Domestic produce auto-fires at othersPhase entry. The
+> networked stack assembles end-to-end (lobby + accounts + chat + idle bot takeover)
+> but the live two-tab playtest hasn't been driven through yet.
 
 ## Two ways to play
 
@@ -66,7 +69,7 @@ Python 3 / make / a C++ toolchain. The Dockerfile installs them automatically.
 │   │   ├── setup.ts moves.ts random.ts hooks.ts playerView.ts endConditions.ts
 │   │   ├── roles.ts           # assignRoles / seatOfRole / rolesAtSeat
 │   │   ├── phases/            # chief / others / endOfRound / stages
-│   │   ├── resources/         # bag / bank / centerMat / moves / types
+│   │   ├── resources/         # bag / bank / centerMat / playerMat / bankLog / moves / types
 │   │   ├── events/            # event deck, dispatcher, eventResolve
 │   │   ├── opponent/          # wander deck
 │   │   ├── tech/              # tech-card effects
@@ -74,7 +77,7 @@ Python 3 / make / a C++ toolchain. The Dockerfile installs them automatically.
 │   │   └── roles/{chief,science,domestic,foreign}/  # per-role moves
 │   ├── data/                  # JSON + typed loaders (BUILDINGS / UNITS / TECHNOLOGIES / EVENT_CARDS / WANDER_CARDS / ADJACENCY_RULES / SCIENCE_CARDS / battle / trade decks)
 │   ├── ui/                    # MUI panels + cards + chat + chrome
-│   │   ├── layout/            # BoardShell, RoleSlot, StatusBar
+│   │   ├── layout/            # StatusBar, SeatPicker, RolePanel, GameOverBanner, PhaseHint
 │   │   ├── chief/ science/ domestic/ foreign/   # per-role panels
 │   │   ├── cards/ resources/ mat/ deck/ hand/ chat/
 │   │   └── ...

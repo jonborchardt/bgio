@@ -13,33 +13,33 @@ import { bagOf } from '../../../src/game/resources/bag.ts';
 import { assignRoles } from '../../../src/game/roles.ts';
 import type { ResourceBag } from '../../../src/game/resources/types.ts';
 import type { SettlementState } from '../../../src/game/types.ts';
+import { initialMats } from '../../../src/game/resources/playerMat.ts';
 
 // Builds a 2-player state where seat '0' is chief+science and seat '1' is
-// domestic+foreign with a circle on the mat.
+// domestic+foreign. The `inSlots` argument seeds `mats[seat].in` for any
+// non-chief seat (used by the pull-back tests).
 const build2pState = (
   bank: Partial<ResourceBag> = {},
-  circles: Record<string, Partial<ResourceBag>> = {},
+  inSlots: Record<string, Partial<ResourceBag>> = {},
 ): SettlementState => {
   const roleAssignments = assignRoles(2);
-  const matCircles: Record<string, ResourceBag> = {};
-  const wallets: Record<string, ResourceBag> = {};
-  for (const [seat, roles] of Object.entries(roleAssignments)) {
-    if (!roles.includes('chief')) {
-      matCircles[seat] = bagOf(circles[seat] ?? {});
-      wallets[seat] = bagOf({});
-    }
-  }
   const hands: Record<string, unknown> = {};
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
 
+  const mats = initialMats(roleAssignments);
+  for (const [seat, slot] of Object.entries(inSlots)) {
+    if (mats[seat] === undefined) continue;
+    mats[seat]!.in = bagOf(slot);
+  }
+
   return {
     bank: bagOf(bank),
-    centerMat: { circles: matCircles, tradeRequest: null },
+    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 1,
     settlementsJoined: 0,
     hands,
-    wallets,
+    mats,
   };
 };
 
@@ -61,14 +61,14 @@ const callDistribute = (
 };
 
 describe('chiefDistribute (04.1)', () => {
-  it('happy path: chief moves 2 gold to seat 1; bank loses 2 gold, seat 1 circle gains 2 gold', () => {
+  it('happy path: chief moves 2 gold to seat 1; bank loses 2 gold, seat 1 in-slot gains 2 gold', () => {
     const G = build2pState({ gold: 3 });
 
     const result = callDistribute(G, '0', ctxAt('chiefPhase'), '1', { gold: 2 });
 
     expect(result).toBeUndefined();
     expect(G.bank).toEqual(bagOf({ gold: 1 }));
-    expect(G.centerMat.circles['1']).toEqual(bagOf({ gold: 2 }));
+    expect(G.mats['1']!.in).toEqual(bagOf({ gold: 2 }));
   });
 
   it('wrong phase: chiefDistribute during othersPhase returns INVALID_MOVE', () => {
@@ -108,6 +108,26 @@ describe('chiefDistribute (04.1)', () => {
     const before = JSON.parse(JSON.stringify(G));
 
     const result = callDistribute(G, '0', ctxAt('chiefPhase'), '0', { gold: 1 });
+
+    expect(result).toBe(INVALID_MOVE);
+    expect(G).toEqual(before);
+  });
+
+  it('pull-back: negative amount moves tokens from seat in-slot back to bank', () => {
+    const G = build2pState({ gold: 1 }, { '1': { gold: 2 } });
+
+    const result = callDistribute(G, '0', ctxAt('chiefPhase'), '1', { gold: -2 });
+
+    expect(result).toBeUndefined();
+    expect(G.bank).toEqual(bagOf({ gold: 3 }));
+    expect(G.mats['1']!.in).toEqual(bagOf({ gold: 0 }));
+  });
+
+  it('pull-back underflow: in-slot has 1 gold, pull -2 returns INVALID_MOVE', () => {
+    const G = build2pState({ gold: 0 }, { '1': { gold: 1 } });
+    const before = JSON.parse(JSON.stringify(G));
+
+    const result = callDistribute(G, '0', ctxAt('chiefPhase'), '1', { gold: -2 });
 
     expect(result).toBe(INVALID_MOVE);
     expect(G).toEqual(before);

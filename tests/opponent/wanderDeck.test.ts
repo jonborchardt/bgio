@@ -30,6 +30,7 @@ import type { SettlementState } from '../../src/game/types.ts';
 import { EMPTY_BAG } from '../../src/game/resources/types.ts';
 import { assignRoles } from '../../src/game/roles.ts';
 import { playerViewFor } from '../../src/game/playerView.ts';
+import { initialMats } from '../../src/game/resources/playerMat.ts';
 
 // Identity random — deterministic for tests that need to know which
 // card the hook will draw.
@@ -63,19 +64,15 @@ const buildG = (
 ): SettlementState => {
   const roleAssignments = assignRoles(2);
   const hands: Record<string, unknown> = {};
-  const wallets: Record<string, ReturnType<() => typeof EMPTY_BAG>> = {};
-  for (const [seat, roles] of Object.entries(roleAssignments)) {
-    hands[seat] = {};
-    if (!roles.includes('chief')) wallets[seat] = { ...EMPTY_BAG };
-  }
+  for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
   return {
     bank: { ...EMPTY_BAG },
-    centerMat: { circles: {}, tradeRequest: null },
+    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 0,
     settlementsJoined: 0,
     hands,
-    wallets,
+    mats: initialMats(roleAssignments),
     ...partial,
   };
 };

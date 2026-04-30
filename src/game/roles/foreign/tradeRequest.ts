@@ -27,10 +27,11 @@ import { bagOf } from '../../resources/bag.ts';
 
 /**
  * Build a `TradeRequest` from a freshly-drawn `TradeCardDef`. The owner
- * seat is the Foreign-side mat circle — i.e. the seat that flipped the
- * card. `required` and `reward` get widened from `Partial<ResourceBag>`
- * to a fully-shaped `ResourceBag` (zero-filled) via `bagOf` so downstream
- * `pullFromCircle` / `transfer` calls don't have to do their own widening.
+ * seat is the Foreign seat that flipped the card (kept for audit / UI
+ * labeling — fulfillment is open to any seat). `required` and `reward`
+ * get widened from `Partial<ResourceBag>` to a fully-shaped `ResourceBag`
+ * (zero-filled) via `bagOf` so downstream `transfer` calls don't have to
+ * do their own widening.
  */
 const tradeRequestFromCard = (
   drawn: TradeCardDef,

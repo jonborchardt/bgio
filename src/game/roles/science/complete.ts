@@ -14,6 +14,7 @@ import { RESOURCES } from '../../resources/types.ts';
 import type { ResourceBag } from '../../resources/types.ts';
 import { canAfford } from '../../resources/bag.ts';
 import { transfer } from '../../resources/bank.ts';
+import { appendBankLog } from '../../resources/bankLog.ts';
 import { rolesAtSeat, seatOfRole } from '../../roles.ts';
 import { applyTechOnAcquire } from '../../tech/effects.ts';
 import { fromBgio, type BgioRandomLike } from '../../random.ts';
@@ -63,6 +64,7 @@ export const scienceComplete: Move<SettlementState> = (
     if (paid[r] > 0) sweep[r] = paid[r];
   }
   transfer(paid, G.bank, sweep);
+  appendBankLog(G, 'scienceSweep', sweep, `Science card ${cardID}`);
   // After the transfer the paid bag is all-zero; reassign to a fresh empty
   // bag for clarity (and to detach any stale references).
   science.paid[cardID] = {
@@ -86,7 +88,7 @@ export const scienceComplete: Move<SettlementState> = (
   // 08.6 — `applyTechOnAcquire` fires for any tech that ships
   // `onAcquireEffects`. V1 most don't, so this is a no-op for the bulk
   // of distributions. We compute the receiving seat per color (so the
-  // dispatcher can credit the right wallet for awaiting-input effects)
+  // dispatcher can credit the right stash for awaiting-input effects)
   // and pass an empty context object — the science seat is mid-stage,
   // and threading bgio's `events` API + `returnTo` through here would
   // require a bigger refactor. The dispatcher gracefully no-ops the

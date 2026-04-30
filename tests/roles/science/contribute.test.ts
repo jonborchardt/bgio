@@ -18,6 +18,7 @@ import type { ResourceBag } from '../../../src/game/resources/types.ts';
 import type { ScienceCardDef } from '../../../src/data/scienceCards.ts';
 import type { ScienceState } from '../../../src/game/roles/science/setup.ts';
 import type { SettlementState } from '../../../src/game/types.ts';
+import { initialMats } from '../../../src/game/resources/playerMat.ts';
 
 // Three blue cards in the same column, levels 0/1/2 — the simplest possible
 // "lowest-first rule" fixture.
@@ -65,39 +66,36 @@ const buildScienceState = (
 };
 
 // Builds a 2-player state where seat '0' is chief+science and seat '1' is
-// domestic+foreign. The science seat (seat '0') gets a wallet seeded by
+// domestic+foreign. The science seat (seat '0') gets a stash seeded by
 // `walletOf` even though the canonical 2p layout puts science on the chief
-// seat (which normally has no wallet) — for these tests we want the
-// contribute move to have something to draw from, so we bend the rule.
+// seat (which normally has no mat) — for these tests we want the
+// contribute move to have something to draw from, so we bend the rule
+// and synthesize a mat for the chief-stacked science seat.
 const build2pState = (
   walletOf: Partial<ResourceBag>,
   scienceState: ScienceState,
 ): SettlementState => {
   const roleAssignments = assignRoles(2);
-  const matCircles: Record<string, ResourceBag> = {};
-  const wallets: Record<string, ResourceBag> = {};
-  for (const [seat, roles] of Object.entries(roleAssignments)) {
-    if (!roles.includes('chief')) {
-      matCircles[seat] = bagOf({});
-      wallets[seat] = bagOf({});
-    }
-  }
-  // Seed seat '0' (science holder) with a wallet for these tests. The
-  // canonical 2p layout doesn't give the chief seat a wallet, but
-  // scienceContribute pays from the science seat's wallet — so we add one.
-  wallets['0'] = bagOf(walletOf);
+  const mats = initialMats(roleAssignments);
+  // Synthesize a mat for the chief-stacked science seat so the test's
+  // contribute move has a stash to draw from.
+  mats['0'] = {
+    in: bagOf({}),
+    out: bagOf({}),
+    stash: bagOf(walletOf),
+  };
 
   const hands: Record<string, unknown> = {};
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
 
   return {
     bank: bagOf({}),
-    centerMat: { circles: matCircles, tradeRequest: null },
+    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 1,
     settlementsJoined: 0,
     hands,
-    wallets,
+    mats,
     science: scienceState,
   };
 };
@@ -133,7 +131,7 @@ describe('scienceContribute (05.2)', () => {
 
     expect(result).toBeUndefined();
     expect(G.science!.paid['blue-0']).toEqual(bagOf({ gold: 2 }));
-    expect(G.wallets['0']).toEqual(bagOf({ gold: 3 }));
+    expect(G.mats['0']?.stash).toEqual(bagOf({ gold: 3 }));
   });
 
   it('paying more than the wallet holds returns INVALID_MOVE; state unchanged', () => {
@@ -175,7 +173,7 @@ describe('scienceContribute (05.2)', () => {
 
     expect(result).toBeUndefined();
     expect(G.science!.paid['blue-2']).toEqual(bagOf({ gold: 3, science: 2 }));
-    expect(G.wallets['0']).toEqual(bagOf({}));
+    expect(G.mats['0']?.stash).toEqual(bagOf({}));
   });
 
   it('overpay caps at remaining cost; excess stays in the wallet', () => {
@@ -191,6 +189,6 @@ describe('scienceContribute (05.2)', () => {
 
     expect(result).toBeUndefined();
     expect(G.science!.paid['blue-0']).toEqual(bagOf({ gold: 5 }));
-    expect(G.wallets['0']).toEqual(bagOf({ gold: 7 }));
+    expect(G.mats['0']?.stash).toEqual(bagOf({ gold: 7 }));
   });
 });

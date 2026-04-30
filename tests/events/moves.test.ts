@@ -28,31 +28,28 @@ import type {
 } from '../../src/game/events/state.ts';
 import type { ScienceCardDef } from '../../src/data/scienceCards.ts';
 import type { ScienceState } from '../../src/game/roles/science/setup.ts';
+import { initialMats } from '../../src/game/resources/playerMat.ts';
 
 // 4-player layout puts every role on its own seat: chief='0',
 // science='1', domestic='2', foreign='3'. Removes any ambiguity about
-// which seat a wallet credit should land on.
+// which seat a stash credit should land on.
 const FOUR_P = (): ReturnType<typeof assignRoles> => assignRoles(4);
 
-// Build a baseline 4-player state with empty wallets per non-chief seat.
+// Build a baseline 4-player state with empty mats per non-chief seat.
 const build4pState = (
   partial: Partial<SettlementState> = {},
 ): SettlementState => {
   const roleAssignments = FOUR_P();
-  const wallets: Record<string, ReturnType<typeof bagOf>> = {};
-  for (const [seat, roles] of Object.entries(roleAssignments)) {
-    if (!roles.includes('chief')) wallets[seat] = bagOf({});
-  }
   const hands: Record<string, unknown> = {};
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
   return {
     bank: bagOf({}),
-    centerMat: { circles: {}, tradeRequest: null },
+    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 1,
     settlementsJoined: 0,
     hands,
-    wallets,
+    mats: initialMats(roleAssignments),
     _stageStack: {},
     ...partial,
   };
@@ -140,7 +137,7 @@ describe('play*Event end-to-end (08.3)', () => {
       card.id,
     );
     expect(result).toBeUndefined();
-    expect(G.wallets['1']!.science).toBe(2);
+    expect(G.mats['1']!.stash.science).toBe(2);
     expect(G._eventPlayedThisRound!.science).toBe(true);
   });
 
@@ -160,7 +157,7 @@ describe('play*Event end-to-end (08.3)', () => {
       card.id,
     );
     expect(result).toBeUndefined();
-    expect(G.wallets['2']!.food).toBe(1);
+    expect(G.mats['2']!.stash.food).toBe(1);
     expect(G._eventPlayedThisRound!.domestic).toBe(true);
   });
 
@@ -180,7 +177,7 @@ describe('play*Event end-to-end (08.3)', () => {
       card.id,
     );
     expect(result).toBeUndefined();
-    expect(G.wallets['3']!.steel).toBe(1);
+    expect(G.mats['3']!.stash.steel).toBe(1);
     expect(G._eventPlayedThisRound!.foreign).toBe(true);
   });
 });

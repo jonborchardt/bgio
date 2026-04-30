@@ -18,6 +18,7 @@ import type {
 } from '../../../src/game/types.ts';
 import type { DomesticBuilding } from '../../../src/game/roles/domestic/types.ts';
 import { cellKey } from '../../../src/game/roles/domestic/grid.ts';
+import { initialMats } from '../../../src/game/resources/playerMat.ts';
 
 // 2-player layout: seat '0' = chief+science, seat '1' = domestic+foreign.
 const build2pState = (
@@ -25,27 +26,20 @@ const build2pState = (
   domestic: DomesticState,
 ): SettlementState => {
   const roleAssignments = assignRoles(2);
-  const matCircles: Record<string, ResourceBag> = {};
-  const wallets: Record<string, ResourceBag> = {};
-  for (const [seat, roles] of Object.entries(roleAssignments)) {
-    if (!roles.includes('chief')) {
-      matCircles[seat] = bagOf({});
-      wallets[seat] = bagOf({});
-    }
-  }
-  wallets['1'] = bagOf(walletOf);
+  const mats = initialMats(roleAssignments);
+  if (mats['1'] !== undefined) mats['1']!.stash = bagOf(walletOf);
 
   const hands: Record<string, unknown> = {};
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
 
   return {
     bank: bagOf({}),
-    centerMat: { circles: matCircles, tradeRequest: null },
+    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 1,
     settlementsJoined: 0,
     hands,
-    wallets,
+    mats,
     domestic,
   };
 };
@@ -90,7 +84,7 @@ describe('domesticBuyBuilding (06.2)', () => {
 
     expect(result).toBeUndefined();
     // Wallet drained by the cost; bank credited symmetrically.
-    expect(G.wallets['1']).toEqual(bagOf({ gold: 5 }));
+    expect(G.mats['1']?.stash).toEqual(bagOf({ gold: 5 }));
     expect(G.bank).toEqual(bagOf({ gold: 10 }));
     // Card removed from hand.
     expect(G.domestic!.hand).toHaveLength(0);
@@ -125,7 +119,7 @@ describe('domesticBuyBuilding (06.2)', () => {
 
     expect(result).toBe(INVALID_MOVE);
     // No state changed — wallet, bank, hand, grid all intact.
-    expect(G.wallets['1']).toEqual(bagOf({ gold: 50 }));
+    expect(G.mats['1']?.stash).toEqual(bagOf({ gold: 50 }));
     expect(G.bank).toEqual(bagOf({}));
     expect(G.domestic!.hand).toHaveLength(2);
     expect(Object.keys(G.domestic!.grid)).toEqual([cellKey(0, 0)]);
@@ -147,7 +141,7 @@ describe('domesticBuyBuilding (06.2)', () => {
 
     expect(result).toBe(INVALID_MOVE);
     // Nothing changed.
-    expect(G.wallets['1']).toEqual(bagOf({ gold: 5 }));
+    expect(G.mats['1']?.stash).toEqual(bagOf({ gold: 5 }));
     expect(G.bank).toEqual(bagOf({}));
     expect(G.domestic!.hand).toHaveLength(1);
     expect(G.domestic!.grid).toEqual({});

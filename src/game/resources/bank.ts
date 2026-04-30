@@ -54,8 +54,8 @@ const isResourceBag = (x: unknown): x is ResourceBag => {
 };
 
 // Sums every resource holder on G defensively. Bank is always present;
-// centerMat and per-player hands are placeholders today and will gain
-// real bag-shaped slots in 03.3+. We walk what's there.
+// per-seat mats hold three bags each (in / out / stash); per-player hands
+// are domain-specific. We walk every bag-shaped slot we know about.
 export const totalResources = (G: SettlementState): number => {
   let sum = 0;
 
@@ -78,6 +78,7 @@ export const totalResources = (G: SettlementState): number => {
 
   visit(G.centerMat);
   visit(G.hands);
+  visit(G.mats);
 
   return sum;
 };

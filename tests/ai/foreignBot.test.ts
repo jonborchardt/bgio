@@ -56,7 +56,7 @@ describe('foreignBot (11.6)', () => {
     const foreign = G.foreign!;
     foreign.inPlay = [{ defID: 'Scout', count: 1 }]; // upkeep = 2 gold
     foreign._upkeepPaid = false;
-    G.wallets[SEAT]!.gold = 10;
+    G.mats[SEAT]!.stash.gold = 10;
     const action = foreignBot.play({
       G,
       ctx: ctxFor('othersPhase', { [SEAT]: 'foreignTurn' }, 4),
@@ -74,7 +74,7 @@ describe('foreignBot (11.6)', () => {
       { defID: 'Scout', count: 1 }, // cost 2
     ];
     foreign._upkeepPaid = false;
-    G.wallets[SEAT]!.gold = 0; // can't cover anything
+    G.mats[SEAT]!.stash.gold = 0; // can't cover anything
     const action = foreignBot.play({
       G,
       ctx: ctxFor('othersPhase', { [SEAT]: 'foreignTurn' }, 4),
@@ -89,7 +89,7 @@ describe('foreignBot (11.6)', () => {
     const G = setupG(4);
     const foreign = G.foreign!;
     foreign._upkeepPaid = true;
-    G.wallets[SEAT]!.gold = 10;
+    G.mats[SEAT]!.stash.gold = 10;
     const action = foreignBot.play({
       G,
       ctx: ctxFor('othersPhase', { [SEAT]: 'foreignTurn' }, 4),
@@ -110,7 +110,7 @@ describe('foreignBot (11.6)', () => {
     // Strong roster vs. weak top-of-deck (which is number=1 — typically
     // a single Scout/Archer/Brute per cards 1-4).
     foreign.inPlay = [{ defID: 'Bazooka', count: 4 }];
-    G.wallets[SEAT]!.gold = 0;
+    G.mats[SEAT]!.stash.gold = 0;
     const action = foreignBot.play({
       G,
       ctx: ctxFor('othersPhase', { [SEAT]: 'foreignTurn' }, 4),
@@ -130,7 +130,7 @@ describe('foreignBot (11.6)', () => {
     foreign.hand = [];
     foreign.inPlay = [{ defID: 'Bazooka', count: 4 }];
     foreign.lastBattleOutcome = 'lose';
-    G.wallets[SEAT]!.gold = 0;
+    G.mats[SEAT]!.stash.gold = 0;
     const action = foreignBot.play({
       G,
       ctx: ctxFor('othersPhase', { [SEAT]: 'foreignTurn' }, 4),
@@ -148,7 +148,7 @@ describe('foreignBot (11.6)', () => {
     foreign.inPlay = [];
     foreign.battleDeck = []; // skip battle flip
     foreign.lastBattleOutcome = 'win';
-    G.wallets[SEAT]!.gold = 0;
+    G.mats[SEAT]!.stash.gold = 0;
     const action = foreignBot.play({
       G,
       ctx: ctxFor('othersPhase', { [SEAT]: 'foreignTurn' }, 4),
@@ -166,7 +166,7 @@ describe('foreignBot (11.6)', () => {
     foreign.inPlay = [];
     foreign.battleDeck = [];
     foreign.tradeDeck = [];
-    G.wallets[SEAT]!.gold = 0;
+    G.mats[SEAT]!.stash.gold = 0;
     const action = foreignBot.play({
       G,
       ctx: ctxFor('othersPhase', { [SEAT]: 'foreignTurn' }, 4),
@@ -208,7 +208,7 @@ describe('foreignBot (11.6)', () => {
     const G = setupG(4);
     const foreign = G.foreign!;
     foreign._upkeepPaid = true;
-    G.wallets[SEAT]!.gold = 10;
+    G.mats[SEAT]!.stash.gold = 10;
     const ctx = ctxFor('othersPhase', { [SEAT]: 'foreignTurn' }, 4);
     const a = foreignBot.play({ G, ctx, playerID: SEAT });
     const b = foreignBot.play({ G, ctx, playerID: SEAT });
@@ -219,7 +219,7 @@ describe('foreignBot (11.6)', () => {
     const G = setupG(4);
     const foreign = G.foreign!;
     foreign._upkeepPaid = true;
-    G.wallets[SEAT]!.gold = 100;
+    G.mats[SEAT]!.stash.gold = 100;
     const action = foreignBot.play({
       G,
       ctx: ctxFor('othersPhase', { [SEAT]: 'foreignTurn' }, 4),

@@ -17,7 +17,7 @@ describe('resolveHint (14.6)', () => {
         stage: 'scienceTurn',
         rolesAtSeat: ['science'],
       }),
-    ).toMatch(/Pour your wallet/);
+    ).toMatch(/Pour your stash/);
   });
 
   it('othersPhase + domesticTurn + domestic', () => {

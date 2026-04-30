@@ -10,7 +10,7 @@
 // `activeCard` is present — otherwise nothing on the grid is meant to be
 // placed onto.
 
-import { Box } from '@mui/material';
+import { Box, Stack, Typography } from '@mui/material';
 import {
   cellKey,
   isPlacementLegal,
@@ -81,39 +81,70 @@ export function BuildingGrid({
   for (let x = xMin; x <= xMax; x += 1) colXs.push(x);
 
   return (
-    <Box
-      aria-label="Domestic building grid"
+    <Stack
+      spacing={0.75}
       sx={{
-        display: 'grid',
-        gridTemplateColumns: `repeat(${cols}, minmax(3.5rem, 1fr))`,
-        gap: 0.5,
+        width: '100%',
+        minWidth: 0,
+        maxWidth: '100%',
+        alignItems: 'center',
       }}
     >
-      {rowYs.map((y) =>
-        colXs.map((x) => {
-          const key = cellKey(x, y);
-          const building = grid[key];
-          const isLegal = isPlacing
-            ? isPlacementLegal(grid, x, y)
-            : false;
-          return (
-            <CellSlot
-              key={key}
-              x={x}
-              y={y}
-              building={building}
-              isLegal={isLegal}
-              isPlacing={isPlacing}
-              onClick={() => {
-                if (building !== undefined) return;
-                if (!isPlacing || !isLegal) return;
-                onPlace(x, y);
-              }}
-            />
-          );
-        }),
-      )}
-    </Box>
+      <Typography
+        variant="overline"
+        sx={{
+          color: (t) => t.palette.role.domestic.main,
+          fontWeight: 700,
+          letterSpacing: '0.08em',
+          lineHeight: 1,
+        }}
+      >
+        Village
+      </Typography>
+      <Box
+        sx={{
+          width: '100%',
+          minWidth: 0,
+          overflowX: 'auto',
+          display: 'flex',
+          justifyContent: 'center',
+        }}
+      >
+      <Box
+        aria-label="Domestic building grid"
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${cols}, 7rem)`,
+          gap: 0.5,
+        }}
+      >
+        {rowYs.map((y) =>
+          colXs.map((x) => {
+            const key = cellKey(x, y);
+            const building = grid[key];
+            const isLegal = isPlacing
+              ? isPlacementLegal(grid, x, y)
+              : false;
+            return (
+              <CellSlot
+                key={key}
+                x={x}
+                y={y}
+                building={building}
+                isLegal={isLegal}
+                isPlacing={isPlacing}
+                onClick={() => {
+                  if (building !== undefined) return;
+                  if (!isPlacing || !isLegal) return;
+                  onPlace(x, y);
+                }}
+              />
+            );
+          }),
+        )}
+      </Box>
+      </Box>
+    </Stack>
   );
 }
 

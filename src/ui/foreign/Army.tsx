@@ -10,17 +10,32 @@ export interface ArmyProps {
   inPlay: UnitInstance[];
   canAct: boolean;
   onRelease: (defID: string) => void;
+  canUndo: boolean;
+  onUndo: () => void;
 }
 
-export function Army({ inPlay, canAct, onRelease }: ArmyProps) {
+export function Army({ inPlay, canAct, onRelease, canUndo, onUndo }: ArmyProps) {
   return (
     <Stack spacing={0.5} aria-label="Foreign army">
-      <Typography
-        variant="body2"
-        sx={{ color: (t) => t.palette.status.muted, fontWeight: 600 }}
-      >
-        Army
-      </Typography>
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+        <Typography
+          variant="body2"
+          sx={{ color: (t) => t.palette.status.muted, fontWeight: 600 }}
+        >
+          Army
+        </Typography>
+        {canUndo && (
+          <Button
+            size="small"
+            variant="text"
+            disabled={!canAct}
+            onClick={onUndo}
+            aria-label="Undo release"
+          >
+            Undo release
+          </Button>
+        )}
+      </Stack>
       {inPlay.length === 0 ? (
         <Typography
           variant="caption"

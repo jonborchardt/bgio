@@ -19,6 +19,7 @@ import { chiefPlaceWorker } from '../../../src/game/roles/chief/workerPlacement.
 import { bagOf } from '../../../src/game/resources/bag.ts';
 import { assignRoles } from '../../../src/game/roles.ts';
 import type { SettlementState } from '../../../src/game/types.ts';
+import { initialMats } from '../../../src/game/resources/playerMat.ts';
 
 // Minimal 2-player SettlementState shell for the move's validations. The
 // caller injects feature-flag, chief-reserve, and grid slices via the
@@ -28,25 +29,17 @@ const build2pState = (
   partial: Partial<SettlementState> = {},
 ): SettlementState => {
   const roleAssignments = assignRoles(2);
-  const matCircles: Record<string, ReturnType<typeof bagOf>> = {};
-  const wallets: Record<string, ReturnType<typeof bagOf>> = {};
-  for (const [seat, roles] of Object.entries(roleAssignments)) {
-    if (!roles.includes('chief')) {
-      matCircles[seat] = bagOf({});
-      wallets[seat] = bagOf({});
-    }
-  }
   const hands: Record<string, unknown> = {};
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
 
   return {
     bank: bagOf({}),
-    centerMat: { circles: matCircles, tradeRequest: null },
+    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 1,
     settlementsJoined: 0,
     hands,
-    wallets,
+    mats: initialMats(roleAssignments),
     ...partial,
   };
 };

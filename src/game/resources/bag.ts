@@ -13,8 +13,8 @@ const fresh = (): ResourceBag => ({ ...EMPTY_BAG });
  * mint resources or corrupt the bank. Returns the offending key, or
  * `null` if the bag is clean.
  *
- * Used by 03.4 pullFromMat, 04.1 chiefDistribute, 05.2 scienceContribute,
- * any move taking a `Partial<ResourceBag>` from the client.
+ * Used by chiefDistribute, scienceContribute, and any move taking a
+ * `Partial<ResourceBag>` from the client.
  */
 export const findInvalidAmount = (
   amounts: Partial<ResourceBag>,

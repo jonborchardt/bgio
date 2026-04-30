@@ -42,9 +42,9 @@ describe('test helpers', () => {
     expect(G.bank.gold).toBe(3);
     expect(G.round).toBe(0);
     expect(Object.keys(G.hands).sort()).toEqual(['0', '1']);
-    // 03.3: centerMat now has a circle per non-chief seat (2-player game →
-    // seat '1' is the only non-chief seat) and an empty trade-request slot.
-    expect(Object.keys(G.centerMat.circles)).toEqual(['1']);
+    // Player mats: one per non-chief seat (2-player game → seat '1' is
+    // the only non-chief seat). centerMat just holds the trade slot.
+    expect(Object.keys(G.mats).sort()).toEqual(['1']);
     expect(G.centerMat.tradeRequest).toBeNull();
   });
 

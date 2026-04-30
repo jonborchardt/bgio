@@ -12,11 +12,18 @@
 // the player an explicit way out (the in-flight battle stays in
 // `foreign.inFlight.battle` for the resolver to clean up at end-of-
 // round).
+//
+// Upkeep gate: if there are upkeep-eligible units in play and `_upkeepPaid`
+// is false, the seat must either pay upkeep or release units down to zero
+// before ending the turn. Units recruited this turn are exempt (see
+// `upkeepableUnits` in upkeep.ts) so a seat that bought their first unit
+// can end the turn without paying. There is no skip-with-penalty path.
 
 import type { Move } from 'boardgame.io';
 import { INVALID_MOVE } from 'boardgame.io/core';
 import type { SettlementState } from '../../types.ts';
 import { rolesAtSeat } from '../../roles.ts';
+import { upkeepableUnits } from './upkeep.ts';
 
 export const foreignSeatDone: Move<SettlementState> = ({
   G,
@@ -32,6 +39,16 @@ export const foreignSeatDone: Move<SettlementState> = ({
     return INVALID_MOVE;
   }
 
+  const foreign = G.foreign;
+  if (
+    foreign !== undefined &&
+    foreign._upkeepPaid !== true &&
+    upkeepableUnits(G).length > 0
+  ) {
+    return INVALID_MOVE;
+  }
+
   if (!G.othersDone) G.othersDone = {};
   G.othersDone[playerID] = true;
+  if (foreign !== undefined) foreign._lastRelease = undefined;
 };

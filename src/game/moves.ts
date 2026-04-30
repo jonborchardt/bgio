@@ -6,7 +6,6 @@
 
 import type { Move } from 'boardgame.io';
 import type { PlayerID, SettlementState } from './types.ts';
-import { pullFromMat } from './resources/moves.ts';
 import { chiefDistribute } from './roles/chief/distribute.ts';
 import { chiefEndPhase } from './roles/chief/endPhase.ts';
 import { chiefPlaceWorker } from './roles/chief/workerPlacement.ts';
@@ -20,11 +19,13 @@ import { foreignPlayRedEvent } from './roles/foreign/playRedEvent.ts';
 import { foreignRecruit } from './roles/foreign/recruit.ts';
 import { foreignUpkeep } from './roles/foreign/upkeep.ts';
 import { foreignReleaseUnit } from './roles/foreign/release.ts';
+import { foreignUndoRelease } from './roles/foreign/undoRelease.ts';
 import {
   foreignFlipBattle,
   foreignFlipTrade,
 } from './roles/foreign/flip.ts';
 import { foreignAssignDamage } from './roles/foreign/assignDamage.ts';
+import { foreignTradeFulfill } from './roles/foreign/tradeFulfill.ts';
 import { chiefDecideTradeDiscard } from './roles/chief/decideTradeDiscard.ts';
 import { scienceContribute } from './roles/science/contribute.ts';
 import { scienceComplete } from './roles/science/complete.ts';
@@ -40,11 +41,6 @@ import { foreignSeatDone } from './roles/foreign/seatDone.ts';
 export const pass: Move<SettlementState> = () => {
   // intentional no-op — bgio advances the turn after the move resolves.
 };
-
-// Re-export resource moves from the canonical moves barrel so `index.ts`
-// only has to know about this one file. Stage/phase gating for `pullFromMat`
-// happens at the bgio config layer (see plan 02.x), not here.
-export { pullFromMat };
 
 // Chief role moves (04.1, 04.2, 04.3, 04.4). Phase gating is enforced
 // inside each move against `ctx.phase === 'chiefPhase'`, so the bgio-level
@@ -95,15 +91,23 @@ export {
 // is enforced inside each move against `ctx.activePlayers?.[playerID] ===
 // 'foreignTurn'`, so the bgio-level stage config only has to authorize the
 // foreign seat in that stage.
-export { foreignRecruit, foreignUpkeep, foreignReleaseUnit };
+export { foreignRecruit, foreignUpkeep, foreignReleaseUnit, foreignUndoRelease };
 
 // Foreign flip-flow moves (07.4) and trade-request placement (07.5).
 // `foreignFlipBattle` puts the seat into `foreignAwaitingDamage`, which
 // `foreignAssignDamage` resolves; `foreignFlipTrade` either drops the
 // drawn card straight into the mat slot or stashes it for the chief to
 // resolve via `chiefDecideTradeDiscard` (registered above with the other
-// chief moves).
-export { foreignFlipBattle, foreignAssignDamage, foreignFlipTrade };
+// chief moves). `foreignTradeFulfill` completes the active trade
+// request — public to all seats: any active seat with enough in their
+// own stash can pay `required` → bank, gain `reward`, +1
+// settlementsJoined.
+export {
+  foreignFlipBattle,
+  foreignAssignDamage,
+  foreignFlipTrade,
+  foreignTradeFulfill,
+};
 
 // Domestic role moves (06.2 buy / upgrade, 06.4 produce). Stage gating is
 // enforced inside each move against `ctx.activePlayers?.[playerID] ===

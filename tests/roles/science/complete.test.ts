@@ -16,6 +16,7 @@ import type { ScienceCardDef } from '../../../src/data/scienceCards.ts';
 import type { ScienceState } from '../../../src/game/roles/science/setup.ts';
 import type { SettlementState } from '../../../src/game/types.ts';
 import type { TechnologyDef } from '../../../src/data/schema.ts';
+import { initialMats } from '../../../src/game/resources/playerMat.ts';
 
 const techStub = (name: string, branch: string): TechnologyDef => ({
   branch,
@@ -101,7 +102,7 @@ const buildScienceState = (opts: {
 };
 
 // Helper: build a SettlementState for the given player count where every
-// non-chief seat has an empty wallet & circle, and the seat holding
+// non-chief seat has an empty mat (in / out / stash), and the seat holding
 // `science` is whatever the assignment table assigns. The science slice is
 // supplied directly. We seed empty hand fields on the chief / domestic /
 // foreign slices so the test can read them without `?.`.
@@ -110,25 +111,17 @@ const buildState = (
   scienceState: ScienceState,
 ): SettlementState => {
   const roleAssignments = assignRoles(numPlayers);
-  const matCircles: Record<string, ResourceBag> = {};
-  const wallets: Record<string, ResourceBag> = {};
-  for (const [seat, roles] of Object.entries(roleAssignments)) {
-    if (!roles.includes('chief')) {
-      matCircles[seat] = bagOf({});
-      wallets[seat] = bagOf({});
-    }
-  }
   const hands: Record<string, unknown> = {};
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
 
   return {
     bank: bagOf({}),
-    centerMat: { circles: matCircles, tradeRequest: null },
+    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 1,
     settlementsJoined: 0,
     hands,
-    wallets,
+    mats: initialMats(roleAssignments),
     science: scienceState,
     foreign: {
       hand: [],

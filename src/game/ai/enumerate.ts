@@ -60,8 +60,8 @@ const enumerateChief = (
   const out: MoveCandidate[] = [];
 
   // chiefDistribute: one candidate per (target seat × single-resource +1).
-  // Targets are every non-chief seat with a circle on the mat.
-  const targets = Object.keys(G.centerMat.circles).filter(
+  // Targets are every non-chief seat with a player mat.
+  const targets = Object.keys(G.mats ?? {}).filter(
     (seat) => seat !== playerID,
   );
   for (const target of targets) {
@@ -117,6 +117,16 @@ const enumerateChief = (
     out.push({ move: 'chiefDecideTradeDiscard', args: ['new'] });
   }
 
+  // foreignTradeFulfill: chief seat can also fulfill the public trade
+  // request when one is parked (see tradeFulfill.ts). Move re-validates
+  // affordability against the chief's stash — but the chief seat has no
+  // stash in the V1 layout, so this typically rejects in `chiefPhase`.
+  // Listed here for completeness in case a future tech grants the chief
+  // a stash.
+  if (G.centerMat.tradeRequest !== null) {
+    out.push({ move: 'foreignTradeFulfill', args: [] });
+  }
+
   // chiefPlayTech: one candidate per tech in the chief's hand with a non-
   // empty onPlayEffects.
   const chiefTechHand = G.chief?.hand ?? [];
@@ -137,7 +147,7 @@ const enumerateScience = (
   const science = G.science;
   if (science === undefined) return out;
 
-  const wallet = G.wallets[playerID];
+  const stash = G.mats?.[playerID]?.stash;
 
   // scienceContribute: one candidate per uncomplete card × {gold:1} or
   // {wood:1}. Skip cards already completed.
@@ -145,7 +155,7 @@ const enumerateScience = (
   for (const card of flatCards) {
     if (science.completed.includes(card.id)) continue;
     for (const r of ['gold', 'wood'] as const) {
-      if (wallet === undefined || (wallet[r] ?? 0) <= 0) continue;
+      if (stash === undefined || (stash[r] ?? 0) <= 0) continue;
       out.push({ move: 'scienceContribute', args: [card.id, { [r]: 1 }] });
     }
   }
@@ -168,6 +178,12 @@ const enumerateScience = (
     if (covers) {
       out.push({ move: 'scienceComplete', args: [card.id] });
     }
+  }
+
+  // foreignTradeFulfill: any seat can fulfill the public trade request
+  // when one is parked. Move re-validates affordability.
+  if (G.centerMat.tradeRequest !== null) {
+    out.push({ move: 'foreignTradeFulfill', args: [] });
   }
 
   // sciencePlayBlueEvent: one candidate per card in the science seat's blue
@@ -237,6 +253,12 @@ const enumerateDomestic = (
   // the move itself — a second call returns INVALID_MOVE.
   out.push({ move: 'domesticProduce', args: [] });
 
+  // foreignTradeFulfill: any seat can fulfill the public trade request
+  // when one is parked. Move re-validates affordability.
+  if (G.centerMat.tradeRequest !== null) {
+    out.push({ move: 'foreignTradeFulfill', args: [] });
+  }
+
   // domesticPlayGreenEvent: one candidate per card in the domestic green
   // hand.
   if (
@@ -288,6 +310,12 @@ const enumerateForeign = (
   // foreignFlipTrade: only legal after a winning battle, but listing it
   // costs nothing — the move rejects when not.
   out.push({ move: 'foreignFlipTrade', args: [] });
+
+  // foreignTradeFulfill: any seat can fulfill a parked trade request
+  // (see tradeFulfill.ts). The move re-validates affordability.
+  if (G.centerMat.tradeRequest !== null) {
+    out.push({ move: 'foreignTradeFulfill', args: [] });
+  }
 
   // foreignPlayRedEvent.
   if (

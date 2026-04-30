@@ -86,7 +86,7 @@ describe('buildBotMap (11.7)', () => {
     if (G.foreign === undefined) throw new Error('expected foreign state');
     G.foreign._upkeepPaid = true;
     // Make sure seat 1's wallet can afford the cheapest hand unit.
-    const wallet = G.wallets['1'];
+    const wallet = G.mats['1']?.stash;
     if (!wallet) throw new Error('expected wallet for seat 1');
     wallet.gold = 99;
 

@@ -97,9 +97,9 @@ const seatDemands = (
   const seats = Object.keys(G.roleAssignments).sort();
   for (const seat of seats) {
     if (seat === chiefSeat) continue;
-    // Skip seats that don't own a circle on the mat — chief can't drop
-    // tokens there and `chiefDistribute` rejects no-circle targets.
-    if (!G.centerMat.circles[seat]) continue;
+    // Skip seats that don't own a player mat — chief can't drop tokens
+    // there and `chiefDistribute` rejects no-mat targets.
+    if (!G.mats?.[seat]) continue;
     const roles = rolesAtSeat(G.roleAssignments, seat);
     let amount = 0;
     if (roles.includes('foreign')) amount += foreignDemandAt(G);

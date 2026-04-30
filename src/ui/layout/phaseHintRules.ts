@@ -34,7 +34,7 @@ export const resolveHint = ({
   }
   if (phase === 'othersPhase') {
     if (stage === 'scienceTurn' && rolesAtSeat.includes('science')) {
-      return 'Pour your wallet into a science card. Complete one when paid covers cost.';
+      return 'Pour your stash into a science card. Complete one when paid covers cost.';
     }
     if (stage === 'domesticTurn' && rolesAtSeat.includes('domestic')) {
       return 'Buy a building, produce, or end your turn.';

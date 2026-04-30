@@ -22,6 +22,7 @@ import type {
 } from '../../../src/game/types.ts';
 import type { DomesticBuilding } from '../../../src/game/roles/domestic/types.ts';
 import { cellKey } from '../../../src/game/roles/domestic/grid.ts';
+import { initialMats } from '../../../src/game/resources/playerMat.ts';
 
 // 2-player layout: seat '1' = domestic+foreign.
 const build2pState = (
@@ -29,27 +30,20 @@ const build2pState = (
   domestic: DomesticState,
 ): SettlementState => {
   const roleAssignments = assignRoles(2);
-  const matCircles: Record<string, ResourceBag> = {};
-  const wallets: Record<string, ResourceBag> = {};
-  for (const [seat, roles] of Object.entries(roleAssignments)) {
-    if (!roles.includes('chief')) {
-      matCircles[seat] = bagOf({});
-      wallets[seat] = bagOf({});
-    }
-  }
-  wallets['1'] = bagOf(walletOf);
+  const mats = initialMats(roleAssignments);
+  if (mats['1'] !== undefined) mats['1']!.stash = bagOf(walletOf);
 
   const hands: Record<string, unknown> = {};
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
 
   return {
     bank: bagOf({}),
-    centerMat: { circles: matCircles, tradeRequest: null },
+    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 1,
     settlementsJoined: 0,
     hands,
-    wallets,
+    mats,
     domestic,
   };
 };
@@ -109,7 +103,7 @@ const granaryWithWorker: DomesticBuilding = {
 };
 
 describe('domesticProduce (06.4)', () => {
-  it('empty grid yields zero resources to the bank', () => {
+  it('empty grid yields zero resources to the out slot', () => {
     const G = build2pState(
       {},
       {
@@ -121,11 +115,12 @@ describe('domesticProduce (06.4)', () => {
     const result = callProduce(G, '1', ctxDomesticTurn('1'));
 
     expect(result).toBeUndefined();
+    expect(G.mats['1']!.out).toEqual(bagOf({}));
     expect(G.bank).toEqual(bagOf({}));
     expect(G.domestic!.producedThisRound).toBe(true);
   });
 
-  it('a single Granary ("2 food") yields 2 food into the bank', () => {
+  it('a single Granary ("2 food") yields 2 food into the out slot', () => {
     const G = build2pState(
       {},
       {
@@ -137,7 +132,7 @@ describe('domesticProduce (06.4)', () => {
     const result = callProduce(G, '1', ctxDomesticTurn('1'));
 
     expect(result).toBeUndefined();
-    expect(G.bank).toEqual(bagOf({ food: 2 }));
+    expect(G.mats['1']!.out).toEqual(bagOf({ food: 2 }));
     expect(G.domestic!.producedThisRound).toBe(true);
   });
 
@@ -153,7 +148,7 @@ describe('domesticProduce (06.4)', () => {
     const result = callProduce(G, '1', ctxDomesticTurn('1'));
 
     expect(result).toBeUndefined();
-    expect(G.bank).toEqual(bagOf({ food: 2, production: 1 }));
+    expect(G.mats['1']!.out).toEqual(bagOf({ food: 2, production: 1 }));
   });
 
   it('producing twice in a round: second call returns INVALID_MOVE', () => {
@@ -167,12 +162,12 @@ describe('domesticProduce (06.4)', () => {
 
     const first = callProduce(G, '1', ctxDomesticTurn('1'));
     expect(first).toBeUndefined();
-    expect(G.bank).toEqual(bagOf({ food: 2 }));
+    expect(G.mats['1']!.out).toEqual(bagOf({ food: 2 }));
 
     const second = callProduce(G, '1', ctxDomesticTurn('1'));
     expect(second).toBe(INVALID_MOVE);
     // Bank not double-credited.
-    expect(G.bank).toEqual(bagOf({ food: 2 }));
+    expect(G.mats['1']!.out).toEqual(bagOf({ food: 2 }));
   });
 
   it('after endOfRound the flag resets and produce works again', () => {
@@ -193,11 +188,11 @@ describe('domesticProduce (06.4)', () => {
     runRoundEndHooks(G, stubEndOfRoundCtx(), stubHookRandom());
     expect(G.domestic!.producedThisRound).toBe(false);
 
-    // A second produce in the *next* round succeeds and credits the bank
-    // again.
+    // A second produce in the *next* round succeeds and stacks more
+    // production into `out` (the chief sweeps it on their next turn).
     const result = callProduce(G, '1', ctxDomesticTurn('1'));
     expect(result).toBeUndefined();
-    expect(G.bank).toEqual(bagOf({ food: 4 }));
+    expect(G.mats['1']!.out).toEqual(bagOf({ food: 4 }));
   });
 
   it('a worker on a building doubles its yield (V1 stub)', () => {
@@ -217,6 +212,6 @@ describe('domesticProduce (06.4)', () => {
     const result = callProduce(G, '1', ctxDomesticTurn('1'));
 
     expect(result).toBeUndefined();
-    expect(G.bank).toEqual(bagOf({ food: 6 }));
+    expect(G.mats['1']!.out).toEqual(bagOf({ food: 6 }));
   });
 });

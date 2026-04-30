@@ -1,4 +1,4 @@
-// DomesticPanel (06.7) — the domestic seat's per-turn UI.
+// DomesticPanel — the domestic seat's per-turn UI.
 //
 // Renders nothing when:
 //   - No `playerID` is bound (spectator), OR
@@ -10,26 +10,30 @@
 //   2. <BuildingGrid>   — placed buildings and a one-cell ring of empty
 //                          slots; clicking a legal empty slot fires
 //                          `domesticBuyBuilding(name, x, y)`.
-//   3. "Produce" button — fires `domesticProduce()`. Disabled when:
-//        - the domestic seat isn't in `domesticTurn`, OR
-//        - `G.domestic.producedThisRound` is set (already produced).
+//
+// Production is automatic: it fires at `othersPhase.turn.onBegin` for
+// every seat that holds the domestic role, before the seat acts. There's
+// no decision in produce, so there's no button.
 //
 // Local React state holds the currently-selected hand card. Selection is
 // the panel-local "I'm placing this card" mode; clicking the same card
-// again clears it. The contribute / upgrade flows are out of scope for
-// V1 of this panel — they're reachable by extending the cell click
-// handler in 06.7's follow-on work.
+// again clears it.
 
-import { useState } from 'react';
-import { Box, Button, Paper, Stack, Typography } from '@mui/material';
+import { useContext, useState } from 'react';
+import { Button, Stack } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
 import type { SettlementState } from '../../game/types.ts';
 import { rolesAtSeat } from '../../game/roles.ts';
 import { Hand } from './Hand.tsx';
 import { BuildingGrid } from './BuildingGrid.tsx';
+import { RolePanel } from '../layout/RolePanel.tsx';
+import { StashBar } from '../resources/StashBar.tsx';
+import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
+import { nextSeatAfterDone } from '../layout/nextSeat.ts';
 
 export function DomesticPanel(props: BoardProps<SettlementState>) {
   const { G, ctx, moves, playerID } = props;
+  const seatCtx = useContext(SeatPickerContext);
 
   // Hooks must be called unconditionally — hold the panel-local "selected
   // hand card" state above the early-return guards. (When the panel is
@@ -47,7 +51,6 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
   if (domestic === undefined) return null;
 
   const canAct = ctx.activePlayers?.[playerID] === 'domesticTurn';
-  const alreadyProduced = domestic.producedThisRound === true;
   // 14.13 — disable + relabel End-my-turn after the seat flips done.
   const alreadyDone = G.othersDone?.[playerID] === true;
 
@@ -67,77 +70,44 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
     setSelectedCardName(undefined);
   };
 
-  const handleProduce = (): void => {
-    moves.domesticProduce();
-  };
-
   const handleSeatDone = (): void => {
     moves.domesticSeatDone();
+    if (seatCtx) seatCtx.setSeat(nextSeatAfterDone(G, playerID));
   };
 
   return (
-    <Paper
-      elevation={0}
-      sx={{
-        px: 2,
-        py: 2,
-        bgcolor: (t) => t.palette.card.surface,
-        border: '1px solid',
-        borderColor: (t) => t.palette.role.domestic.main,
-      }}
-      aria-label="Domestic panel"
-    >
-      <Stack spacing={1.5}>
-        <Typography
-          variant="h5"
-          component="h2"
+    <RolePanel
+      role="domestic"
+      actions={
+        <Button
+          variant="contained"
+          disabled={!canAct || alreadyDone}
+          onClick={handleSeatDone}
+          aria-label="End my Domestic turn"
           sx={{
-            color: (t) => t.palette.role.domestic.main,
-            fontWeight: 700,
-            letterSpacing: '0.02em',
+            bgcolor: (t) => t.palette.role.domestic.main,
+            color: (t) => t.palette.role.domestic.contrastText,
+            '&:hover': {
+              bgcolor: (t) => t.palette.role.domestic.dark,
+            },
           }}
         >
-          Domestic
-        </Typography>
-
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-          <Button
-            variant="contained"
-            disabled={!canAct || alreadyProduced}
-            onClick={handleProduce}
-            aria-label="Produce this round"
-            sx={{
-              bgcolor: (t) => t.palette.role.domestic.main,
-              color: (t) => t.palette.role.domestic.contrastText,
-              '&:hover': {
-                bgcolor: (t) => t.palette.role.domestic.dark,
-              },
-            }}
-          >
-            {alreadyProduced ? 'Produced' : 'Produce'}
-          </Button>
-          <Button
-            variant="contained"
-            disabled={!canAct || alreadyDone}
-            onClick={handleSeatDone}
-            aria-label="End my Domestic turn"
-            sx={{
-              bgcolor: (t) => t.palette.role.domestic.main,
-              color: (t) => t.palette.role.domestic.contrastText,
-              '&:hover': {
-                bgcolor: (t) => t.palette.role.domestic.dark,
-              },
-            }}
-          >
-            {alreadyDone ? 'Turn ended' : 'End my turn'}
-          </Button>
-        </Box>
+          {alreadyDone ? 'Turn ended' : 'End my turn'}
+        </Button>
+      }
+    >
+      <Stack spacing={1.5}>
+        <StashBar
+          stash={G.mats?.[playerID]?.stash}
+          ariaLabel="Domestic stash"
+        />
 
         <Hand
           hand={[...domestic.hand]}
           selectedName={selectedCardName}
           onSelect={handleSelect}
-          playerGold={G.wallets[playerID]?.gold ?? 0}
+          playerGold={G.mats?.[playerID]?.stash.gold ?? 0}
+          stash={G.mats?.[playerID]?.stash}
         />
 
         <BuildingGrid
@@ -146,7 +116,7 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
           onPlace={handlePlace}
         />
       </Stack>
-    </Paper>
+    </RolePanel>
   );
 }
 

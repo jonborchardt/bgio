@@ -1,6 +1,6 @@
 // foreignReleaseUnit (07.2) — decrement (or remove) a unit instance from
 // `G.foreign.inPlay` and refund `floor(def.cost / 2)` per released unit to
-// the foreign seat's wallet.
+// the foreign seat's stash.
 //
 // Used both as a routine action and as the escape-hatch when the Foreign
 // seat can't cover their `foreignUpkeep` bill. The plan's V1 refund is
@@ -15,6 +15,7 @@ import { INVALID_MOVE } from 'boardgame.io/core';
 import type { SettlementState } from '../../types.ts';
 import { rolesAtSeat } from '../../roles.ts';
 import { UNITS } from '../../../data/index.ts';
+import { appendBankLog } from '../../resources/bankLog.ts';
 
 export const foreignReleaseUnit: Move<SettlementState> = (
   { G, ctx, playerID },
@@ -42,20 +43,31 @@ export const foreignReleaseUnit: Move<SettlementState> = (
   const def = UNITS.find((u) => u.name === defID);
   if (def === undefined) return INVALID_MOVE;
 
-  const wallet = G.wallets[playerID];
-  if (!wallet) return INVALID_MOVE;
+  const mat = G.mats?.[playerID];
+  if (mat === undefined) return INVALID_MOVE;
 
   // Refund half-cost (rounded down) per released unit. The refund comes
-  // from the bank — we credit the wallet directly, matching `payFromWallet`
+  // from the bank — we credit the stash directly, matching `payFromStash`
   // in reverse: a release is a partial undo of the recruit transaction.
+  // If the bank can't cover the full refund, pay what it can and continue
+  // — release must remain the escape hatch when upkeep is unaffordable,
+  // so we never block the move on bank balance.
   const refundPerUnit = Math.floor(def.cost / 2);
-  const refundTotal = refundPerUnit * n;
+  const refundIdeal = refundPerUnit * n;
+  const refundTotal = Math.min(refundIdeal, G.bank.gold);
   if (refundTotal > 0) {
-    if (G.bank.gold < refundTotal) return INVALID_MOVE;
     G.bank.gold -= refundTotal;
-    wallet.gold += refundTotal;
+    mat.stash.gold += refundTotal;
+    appendBankLog(
+      G,
+      'release',
+      { gold: -refundTotal },
+      `Release ${defID}${n > 1 ? ` ×${n}` : ''}`,
+    );
   }
 
   entry.count -= n;
   if (entry.count === 0) foreign.inPlay.splice(idx, 1);
+
+  foreign._lastRelease = { defID, count: n, refundTotal };
 };

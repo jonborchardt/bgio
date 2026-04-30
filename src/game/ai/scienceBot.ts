@@ -6,12 +6,12 @@
 //   2. If any of those is paid-off AND the per-round completion limit
 //      hasn't been hit, complete it.
 //   3. Otherwise: find the card with the smallest *remaining* cost (sum
-//      of cost - paid across all resources). If the wallet has any of
+//      of cost - paid across all resources). If the stash has any of
 //      those resources, contribute 1 unit of one resource at a time.
 //   4. Else: nothing to do — return null.
 //
 // The bot returns one move per call; the caller chains repeated calls
-// to drain the wallet into the cheapest reachable card. Single-resource
+// to drain the stash into the cheapest reachable card. Single-resource
 // increments keep the move's parameter shape simple and avoid having
 // to compute multi-resource bundles up-front.
 
@@ -110,9 +110,9 @@ const play = (state: BotState): BotAction | null => {
 
   // Step 2: contribute one resource toward the card with the smallest
   // remaining cost. We only consider cards that still need something
-  // AND for which the wallet has at least one of the needed resources.
-  const wallet = G.wallets[playerID];
-  if (wallet === undefined) return null;
+  // AND for which the stash has at least one of the needed resources.
+  const stash = G.mats?.[playerID]?.stash;
+  if (stash === undefined) return null;
 
   // Find the card with the smallest remaining cost (>0). Tie-break by id.
   const candidates = reachable
@@ -132,7 +132,7 @@ const play = (state: BotState): BotAction | null => {
       const have = paid[r] ?? 0;
       const left = need - have;
       if (left <= 0) continue;
-      if ((wallet[r] ?? 0) <= 0) continue;
+      if ((stash[r] ?? 0) <= 0) continue;
       return {
         move: 'scienceContribute',
         args: [card.id, { [r]: 1 }],

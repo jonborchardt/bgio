@@ -1,17 +1,13 @@
-// Board (04.5 + 09.1) — top-level board component.
+// Board (04.5) — top-level board component.
 //
-// 09.1 retrofits the previous flat layout with `<BoardShell>`: chief along
-// the top, the three other role panels on the sides, the center mat in the
-// middle, and the status bar at the bottom. Each role panel is wrapped in a
-// `<RoleSlot>` whose `expanded` flag is true when the local seat holds that
-// role (or when `numPlayers === 1`, hot-seat solo).
-//
-// The role assignments header that used to live above the panels stays as a
-// small banner above the shell — it's useful regardless of which seat is
-// looking at the board.
+// Linear, full-width stack:
+//   1. StatusBar (phase / player / round / mode)
+//   2. SeatPicker (debug seat chooser)
+//   3. CenterMat (per-seat player mats: in / out / stash + trade slot)
+//   4. Role panel(s) the local seat owns — the player's action surface
 
 import { useContext } from 'react';
-import { Box, Paper, Stack, Typography } from '@mui/material';
+import { Box, Stack, Typography } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
 import type { PlayerID, SettlementState } from './game/index.ts';
 import { rolesAtSeat } from './game/roles.ts';
@@ -21,10 +17,8 @@ import { ChiefPanel } from './ui/chief/ChiefPanel.tsx';
 import { SciencePanel } from './ui/science/SciencePanel.tsx';
 import { DomesticPanel } from './ui/domestic/DomesticPanel.tsx';
 import { ForeignPanel } from './ui/foreign/ForeignPanel.tsx';
-import { BoardShell } from './ui/layout/BoardShell.tsx';
 import { GameOverBanner } from './ui/layout/GameOverBanner.tsx';
 import { PhaseHint } from './ui/layout/PhaseHint.tsx';
-import { RoleSlot } from './ui/layout/RoleSlot.tsx';
 import { SeatPicker } from './ui/layout/SeatPicker.tsx';
 import { SeatPickerContext } from './ui/layout/SeatPickerContext.ts';
 import { pickActiveSeat } from './ui/layout/activeSeat.ts';
@@ -37,7 +31,6 @@ import { ChatComposer } from './ui/chat/ChatComposer.tsx';
 export function SettlementBoard(props: BoardProps<SettlementState>) {
   const { G, ctx, playerID } = props;
   const gameOver = ctx.gameover !== undefined;
-  const seats = Object.keys(G.roleAssignments).sort();
 
   // 14.1 — App.tsx owns the hot-seat seat state and exposes a setter
   // through `SeatPickerContext`. In networked mode the provider is
@@ -66,8 +59,8 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
       ? 'networked'
       : 'hotseat';
 
-  // 09.1: a role's slot is expanded when the local seat holds it OR when
-  // we're in a single-player game (hot-seat solo: everything visible).
+  // A role's panel is rendered when the local seat holds it OR when we're
+  // in a single-player game (hot-seat solo: everything visible).
   const localRoles = hasSeat
     ? rolesAtSeat(G.roleAssignments, playerID)
     : [];
@@ -75,23 +68,8 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
   const expanded = (role: 'chief' | 'science' | 'domestic' | 'foreign') =>
     isSolo || localRoles.includes(role);
 
-  // 14.3 + 14.16 — hide the standalone CenterMat row only when the
-  // chief panel is ACTUALLY rendering (panel slot expanded AND we're
-  // in chiefPhase). 14.3's original `!expanded('chief')` gate also
-  // hid the mat in `othersPhase` for any seat that holds the chief
-  // role — including 2-player chief+science, where the mat is the
-  // only place to see seat circles during othersPhase.
-  const chiefPanelVisible =
-    expanded('chief') && ctx.phase === 'chiefPhase';
-  const showCenterMat = !chiefPanelVisible;
-
   return (
-    <Box sx={{ width: 'min(100%, 60rem)', display: 'grid', gap: 3 }}>
-      {/* 14.12 — header reads the active seat from `ctx.activePlayers`
-          (with `ctx.currentPlayer` as a fallback) so the round-2
-          chiefPhase no longer mis-labels itself "Player 4's turn"
-          just because that's who happened to move last in
-          othersPhase. */}
+    <Box sx={{ width: 'min(100%, 60rem)', mx: 'auto', display: 'grid', gap: 3 }}>
       <Box component="header" sx={{ textAlign: 'center' }}>
         <Typography
           variant="h4"
@@ -122,9 +100,6 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
         </Typography>
       </Box>
 
-      {/* 14.5 — Game-over banner. Reads bgio's GameOutcome from
-          ctx.gameover and renders win / timeUp copy with a
-          "Play again" reload button. */}
       {gameOver ? (
         <GameOverBanner
           outcome={ctx.gameover as GameOutcome}
@@ -136,12 +111,27 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
         />
       ) : null}
 
-      {/* 14.1 — Seat picker. In hot-seat we expose a tab strip so the
-          single-tab user can switch which seat they're driving (without
-          this every non-chief role panel returns null). In networked
-          mode the lobby is the authority on `playerID`, so we render a
-          read-only "You are Player N" badge. Spectators (`playerID ===
-          null`) get nothing — they have no seat to mirror. */}
+      {/* 1. Phase / player / round / mode bar. */}
+      <Box>
+        <StatusBar
+          phase={ctx.phase ?? null}
+          currentPlayer={ctx.currentPlayer}
+          round={G.round}
+          mode={statusMode}
+        />
+        <Box sx={{ mt: 0.5 }}>
+          <PhaseHint
+            phase={ctx.phase ?? null}
+            stage={hasSeat ? ctx.activePlayers?.[playerID] : undefined}
+            rolesAtSeat={localRoles}
+            isSpectator={isSpectator}
+          />
+        </Box>
+      </Box>
+
+      {/* 2. Debug player view chooser. Hot-seat: tab strip to switch seat.
+          Networked: read-only "You are Player N" badge. Spectators (null
+          playerID) get nothing — they have no seat to mirror. */}
       {playerID !== undefined && playerID !== null ? (
         <SeatPicker
           numPlayers={ctx.numPlayers as 1 | 2 | 3 | 4}
@@ -153,87 +143,23 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
         />
       ) : null}
 
-      <Stack component="section" spacing={1.5} aria-label="Role assignments">
-        {seats.map((seat) => {
-          const active = ctx.currentPlayer === seat && !gameOver;
-          const roles = G.roleAssignments[seat] ?? [];
-          return (
-            <Paper
-              key={seat}
-              elevation={0}
-              sx={{
-                px: 2,
-                py: 1.5,
-                bgcolor: (t) => t.palette.card.surface,
-                border: '1px solid',
-                borderColor: (t) =>
-                  active ? t.palette.status.active : 'transparent',
-              }}
-            >
-              <Typography
-                variant="body2"
-                sx={{ color: (t) => t.palette.status.muted }}
-              >
-                Player {Number(seat) + 1}
-              </Typography>
-              <Typography sx={{ fontWeight: 600 }}>
-                {roles.join(', ')}
-              </Typography>
-            </Paper>
-          );
-        })}
+      {/* 3. Player mats / stats of all seats (incl. other players). */}
+      <CenterMat {...props} />
+
+      {/* 4. The local seat's action element(s) — the role panel(s) the
+          local player owns. In solo mode (hot-seat 1p), all four render. */}
+      <Stack spacing={3}>
+        {expanded('chief') ? <ChiefPanel {...props} /> : null}
+        {expanded('science') ? <SciencePanel {...props} /> : null}
+        {expanded('domestic') ? <DomesticPanel {...props} /> : null}
+        {expanded('foreign') ? <ForeignPanel {...props} /> : null}
       </Stack>
 
-      <BoardShell
-        chief={
-          <RoleSlot expanded={expanded('chief')}>
-            <ChiefPanel {...props} />
-          </RoleSlot>
-        }
-        science={
-          <RoleSlot expanded={expanded('science')}>
-            <SciencePanel {...props} />
-          </RoleSlot>
-        }
-        domestic={
-          <RoleSlot expanded={expanded('domestic')}>
-            <DomesticPanel {...props} />
-          </RoleSlot>
-        }
-        foreign={
-          <RoleSlot expanded={expanded('foreign')}>
-            <ForeignPanel {...props} />
-          </RoleSlot>
-        }
-        centerMat={showCenterMat ? <CenterMat {...props} /> : null}
-        status={
-          <Box>
-            <StatusBar
-              phase={ctx.phase ?? null}
-              currentPlayer={ctx.currentPlayer}
-              round={G.round}
-              mode={statusMode}
-            />
-            {/* 14.6 — one-line "what you can do now" hint. */}
-            <Box sx={{ mt: 0.5 }}>
-              <PhaseHint
-                phase={ctx.phase ?? null}
-                stage={
-                  hasSeat ? ctx.activePlayers?.[playerID] : undefined
-                }
-                rolesAtSeat={localRoles}
-                isSpectator={isSpectator}
-              />
-            </Box>
-          </Box>
-        }
-      />
-
-      {/* 10.5 + 14.7: chat lives below the StatusBar as a sibling of
-          BoardShell. `chatMessages` and `sendChatMessage` are
-          bgio-Client-provided props that only exist under the
-          multiplayer transport — hot-seat has no transport, so we
-          render nothing rather than a permanently-empty pane.
+      {/* Chat lives below the role panels. `chatMessages` and
+          `sendChatMessage` are bgio-Client-provided props that only
+          exist under the multiplayer transport — hot-seat has no
+          transport, so we render nothing rather than a permanently-
+          empty pane.
           (Headless test Clients also see no transport; the gate is
           the same. Spectators in networked mode keep chat visible
           read-only — `sendChatMessage` is undefined for them and

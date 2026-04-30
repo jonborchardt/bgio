@@ -16,12 +16,12 @@ import { placeOrInterruptTrade } from '../../../src/game/roles/foreign/tradeRequ
 import { chiefDecideTradeDiscard } from '../../../src/game/roles/chief/decideTradeDiscard.ts';
 import { bagOf } from '../../../src/game/resources/bag.ts';
 import { assignRoles } from '../../../src/game/roles.ts';
-import type { ResourceBag } from '../../../src/game/resources/types.ts';
 import type {
   SettlementState,
   ForeignState,
 } from '../../../src/game/types.ts';
 import type { TradeCardDef } from '../../../src/data/decks.ts';
+import { initialMats } from '../../../src/game/resources/playerMat.ts';
 
 const emptyForeign = (): ForeignState => ({
   hand: [],
@@ -35,25 +35,17 @@ const build2pState = (
   partial: Partial<SettlementState> = {},
 ): SettlementState => {
   const roleAssignments = assignRoles(2);
-  const matCircles: Record<string, ResourceBag> = {};
-  const wallets: Record<string, ResourceBag> = {};
-  for (const [seat, roles] of Object.entries(roleAssignments)) {
-    if (!roles.includes('chief')) {
-      matCircles[seat] = bagOf({});
-      wallets[seat] = bagOf({});
-    }
-  }
   const hands: Record<string, unknown> = {};
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
 
   return {
     bank: bagOf({}),
-    centerMat: { circles: matCircles, tradeRequest: null },
+    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 1,
     settlementsJoined: 0,
     hands,
-    wallets,
+    mats: initialMats(roleAssignments),
     foreign: emptyForeign(),
     ...partial,
   };

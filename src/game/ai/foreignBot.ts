@@ -7,9 +7,9 @@
 //      `foreignAssignDamage`.
 //   2. If not in `foreignTurn`, return null.
 //   3. Pay upkeep first if it hasn't been paid this stage. If the
-//      wallet can't cover the bill, release the cheapest in-play unit
+//      stash can't cover the bill, release the cheapest in-play unit
 //      until upkeep fits.
-//   4. Recruit the cheapest hand unit while the wallet can afford it.
+//   4. Recruit the cheapest hand unit while the stash can afford it.
 //   5. If the battle deck is non-empty AND the last battle wasn't a
 //      loss, simulate the next battle via `resolveBattle` with the
 //      "lowest HP first" allocation plan; if predicted win, flip.
@@ -226,14 +226,25 @@ const playForeignTurn = (state: BotState): BotAction | null => {
   const { G, playerID } = state;
   const foreign = G.foreign;
   if (foreign === undefined) return null;
-  const wallet = G.wallets[playerID];
-  if (wallet === undefined) return null;
+  const stash = G.mats?.[playerID]?.stash;
+  if (stash === undefined) return null;
+
+  // Step 0: if a trade request is parked on the mat, fulfill it when this
+  // seat can afford it. Trade fulfillment converts stash → reward and
+  // ticks `settlementsJoined`, which is the V1 path toward the win
+  // condition; we prioritize it over recruit/upkeep so the bot can chain
+  // wins → flip → fulfill across rounds. Any seat can fulfill regardless
+  // of ownerSeat (see tradeFulfill.ts).
+  const tradeReq = G.centerMat.tradeRequest;
+  if (tradeReq !== null && canAfford(stash, tradeReq.required)) {
+    return { move: 'foreignTradeFulfill', args: [] };
+  }
 
   // Step 1: upkeep, if not yet paid this stage.
   if (foreign._upkeepPaid !== true && !foreign.inFlight.battle) {
     const bill = upkeepBill(G);
-    if (bill > 0 && !canAfford(wallet, { gold: bill })) {
-      // Wallet can't cover — release the cheapest unit first.
+    if (bill > 0 && !canAfford(stash, { gold: bill })) {
+      // Stash can't cover — release the cheapest unit first.
       const releaseTarget = cheapestInPlay(G);
       if (releaseTarget !== null) {
         return {
@@ -251,7 +262,7 @@ const playForeignTurn = (state: BotState): BotAction | null => {
 
   // Step 2: recruit cheapest affordable.
   const cheapest = cheapestHand(G);
-  if (cheapest !== null && canAfford(wallet, { gold: cheapest.cost })) {
+  if (cheapest !== null && canAfford(stash, { gold: cheapest.cost })) {
     return { move: 'foreignRecruit', args: [cheapest.name, 1] };
   }
 

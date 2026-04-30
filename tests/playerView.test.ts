@@ -24,11 +24,11 @@ const buildState = (): SettlementState => {
   const roleAssignments = assignRoles(2);
   return {
     bank: initialBank(),
-    centerMat: { circles: {}, tradeRequest: null },
+    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 1,
     settlementsJoined: 0,
-    wallets: {},
+    mats: {},
     hands: {
       // Seat 0 holds chief + science — public roles, nothing to redact here.
       // We still give it a placeholder shape to confirm public seats stay
@@ -153,12 +153,12 @@ describe('playerView', () => {
     // The redactor must not throw and must not invent fields.
     const G: SettlementState = {
       bank: initialBank(),
-      centerMat: { circles: {}, tradeRequest: null },
+      centerMat: { tradeRequest: null },
       roleAssignments: assignRoles(2),
       round: 0,
       settlementsJoined: 0,
       hands: { '0': {}, '1': {} },
-      wallets: {},
+      mats: {},
     };
     const view = playerView(G, fakeCtx, '0');
     expect(view.hands['0']).toEqual({});

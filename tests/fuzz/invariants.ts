@@ -13,8 +13,7 @@ import type { Resource, ResourceBag } from '../../src/game/resources/types.ts';
 /**
  * Asserts that no resource count anywhere in `G` is negative. Walks:
  *   - `G.bank`
- *   - `G.wallets[seat]` for every seat
- *   - `G.centerMat.circles[seat]` for every seat
+ *   - `G.mats[seat].in` / `out` / `stash` for every non-chief seat
  *   - `G.science.paid[cardId]` for every science card
  *
  * Throws an `Error` with a human-readable path on the first violation so a
@@ -37,12 +36,10 @@ export const assertNoNegativeResources = (G: SettlementState): void => {
 
   checkBag(G.bank, 'bank');
 
-  for (const [seat, wallet] of Object.entries(G.wallets)) {
-    checkBag(wallet, `wallets['${seat}']`);
-  }
-
-  for (const [seat, circle] of Object.entries(G.centerMat.circles)) {
-    checkBag(circle, `centerMat.circles['${seat}']`);
+  for (const [seat, mat] of Object.entries(G.mats)) {
+    checkBag(mat.in, `mats['${seat}'].in`);
+    checkBag(mat.out, `mats['${seat}'].out`);
+    checkBag(mat.stash, `mats['${seat}'].stash`);
   }
 
   if (G.science !== undefined) {
@@ -53,7 +50,7 @@ export const assertNoNegativeResources = (G: SettlementState): void => {
 };
 
 /**
- * Sums every resource across `bank`, `wallets`, `circles`, and the
+ * Sums every resource across `bank`, all per-seat mat bags, and the
  * science `paid` ledger into a single scalar. Used as the basis of the
  * loose conservation check. The total isn't expected to be strictly
  * conserved — production, refunds, event effects, and bank top-ups all
@@ -68,8 +65,11 @@ const totalResources = (G: SettlementState): number => {
     }
   };
   sumBag(G.bank);
-  for (const wallet of Object.values(G.wallets)) sumBag(wallet);
-  for (const circle of Object.values(G.centerMat.circles)) sumBag(circle);
+  for (const mat of Object.values(G.mats)) {
+    sumBag(mat.in);
+    sumBag(mat.out);
+    sumBag(mat.stash);
+  }
   if (G.science !== undefined) {
     for (const paid of Object.values(G.science.paid)) sumBag(paid);
   }

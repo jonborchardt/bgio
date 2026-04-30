@@ -26,7 +26,6 @@ import type {
 import { setup } from '../../src/game/setup.ts';
 import type { BgioRandomLike } from '../../src/game/random.ts';
 import { bagOf } from '../../src/game/resources/bag.ts';
-import { placeIntoCircle } from '../../src/game/resources/centerMat.ts';
 import { cellKey } from '../../src/game/roles/domestic/grid.ts';
 import { BUILDINGS, UNITS } from '../../src/data/index.ts';
 import type { ResourceBag } from '../../src/game/resources/types.ts';
@@ -67,14 +66,19 @@ export const seedFreshGame = (
 };
 
 /**
- * Build on `seedFreshGame` and populate the per-seat circle bags on
- * `centerMat`. `partial` is a `seat -> partial bag` map; missing seats
- * get an empty circle (matching `initialMat` defaults). Unknown seats
- * are silently dropped — chief seats have no circle entry.
+ * Build on `seedFreshGame` and populate the per-seat **stash** bags on
+ * each non-chief player mat. `partial` is a `seat -> partial bag` map;
+ * missing seats get an empty stash (matching `initialMats` defaults).
+ * Unknown seats are silently dropped — chief seats have no mat entry.
  *
- * Use this when a test needs the state right after the chief has
- * distributed bank tokens to action circles — the natural starting
- * point for testing per-role moves that pull from the mat.
+ * Use this when a test invokes a non-chief spend move's function form
+ * directly (no bgio engine driving stages): spends read from
+ * `mat.stash`, so the test wants tokens already swept past the
+ * `in→stash` transition that `othersPhase.turn.onBegin` runs at the
+ * engine layer. The legacy name "after chief distribute" is preserved
+ * to keep call-sites stable; if you need the in-flight `in` slot
+ * populated for a chief-stage test, manipulate `G.mats[seat].in`
+ * directly.
  */
 export const seedAfterChiefDistribute = (
   partial?: Record<PlayerID, Partial<ResourceBag>>,
@@ -82,11 +86,16 @@ export const seedAfterChiefDistribute = (
   const G = seedFreshGame(2);
   if (!partial) return G;
   for (const [seat, amounts] of Object.entries(partial)) {
-    if (!Object.prototype.hasOwnProperty.call(G.centerMat.circles, seat)) {
-      // Chief seat or unknown seat — no circle to populate.
+    const mat = G.mats?.[seat];
+    if (mat === undefined) {
+      // Chief seat or unknown seat — no mat to populate.
       continue;
     }
-    placeIntoCircle(G.centerMat, seat, amounts);
+    for (const [k, v] of Object.entries(amounts)) {
+      if (typeof v === 'number' && v > 0) {
+        mat.stash[k as keyof ResourceBag] += v;
+      }
+    }
   }
   return G;
 };
@@ -176,7 +185,7 @@ export const seedMidScienceProgress = (
 // `EMPTY_BAG` is intentionally not re-exported — call sites that need a
 // blank bag should import it from `src/game/resources/types.ts` directly.
 // We only reference it here to keep the import non-dead in case future
-// factories want to seed wallets from a constant.
+// factories want to seed mats from a constant.
 void EMPTY_BAG;
 
 // `Settlement` is intentionally not re-exported — `setup` is enough.
