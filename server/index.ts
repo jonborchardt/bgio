@@ -16,6 +16,8 @@ import { Settlement } from '../src/game/index.ts';
 import { makeStorage, type StorageKind } from './storage/index.ts';
 import { makeIdleWatcher, type IdleWatcher } from './idle/idleWatcher.ts';
 import { mountAuthRoutes } from './auth/routes.ts';
+import { setAccountsStore } from './auth/accounts.ts';
+import { createSqliteAccountsStore } from './auth/sqliteAccountsStore.ts';
 
 /** Result of `createServer` — exposes the bgio Server instance plus a
  * `port` Promise that resolves once the underlying Koa app is listening.
@@ -137,5 +139,24 @@ if (isDirectInvocation) {
     envKind === 'memory' || envKind === 'flatfile' || envKind === 'sqlite'
       ? envKind
       : undefined;
+  // 10.7 follow-up — when match storage is SQLite, point the accounts
+  // module at the same DB file so users + tokens persist across
+  // restarts. Falls back silently to the in-memory accounts store if
+  // better-sqlite3 fails to load (matching makeStorage's policy).
+  if ((storageKind ?? 'memory') === 'sqlite') {
+    try {
+      const sqlitePath = process.env.SQLITE_PATH;
+      setAccountsStore(
+        createSqliteAccountsStore(
+          sqlitePath !== undefined ? { path: sqlitePath } : {},
+        ),
+      );
+    } catch (err) {
+      console.warn(
+        '[auth] SQLite accounts store init failed, keeping in-memory store:',
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
   void createServer({ port, storage: storageKind ?? 'memory' }).start(port);
 }

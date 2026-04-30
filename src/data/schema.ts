@@ -23,7 +23,17 @@ export interface BuildingDef {
 
 export interface UnitDef {
   name: string;
+  // Gold-equivalent cost, used as a value heuristic (AI sort, refund math).
+  // When `costBag` is absent this is also the actual recruit charge,
+  // treated as `{ gold: cost }`. When `costBag` is present that bag is the
+  // actual charge and `cost` is informational only — matches the
+  // `BuildingDef` / `TechnologyDef` pattern.
   cost: number;
+  // Optional multi-resource recruit cost. When defined, foreignRecruit
+  // charges this bag (scaled by `count`) instead of `{ gold: cost }`. The
+  // Domestic `unitCost` modifier (Forge: -1) only adjusts the gold
+  // portion — non-gold inputs are not discountable.
+  costBag?: Partial<ResourceBag>;
   initiative: number;
   attack: number;
   defense: number;
@@ -144,7 +154,7 @@ export const validateUnits = (raw: unknown): UnitDef[] => {
   const arr = requireArray(raw, 'UnitDef');
   return arr.map((entry, i) => {
     const obj = requireObject(entry, i, 'UnitDef');
-    return {
+    const def: UnitDef = {
       name: requireString(obj, 'name', i, 'UnitDef'),
       cost: requireNumber(obj, 'cost', i, 'UnitDef'),
       initiative: requireNumber(obj, 'initiative', i, 'UnitDef'),
@@ -154,6 +164,9 @@ export const validateUnits = (raw: unknown): UnitDef[] => {
       requires: requireString(obj, 'requires', i, 'UnitDef'),
       note: requireString(obj, 'note', i, 'UnitDef'),
     };
+    const costBag = optionalCostBag(obj, 'costBag', i, 'UnitDef');
+    if (costBag !== undefined) def.costBag = costBag;
+    return def;
   });
 };
 

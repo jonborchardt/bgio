@@ -36,12 +36,16 @@ Can play with ANY number of players, and future expansions will have different t
 
 ## Setup
 
-Place the play mat and set of cards for each player in front of them where all can see.
+Each non-chief player gets a player mat with three slots: **In** (resources the
+chief just placed for you), **Out** (resources you produced this turn that flow
+back to the bank at the start of next chief turn), and **Stash** (resources you
+own and spend from). The chief acts directly on the **bank** and owns no mat.
+The center mat holds a single shared **trade-request** slot.
 
 ### Chief
 - Collect 1 worker token from the box and put it in front of you
-- Collect 3 gold tokens and put them on the bank spot on the center mat
-- Place the center mat in the middle of the table
+- Place 3 gold tokens in the bank
+- Place the center mat in the middle of the table (it carries the trade-request slot only)
 
 ### Science
 - Place science cards on table in a grid, each column should have the same color, each column should be ordered so that the smallest number is closest the player
@@ -49,8 +53,7 @@ Place the play mat and set of cards for each player in front of them where all c
 
 ### Domestic
 - Collect all level 0 tech cards NOT used by science and put them into your hand
-- Collect 1 wood, 1 stone, and 1 steel resource token and put them in front of you
-- Organize resources to be easily accessible to you
+- Place 1 wood, 1 stone, and 1 steel into your stash on the player mat
 
 ### Foreign
 - Build the Battle deck
@@ -70,19 +73,19 @@ All players are working together to make their common settlement thrive and surv
 ## General Play
 
 ### Chief
-- Take all tokens from center mat and put them into the bank
+- At the start of the chief turn, every non-chief seat's **Out** slot sweeps into the bank automatically (yields the rest of the table produced last round) and the chief gets the round's gold stipend
 - They may play 1 gold event card if they have one at any time
 - Ask each other player what resources they want and what the chief should expect in return
   - Each player may say whatever they want, and are not bound by what they say
-- Puts any amount of resources from the bank onto the center mat in the circle for each other player
+- Distribute any amount of resources from the bank into each non-chief seat's **In** slot
   - Example: 3 gold to science, 2 gold to domestic, 1 stone to domestic, and 1 horse to foreign
-- Place or moves any workers on the domestic play field
-- Each other player can take resources from the mat as soon as they are placed in their circle, and start their turn…
-  - They can take their turns in any order or simultaneously, but once they do an action, they cannot undo it
-  - They do not have to take all resources from the mat
+  - The chief can also pull resources back from a seat's **In** slot until the chief ends their turn
+- Place or move any workers on the domestic play field
+- When the chief ends their turn, every seat's **In** slot drains into that seat's **Stash** (the resources are now theirs to spend), and each non-chief seat starts its turn
+  - Seats can act in any order or simultaneously; once an action happens it cannot be undone
 
 ### Science
-- Take resources from middle mat and chooses to spend the resources advancing one or more scientific tracks
+- Spend resources from your **Stash** to advance one or more scientific tracks
 - A science card cannot be taken until all requirements on the card are met. Example: Requires 4 gold, 1 stone, and the completion of any level 3 yellow science
 - They may play 1 blue event card if they have one at any time
 - They may add resources to any number of science cards but may complete only 1 a turn
@@ -93,16 +96,16 @@ All players are working together to make their common settlement thrive and surv
 
 ### Domestic
 - They may play 1 green event card if they have one at any time
-- Use resources to purchase a building card in hand
-- Use resources to upgrade a building card in play
-- Calculate all produced goods from the buildings in play and put those resources in the middle mat in the bank
+- Spend resources from your **Stash** to purchase a building card from your hand
+- Spend resources from your **Stash** to upgrade a building card in play
+- All produced goods from buildings in play land in your **Out** slot, where they sit until the next chief turn sweeps them into the bank
   - Note, if a building has a worker, the worker goods are in addition to the normal default goods
 
 ### Foreign
 - They may play 1 red event card if they have one at any time
-- Pay upkeep for all in play units (place upkeep out of play)
+- Pay upkeep for all in play units from your **Stash** (upkeep gold flows to the bank)
   - If you cannot or do not want to upkeep a unit, release it for its release value
-- Construct any number of units from your hand, or in play (use a marker to denote multiples of the same unit)
+- Spend resources from your **Stash** to construct any number of units from your hand, or in play (use a marker to denote multiples of the same unit)
 - Flip over the top card from the Battle deck
 - Defeat the card, if you win or fail, do what the card says
 - Battle is not random
@@ -111,8 +114,8 @@ All players are working together to make their common settlement thrive and surv
   - From what is sent, damage can be distributed in any way player decides, however if a unit takes damage, they must take enough to kill the unit unless the card says otherwise or there is not enough damage left to kill the unit
   - Rules on the battle card or unit card take precedence
 - If you won, you may choose to flip over the top card of either the battle deck or the trade deck and follow the instructions
-  - If you flip over a trade request, place the request on the center mat, this card will act like a circle for another player until completed
-  - You can only have 1 trade request at a time, if collecting a second, the chief decides which to discard
+  - If you flip over a trade request, place it on the center mat's trade-request slot — any active seat with the goods can fulfill it on their turn (the seat that fulfills ticks `settlementsJoined`)
+  - You can only have 1 trade request at a time; if collecting a second, the chief decides which to discard
   - Goods on the discarded card are returned to the bank
 - You may flip over cards as long as you do not fail a battle
 - Restore the health of all units before each flip

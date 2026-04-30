@@ -8,10 +8,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Ctx } from 'boardgame.io';
 import { INVALID_MOVE } from 'boardgame.io/core';
-import { foreignRecruit } from '../../../src/game/roles/foreign/recruit.ts';
+import {
+  foreignRecruit,
+  applyUnitCostModifier,
+} from '../../../src/game/roles/foreign/recruit.ts';
 import { bagOf } from '../../../src/game/resources/bag.ts';
 import { assignRoles } from '../../../src/game/roles.ts';
-import { UNITS } from '../../../src/data/index.ts';
+import { UNITS, unitCost } from '../../../src/data/index.ts';
 import type { ResourceBag } from '../../../src/game/resources/types.ts';
 import type { SettlementState, ForeignState } from '../../../src/game/types.ts';
 import type { DomesticBuilding } from '../../../src/game/roles/domestic/types.ts';
@@ -108,6 +111,53 @@ describe('foreignRecruit (07.2)', () => {
     callRecruit(G, '1', ctxForeignTurn('1'), 'Brute');
 
     expect(G.foreign!._recruitedThisTurn).toEqual({ Brute: 2 });
+  });
+
+  describe('multi-resource cost (UnitDef.costBag)', () => {
+    it('unitCost helper returns { gold: def.cost } when costBag is absent', () => {
+      const brute = UNITS.find((u) => u.name === 'Brute')!;
+      expect(unitCost(brute)).toEqual({ gold: 3 });
+    });
+
+    it('unitCost helper returns def.costBag when present', () => {
+      const def = {
+        name: 'TestUnit',
+        cost: 5,
+        costBag: { gold: 3, steel: 2 },
+        initiative: 1,
+        attack: 1,
+        defense: 1,
+        altStats: '',
+        requires: '',
+        note: '',
+      } as const;
+      expect(unitCost(def)).toEqual({ gold: 3, steel: 2 });
+    });
+
+    it('applyUnitCostModifier subtracts only from gold; non-gold resources untouched', () => {
+      const def = { cost: 5, costBag: { gold: 4, steel: 2 } };
+      expect(applyUnitCostModifier(def, -1)).toEqual({ gold: 3, steel: 2 });
+    });
+
+    it('applyUnitCostModifier clamps gold at zero (never negative, never overflows into other resources)', () => {
+      const def = { cost: 0, costBag: { gold: 1, steel: 3 } };
+      expect(applyUnitCostModifier(def, -5)).toEqual({ gold: 0, steel: 3 });
+    });
+
+    it('applyUnitCostModifier with zero modifier returns a copy of the base bag', () => {
+      const base = { gold: 4, wood: 2 };
+      const def = { cost: 4, costBag: base };
+      const out = applyUnitCostModifier(def, 0);
+      expect(out).toEqual(base);
+      expect(out).not.toBe(base);
+    });
+
+    it('applyUnitCostModifier on a costBag-less def behaves like the legacy gold-only path', () => {
+      const def = { cost: 4 };
+      expect(applyUnitCostModifier(def, 0)).toEqual({ gold: 4 });
+      expect(applyUnitCostModifier(def, -1)).toEqual({ gold: 3 });
+      expect(applyUnitCostModifier(def, -10)).toEqual({ gold: 0 });
+    });
   });
 
   it('Forge in domestic grid reduces unit cost by 1', () => {
