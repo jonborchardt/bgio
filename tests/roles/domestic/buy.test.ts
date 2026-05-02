@@ -70,7 +70,7 @@ const callBuy = (
 describe('domesticBuyBuilding (06.2)', () => {
   it('happy path: removes from hand, places on grid, deducts wallet, credits bank', () => {
     const granary = BUILDINGS.find((b) => b.name === 'Granary')!;
-    expect(granary.cost).toBe(10);
+    expect(granary.cost).toBe(8);
 
     const G = build2pState(
       { gold: 15 },
@@ -84,8 +84,8 @@ describe('domesticBuyBuilding (06.2)', () => {
 
     expect(result).toBeUndefined();
     // Wallet drained by the cost; bank credited symmetrically.
-    expect(G.mats['1']?.stash).toEqual(bagOf({ gold: 5 }));
-    expect(G.bank).toEqual(bagOf({ gold: 10 }));
+    expect(G.mats['1']?.stash).toEqual(bagOf({ gold: 7 }));
+    expect(G.bank).toEqual(bagOf({ gold: 8 }));
     // Card removed from hand.
     expect(G.domestic!.hand).toHaveLength(0);
     // Building placed on grid.

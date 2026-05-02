@@ -199,7 +199,7 @@ describe('scienceComplete (05.3)', () => {
     G.science!.perRoundCompletions = 0; // simulate a fresh round
     G.science!.paid['red-0'] = bagOf({ gold: 1 });
     callComplete(G, scienceSeat, ctxScienceTurn(scienceSeat), 'red-0');
-    expect(G.foreign!.hand).toHaveLength(4);
+    expect(G.foreign!.techHand).toHaveLength(4);
 
     // Gold completion → chief hand.
     G.science!.perRoundCompletions = 0;
@@ -297,9 +297,9 @@ describe('scienceComplete (05.3)', () => {
       expect(foreignSeat).toBe('1');
       callComplete(G, scienceSeat, ctxScienceTurn(scienceSeat), 'red-0');
       // Red → Foreign → seat '1' owns G.foreign; the move pushes onto the
-      // shared Foreign hand slice. We don't index by seat for the global
+      // shared Foreign techHand slice. We don't index by seat for the global
       // role slices (the role-holding seat owns the slice as a whole).
-      expect(G.foreign!.hand).toHaveLength(4);
+      expect(G.foreign!.techHand).toHaveLength(4);
     }
 
     // 3-player: seat '0' chief+science, seat '1' domestic, seat '2' foreign.

@@ -302,15 +302,14 @@
     "branch": "Exploration",
     "name": "Diplomacy",
     "order": "after Trade Routes + Leadership",
-    "cost": "3 gold",
-    "costBag": { "gold": 3 },
+    "cost": "free",
     "buildings": "Customs House",
     "units": "",
     "blueEvent": "1 science",
     "greenEvent": "+2 happiness",
     "redEvent": "tribute waiver",
     "goldEvent": "4 gold",
-    "onAcquireEffects": [
+    "onPlayEffects": [
       { "kind": "gainResource", "bag": { "gold": 2 }, "target": "bank" }
     ]
   },
@@ -1292,15 +1291,14 @@
     "branch": "Civic",
     "name": "Leadership",
     "order": "after Cooking + Reading",
-    "cost": "1 happiness, 1 gold",
-    "costBag": { "gold": 1 },
+    "cost": "free",
     "buildings": "",
     "units": "",
     "blueEvent": "1 science",
     "greenEvent": "+1 happiness",
     "redEvent": "tribute waiver",
     "goldEvent": "2 gold",
-    "onAcquireEffects": [
+    "onPlayEffects": [
       { "kind": "gainResource", "bag": { "gold": 1 }, "target": "bank" }
     ]
   },

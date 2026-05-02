@@ -82,7 +82,8 @@ describe('domesticBot (11.5)', () => {
 
   it('buys the cheapest affordable building when something fits', () => {
     const G = setupG(4);
-    // Wallet covers the cheapest: Granary at 10 gold.
+    // Wallet covers the cheapest: Cellar at 5 gold (after the starter
+    // pass dropped Cellar's wood requirement so it's a turn-1 starter).
     G.mats['2']!.stash.gold = 10;
     const action = domesticBot.play({
       G,
@@ -92,7 +93,7 @@ describe('domesticBot (11.5)', () => {
     expect(action).not.toBeNull();
     expect(action!.move).toBe('domesticBuyBuilding');
     const [name, x, y] = action!.args as [string, number, number];
-    expect(name).toBe('Granary');
+    expect(name).toBe('Cellar');
     // Empty grid → first placement at origin.
     expect(x).toBe(0);
     expect(y).toBe(0);
@@ -110,22 +111,14 @@ describe('domesticBot (11.5)', () => {
     };
     G.domestic!.producedThisRound = true; // skip the produce branch
 
-    // Make sure the seat's hand has Mill (it should, since BUILDINGS
-    // contains Mill — setupDomestic copies all of them in).
-    const hasMill = G.domestic!.hand.some((b) => b.name === 'Mill');
-    expect(hasMill).toBe(true);
+    // Setup seeds only starter buildings (no "Requires X" note); Mill is
+    // tech-gated, so we inject it directly for this test rather than
+    // driving the science-completion / play-tech path.
+    const mill = BUILDINGS.find((b) => b.name === 'Mill')!;
+    G.domestic!.hand = [mill];
 
-    // Wallet covers Mill (cost 13). Plus a sprinkle so we can also
-    // afford something cheaper like Granary again — but Mill is the
-    // one that nets a bonus.
+    // Wallet covers Mill (cost 13).
     G.mats['2']!.stash.gold = 13;
-
-    // Strip the hand down to just Mill so the cheapest-first sort
-    // doesn't pick a different building. (Granary is cheaper, but
-    // there's only one Mill rule to fire — keeping Mill in the hand
-    // alone makes the test focused.)
-    G.domestic!.hand = G.domestic!.hand.filter((b) => b.name === 'Mill');
-    expect(G.domestic!.hand.length).toBe(1);
 
     const action = domesticBot.play({
       G,

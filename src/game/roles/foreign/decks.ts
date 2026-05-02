@@ -11,7 +11,7 @@
 import type { RandomAPI } from '../../random.ts';
 import type { BattleCardDef, TradeCardDef } from '../../../data/decks.ts';
 import { BATTLE_CARDS, TRADE_CARDS } from '../../../data/decks.ts';
-import type { UnitDef } from '../../../data/schema.ts';
+import type { TechnologyDef, UnitDef } from '../../../data/schema.ts';
 import type { ResourceBag } from '../../resources/types.ts';
 import type { BattleInFlight, UnitInstance } from './types.ts';
 
@@ -20,6 +20,10 @@ export interface ForeignState {
   // level-0 Militia entries at setup (07.2) — until UnitDef carries a
   // `level` field we treat the first 3 entries of `UNITS` as Militia.
   hand: UnitDef[];
+  // Red-color tech cards distributed to Foreign by `scienceComplete` (05.3).
+  // Played via `foreignPlayTech`. Optional so older test fixtures stay
+  // source-compatible.
+  techHand?: TechnologyDef[];
   // Recruited units currently on the board, count-collapsed by `defID`
   // (07.2). `foreignRecruit` increments the matching entry or appends a
   // new one; `foreignReleaseUnit` decrements and removes at zero.

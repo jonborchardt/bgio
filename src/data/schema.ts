@@ -39,6 +39,13 @@ export interface UnitDef {
   defense: number;
   altStats: string;
   requires: string;
+  // Optional typed list of prerequisite token names parsed out of the
+  // free-text `requires` field. Each entry is a building or tech name as
+  // it appears in BUILDINGS / TECHNOLOGIES. The relationships graph
+  // (src/cards/relationships.ts) prefers this when present; otherwise it
+  // falls back to a best-effort split of the `requires` string. Optional
+  // so existing JSON entries don't need to be migrated wholesale.
+  requiresList?: string[];
   note: string;
 }
 
@@ -77,6 +84,18 @@ export interface TechnologyDef {
   onAcquireEffects?: unknown[];
   onPlayEffects?: unknown[];
   passiveEffects?: unknown[];
+  // Optional typed unlock arrays parsed out of the free-text `buildings`
+  // / `units` fields. Same opt-in pattern as `costBag` / `requiresList`:
+  // the relationships graph uses these when present, otherwise it
+  // best-effort splits the legacy text. Each name should match an entry
+  // in BUILDINGS / UNITS; unknown names surface as graph warnings.
+  unlocksBuildings?: string[];
+  unlocksUnits?: string[];
+  // Optional typed event-card linkage. Each entry is `{ color, name }`
+  // referencing EVENT_CARDS. The legacy `blue/green/red/goldEvent`
+  // strings stay as effect-text; this typed list says "for graph
+  // purposes, these are the cards I link to." Optional.
+  unlockEvents?: Array<{ color: 'blue' | 'green' | 'red' | 'gold'; name: string }>;
 }
 
 // --- helpers ---------------------------------------------------------------
@@ -166,7 +185,74 @@ export const validateUnits = (raw: unknown): UnitDef[] => {
     };
     const costBag = optionalCostBag(obj, 'costBag', i, 'UnitDef');
     if (costBag !== undefined) def.costBag = costBag;
+    const requiresList = optionalStringArray(obj, 'requiresList', i, 'UnitDef');
+    if (requiresList !== undefined) def.requiresList = requiresList;
     return def;
+  });
+};
+
+const optionalStringArray = (
+  obj: Record<string, unknown>,
+  key: string,
+  index: number,
+  type: string,
+): string[] | undefined => {
+  const v = obj[key];
+  if (v === undefined) return undefined;
+  if (!Array.isArray(v)) {
+    throw new Error(
+      `${type}[${index}]: field "${key}" must be an array when present`,
+    );
+  }
+  return v.map((entry, ei) => {
+    if (typeof entry !== 'string') {
+      throw new Error(
+        `${type}[${index}]: ${key}[${ei}] must be a string, got ${typeof entry}`,
+      );
+    }
+    return entry;
+  });
+};
+
+const EVENT_COLORS: ReadonlySet<'blue' | 'green' | 'red' | 'gold'> = new Set([
+  'blue',
+  'green',
+  'red',
+  'gold',
+]);
+
+const optionalUnlockEvents = (
+  obj: Record<string, unknown>,
+  key: string,
+  index: number,
+  type: string,
+): Array<{ color: 'blue' | 'green' | 'red' | 'gold'; name: string }> | undefined => {
+  const v = obj[key];
+  if (v === undefined) return undefined;
+  if (!Array.isArray(v)) {
+    throw new Error(
+      `${type}[${index}]: field "${key}" must be an array when present`,
+    );
+  }
+  return v.map((entry, ei) => {
+    if (!isPlainObject(entry)) {
+      throw new Error(
+        `${type}[${index}]: ${key}[${ei}] must be an object`,
+      );
+    }
+    const color = entry.color;
+    const name = entry.name;
+    if (typeof color !== 'string' || !EVENT_COLORS.has(color as 'blue' | 'green' | 'red' | 'gold')) {
+      throw new Error(
+        `${type}[${index}]: ${key}[${ei}].color must be one of blue|green|red|gold`,
+      );
+    }
+    if (typeof name !== 'string' || name.length === 0) {
+      throw new Error(
+        `${type}[${index}]: ${key}[${ei}].name must be a non-empty string`,
+      );
+    }
+    return { color: color as 'blue' | 'green' | 'red' | 'gold', name };
   });
 };
 
@@ -252,6 +338,12 @@ export const validateTechnologies = (raw: unknown): TechnologyDef[] => {
     if (onPlay !== undefined) tech.onPlayEffects = onPlay;
     const passive = optionalEffectsArray(obj, 'passiveEffects', i, 'TechnologyDef');
     if (passive !== undefined) tech.passiveEffects = passive;
+    const unlocksB = optionalStringArray(obj, 'unlocksBuildings', i, 'TechnologyDef');
+    if (unlocksB !== undefined) tech.unlocksBuildings = unlocksB;
+    const unlocksU = optionalStringArray(obj, 'unlocksUnits', i, 'TechnologyDef');
+    if (unlocksU !== undefined) tech.unlocksUnits = unlocksU;
+    const unlockE = optionalUnlockEvents(obj, 'unlockEvents', i, 'TechnologyDef');
+    if (unlockE !== undefined) tech.unlockEvents = unlockE;
 
     return tech;
   });

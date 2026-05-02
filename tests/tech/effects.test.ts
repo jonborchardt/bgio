@@ -21,6 +21,7 @@ import {
 } from '../../src/game/tech/effects.ts';
 import { chiefPlayTech } from '../../src/game/roles/chief/playTech.ts';
 import { domesticPlayTech } from '../../src/game/roles/domestic/playTech.ts';
+import { foreignPlayTech } from '../../src/game/roles/foreign/playTech.ts';
 import { dispatch } from '../../src/game/events/dispatcher.ts';
 import {
   fromBgio,
@@ -311,11 +312,15 @@ describe('chiefPlayTech (08.6)', () => {
     const result = callMove(chiefPlayTech, G, '0', 'Tax Collector');
     expect(result).toBeUndefined();
     expect(G.bank.gold).toBe(4);
-    // Card stays in hand (V1 model: tech persists).
-    expect(G.chief!.hand!.length).toBe(1);
+    // Played techs are consumed: removed from the seat's hand.
+    expect(G.chief!.hand!.length).toBe(0);
   });
 
-  it('returns INVALID_MOVE when the tech has empty onPlayEffects', () => {
+  it('still resolves and consumes a tech with empty onPlayEffects (no-op effect, card is removed)', () => {
+    // Cards like Compass have no engine-level play effect — their value
+    // lives in the per-color event reactions. Playing them must still
+    // resolve the card (charge cost, remove from hand) so the player
+    // gets visible feedback when they click.
     const tech = baseTech({
       name: 'Idle',
       onPlayEffects: [],
@@ -323,21 +328,21 @@ describe('chiefPlayTech (08.6)', () => {
     const G = build4pState({
       chief: { workers: 0, hand: [tech] },
     });
-    const before = JSON.parse(JSON.stringify(G));
 
     const result = callMove(chiefPlayTech, G, '0', 'Idle');
-    expect(result).toBe(INVALID_MOVE);
-    expect(G).toEqual(before);
+    expect(result).toBeUndefined();
+    expect(G.chief!.hand!.length).toBe(0);
   });
 
-  it('returns INVALID_MOVE when the tech is missing onPlayEffects entirely', () => {
+  it('still resolves a tech missing onPlayEffects entirely (no unlocks either)', () => {
     const tech = baseTech({ name: 'NoPlay' });
     const G = build4pState({
       chief: { workers: 0, hand: [tech] },
     });
 
     const result = callMove(chiefPlayTech, G, '0', 'NoPlay');
-    expect(result).toBe(INVALID_MOVE);
+    expect(result).toBeUndefined();
+    expect(G.chief!.hand!.length).toBe(0);
   });
 
   it('returns INVALID_MOVE when caller does not hold chief role', () => {
@@ -366,9 +371,156 @@ describe('chiefPlayTech (08.6)', () => {
   });
 });
 
+describe('playTechStub cost-charging', () => {
+  it('chief play debits the bank by costBag and resolves', () => {
+    const tech = baseTech({
+      name: 'Costly Plan',
+      costBag: { gold: 3 },
+      onPlayEffects: [
+        { kind: 'gainResource', bag: { gold: 1 }, target: 'bank' },
+      ],
+    });
+    const G = build4pState({
+      bank: bagOf({ gold: 5 }),
+      chief: { workers: 0, hand: [tech] },
+    });
+
+    const result = callMove(chiefPlayTech, G, '0', 'Costly Plan');
+    expect(result).toBeUndefined();
+    // Spent 3, then onPlayEffects credited 1 → net -2 from initial 5.
+    expect(G.bank.gold).toBe(3);
+    expect(G.chief!.hand!.length).toBe(0);
+  });
+
+  it('chief play returns INVALID_MOVE when bank cannot afford the costBag', () => {
+    const tech = baseTech({
+      name: 'Too Expensive',
+      costBag: { gold: 10 },
+      onPlayEffects: [{ kind: 'gainResource', bag: { gold: 1 }, target: 'bank' }],
+    });
+    const G = build4pState({
+      bank: bagOf({ gold: 2 }),
+      chief: { workers: 0, hand: [tech] },
+    });
+    const before = JSON.parse(JSON.stringify(G));
+
+    const result = callMove(chiefPlayTech, G, '0', 'Too Expensive');
+    expect(result).toBe(INVALID_MOVE);
+    expect(G).toEqual(before);
+  });
+
+  it('non-chief play debits the seat stash by costBag and credits the bank', () => {
+    const tech = baseTech({
+      branch: 'Fighting',
+      name: 'Field Drill',
+      costBag: { gold: 2 },
+      onPlayEffects: [
+        { kind: 'gainResource', bag: { gold: 1 }, target: 'bank' },
+      ],
+    });
+    const G = build4pState({
+      bank: bagOf({ gold: 0 }),
+      foreign: {
+        hand: [],
+        techHand: [tech],
+        inPlay: [],
+        battleDeck: [],
+        tradeDeck: [],
+        inFlight: { battle: null, committed: [] },
+      },
+    });
+    // Seat 3 is foreign in the 4-player layout — fund their stash.
+    G.mats['3']!.stash = bagOf({ gold: 5 });
+
+    const result = callMove(foreignPlayTech, G, '3', 'Field Drill');
+    expect(result).toBeUndefined();
+    expect(G.mats['3']!.stash.gold).toBe(3); // 5 - 2 spent
+    expect(G.bank.gold).toBe(3); // +2 stash spend, +1 onPlay credit
+    expect(G.foreign!.techHand!.length).toBe(0);
+  });
+
+  it('non-chief play returns INVALID_MOVE when stash cannot afford the costBag', () => {
+    const tech = baseTech({
+      branch: 'Fighting',
+      name: 'Pricey Drill',
+      costBag: { gold: 5 },
+      onPlayEffects: [{ kind: 'gainResource', bag: { gold: 1 }, target: 'bank' }],
+    });
+    const G = build4pState({
+      bank: bagOf({}),
+      foreign: {
+        hand: [],
+        techHand: [tech],
+        inPlay: [],
+        battleDeck: [],
+        tradeDeck: [],
+        inFlight: { battle: null, committed: [] },
+      },
+    });
+    G.mats['3']!.stash = bagOf({ gold: 1 });
+    const before = JSON.parse(JSON.stringify(G));
+
+    const result = callMove(foreignPlayTech, G, '3', 'Pricey Drill');
+    expect(result).toBe(INVALID_MOVE);
+    expect(G).toEqual(before);
+  });
+});
+
+describe('applyTechOnPlay grants unlocks', () => {
+  it('pushes named building unlocks into G.domestic.hand and named units into G.foreign.hand', () => {
+    // Use real building / unit names so the registry lookup in
+    // grantTechUnlocks resolves them.
+    const tech = baseTech({
+      branch: 'Civic',
+      name: 'Bartering',
+      buildings: 'Trading Post',
+      units: 'Scout',
+    });
+    const G = build4pState({
+      domestic: { hand: [], grid: {}, techHand: [tech] },
+      foreign: {
+        hand: [],
+        inPlay: [],
+        battleDeck: [],
+        tradeDeck: [],
+        inFlight: { battle: null, committed: [] },
+      },
+    });
+    // Seat 2 is domestic in 4-player.
+    const result = callMove(domesticPlayTech, G, '2', 'Bartering');
+    expect(result).toBeUndefined();
+    expect(G.domestic!.hand.map((b) => b.name)).toContain('Trading Post');
+    expect(G.foreign!.hand.map((u) => u.name)).toContain('Scout');
+    // Tech is consumed.
+    expect(G.domestic!.techHand!.length).toBe(0);
+  });
+
+  it('does not duplicate an unlock that is already in the hand', () => {
+    const trader = { name: 'Trading Post' } as unknown as { name: string };
+    const tech = baseTech({
+      branch: 'Civic',
+      name: 'Bartering',
+      buildings: 'Trading Post',
+    });
+    const G = build4pState({
+      // Pre-seed the hand with a Trading-Post-named entry.
+      domestic: {
+        hand: [trader as never],
+        grid: {},
+        techHand: [tech],
+      },
+    });
+    callMove(domesticPlayTech, G, '2', 'Bartering');
+    // Still only one Trading Post — grant skipped the dupe.
+    const tps = G.domestic!.hand.filter((b) => b.name === 'Trading Post');
+    expect(tps.length).toBe(1);
+  });
+});
+
 describe('domesticPlayTech wrong-role rejection (08.6)', () => {
-  it('domesticPlayTech on a red tech (in foreign hand) returns INVALID_MOVE', () => {
-    // Place the red tech in foreign.hand — it never reaches domestic.techHand.
+  it('domesticPlayTech on a red tech (in foreign techHand) returns INVALID_MOVE', () => {
+    // Place the red tech in foreign.techHand — it never reaches
+    // domestic.techHand.
     const redTech = baseTech({
       branch: 'Fighting',
       name: 'Big Guns',
@@ -376,12 +528,10 @@ describe('domesticPlayTech wrong-role rejection (08.6)', () => {
         { kind: 'gainResource', bag: { gold: 1 }, target: 'bank' },
       ],
     });
-    // Cast through `unknown` because ForeignState.hand is currently typed
-    // UnitDef[]; 05.3 distribution pushes TechnologyDef entries through
-    // that loose slot (07.4 will eventually refactor).
     const G = build4pState({
       foreign: {
-        hand: [redTech] as unknown as never[],
+        hand: [],
+        techHand: [redTech],
         inPlay: [],
         battleDeck: [],
         tradeDeck: [],

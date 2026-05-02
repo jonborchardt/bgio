@@ -67,8 +67,9 @@ const callUpkeep = (
 };
 
 describe('foreignUpkeep (07.2)', () => {
-  it('sufficient wallet: deducts def.cost per in-play unit and credits the bank', () => {
-    // Two Brutes (cost 3 each) and one Scout (cost 2): total upkeep 8 gold.
+  it('sufficient wallet: deducts ceil(cost/2) per in-play unit and credits the bank', () => {
+    // Two Brutes (cost 3 → upkeep 2 each, x2 = 4) + one Scout (cost 2 →
+    // upkeep 1, x1 = 1). Total upkeep 5 gold.
     const G = build2pState({ gold: 10 });
     G.foreign!.inPlay = [
       { defID: 'Brute', count: 2 },
@@ -78,14 +79,14 @@ describe('foreignUpkeep (07.2)', () => {
     const result = callUpkeep(G, '1', ctxForeignTurn('1'));
 
     expect(result).toBeUndefined();
-    expect(G.mats['1']?.stash).toEqual(bagOf({ gold: 2 }));
-    expect(G.bank).toEqual(bagOf({ gold: 8 }));
+    expect(G.mats['1']?.stash).toEqual(bagOf({ gold: 5 }));
+    expect(G.bank).toEqual(bagOf({ gold: 5 }));
     expect(G.foreign!._upkeepPaid).toBe(true);
   });
 
   it('insufficient wallet returns INVALID_MOVE; state unchanged', () => {
     const G = build2pState({ gold: 1 });
-    G.foreign!.inPlay = [{ defID: 'Brute', count: 1 }]; // upkeep 3
+    G.foreign!.inPlay = [{ defID: 'Brute', count: 1 }]; // upkeep 2
     const before = JSON.parse(JSON.stringify(G));
 
     const result = callUpkeep(G, '1', ctxForeignTurn('1'));
@@ -96,19 +97,19 @@ describe('foreignUpkeep (07.2)', () => {
 
   it('units recruited this turn are exempt from upkeep', () => {
     // Two Brutes total, one of which was recruited this turn. Only the
-    // pre-existing Brute owes upkeep (cost 3).
+    // pre-existing Brute owes upkeep (cost 3 → upkeep 2).
     const G = build2pState({ gold: 10 });
     G.foreign!.inPlay = [{ defID: 'Brute', count: 2 }];
     G.foreign!._recruitedThisTurn = { Brute: 1 };
 
-    expect(computeForeignUpkeepGold(G)).toBe(3);
+    expect(computeForeignUpkeepGold(G)).toBe(2);
     expect(upkeepableUnits(G)).toEqual([{ defID: 'Brute', count: 1 }]);
 
     const result = callUpkeep(G, '1', ctxForeignTurn('1'));
 
     expect(result).toBeUndefined();
-    expect(G.mats['1']?.stash).toEqual(bagOf({ gold: 7 }));
-    expect(G.bank).toEqual(bagOf({ gold: 3 }));
+    expect(G.mats['1']?.stash).toEqual(bagOf({ gold: 8 }));
+    expect(G.bank).toEqual(bagOf({ gold: 2 }));
   });
 
   it('all units recruited this turn → upkeep due is 0; move is a no-op pay that still flips _upkeepPaid', () => {
@@ -127,8 +128,8 @@ describe('foreignUpkeep (07.2)', () => {
 
   it('Walls in domestic grid (unitMaintenance -2) reduces per-unit upkeep', () => {
     // Walls' benefit is "decrease unit maintenance by 2", parsed as
-    // `unitMaintenance: -2`. With one Brute (cost 3) the per-unit upkeep
-    // becomes max(0, 3 - 2) = 1.
+    // `unitMaintenance: -2`. With one Pikeman (cost 6 → baseUpkeep
+    // ceil(6/2)=3) the per-unit upkeep becomes max(0, 3 - 2) = 1.
     const walls: DomesticBuilding = {
       defID: 'Walls',
       upgrades: 0,
@@ -143,7 +144,7 @@ describe('foreignUpkeep (07.2)', () => {
         },
       },
     );
-    G.foreign!.inPlay = [{ defID: 'Brute', count: 1 }];
+    G.foreign!.inPlay = [{ defID: 'Pikeman', count: 1 }];
 
     const result = callUpkeep(G, '1', ctxForeignTurn('1'));
 

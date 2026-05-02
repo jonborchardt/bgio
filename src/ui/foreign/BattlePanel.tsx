@@ -14,6 +14,13 @@ import type { DamageAllocation } from '../../game/roles/foreign/battleResolver.t
 import { RESOURCES } from '../../game/resources/types.ts';
 import type { Resource, ResourceBag } from '../../game/resources/types.ts';
 import { AssignDamageDialog } from './AssignDamageDialog.tsx';
+import { BattleCard } from '../cards/BattleCard.tsx';
+import { UnitCard } from '../cards/UnitCard.tsx';
+import { UNITS } from '../../data/index.ts';
+import { BATTLE_CARDS } from '../../data/battleCards.ts';
+
+const battleDefById = new Map(BATTLE_CARDS.map((b) => [b.id, b]));
+const unitDefByName = new Map(UNITS.map((u) => [u.name, u]));
 
 export interface BattlePanelProps {
   inFlight: BattleInFlight;
@@ -45,7 +52,12 @@ export function BattlePanel({
   if (inFlight.battle === null) return null;
 
   const { battle } = inFlight;
-  const reward = rewardEntries(battle.reward);
+  // rewardEntries kept for the legacy chip path when the battle has no
+  // matching BattleCardDef (older fixtures), but the canonical
+  // BattleCard already shows reward + tribute, so we only fall back
+  // when the def can't be resolved.
+  void rewardEntries;
+  const battleDef = battleDefById.get(battle.id);
 
   const handleSubmit = (allocations: DamageAllocation[]): void => {
     setDialogOpen(false);
@@ -64,72 +76,52 @@ export function BattlePanel({
         bgcolor: (t) => t.palette.card.surface,
       }}
     >
-      <Stack spacing={0.75}>
-        <Typography
-          variant="body2"
-          sx={{ color: (t) => t.palette.role.foreign.main, fontWeight: 700 }}
-        >
-          Battle: {battle.id} (#{battle.number})
-        </Typography>
-
-        <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 0.5 }}>
-          {battle.units.map((u, i) => (
-            <Typography
-              key={`${u.name}-${i}`}
-              variant="caption"
-              sx={{
-                color: (t) => t.palette.role.foreign.main,
-                fontWeight: 600,
-              }}
-            >
-              {u.name}
-              {u.count !== undefined && u.count > 1 ? ` ×${u.count}` : ''}
-            </Typography>
-          ))}
-        </Stack>
-
-        {reward.length > 0 ? (
-          <Stack
-            direction="row"
-            spacing={1}
-            aria-label="Battle reward"
-            sx={{ alignItems: 'center' }}
+      <Stack spacing={1}>
+        {battleDef ? (
+          <BattleCard def={battleDef} size="normal" />
+        ) : (
+          <Typography
+            variant="body2"
+            sx={{ color: (t) => t.palette.role.foreign.main, fontWeight: 700 }}
           >
-            <Typography
-              variant="caption"
-              sx={{ color: (t) => t.palette.status.muted }}
-            >
-              Reward:
-            </Typography>
-            {reward.map(({ resource, amount }) => (
-              <Stack
-                key={resource}
-                direction="row"
-                spacing={0.5}
-                sx={{ alignItems: 'center' }}
-              >
-                <Box
-                  aria-hidden
-                  sx={{
-                    width: '0.5rem',
-                    height: '0.5rem',
-                    borderRadius: '50%',
-                    bgcolor: (t) => t.palette.resource[resource].main,
-                  }}
-                />
+            Battle: {battle.id} (#{battle.number})
+          </Typography>
+        )}
+
+        <Typography
+          variant="caption"
+          sx={{ color: (t) => t.palette.status.muted, fontWeight: 600 }}
+        >
+          Enemy units
+        </Typography>
+        <Stack direction="row" spacing={0.75} sx={{ flexWrap: 'wrap', rowGap: 0.75 }}>
+          {battle.units.map((u, i) => {
+            const def = unitDefByName.get(u.name);
+            if (!def) {
+              return (
                 <Typography
+                  key={`${u.name}-${i}`}
                   variant="caption"
                   sx={{
-                    color: (t) => t.palette.resource[resource].main,
+                    color: (t) => t.palette.role.foreign.main,
                     fontWeight: 600,
                   }}
                 >
-                  {amount}
+                  {u.name}
+                  {u.count !== undefined && u.count > 1 ? ` ×${u.count}` : ''}
                 </Typography>
-              </Stack>
-            ))}
-          </Stack>
-        ) : null}
+              );
+            }
+            return (
+              <UnitCard
+                key={`${u.name}-${i}`}
+                def={def}
+                count={u.count}
+                size="small"
+              />
+            );
+          })}
+        </Stack>
 
         <Box>
           <Button

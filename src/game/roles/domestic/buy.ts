@@ -22,6 +22,8 @@ import { canAfford } from '../../resources/bag.ts';
 import { payFromStash } from '../../resources/moves.ts';
 import { buildingCost } from '../../../data/index.ts';
 import { cellKey, isPlacementLegal } from './grid.ts';
+import { pushGraveyard } from '../../graveyard.ts';
+import { idForBuilding } from '../../../cards/registry.ts';
 
 export const domesticBuyBuilding: Move<SettlementState> = (
   { G, ctx, playerID },
@@ -77,4 +79,9 @@ export const domesticBuyBuilding: Move<SettlementState> = (
     upgrades: 0,
     worker: null,
   };
+  pushGraveyard(G, playerID, {
+    cardId: idForBuilding(def),
+    kind: 'building',
+    name: cardName,
+  });
 };

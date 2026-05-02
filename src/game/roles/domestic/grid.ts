@@ -90,9 +90,14 @@ export const isPlacementLegal = (
 export const setupDomestic = (
   techsAlreadyUsedBy?: Set<string>,
 ): DomesticState => {
-  // `BUILDINGS` is a frozen ReadonlyArray — copy into a fresh mutable list
-  // so callers can shuffle / filter without tripping the freeze.
-  const hand: BuildingDef[] = [...BUILDINGS];
+  // Seed only the starter buildings — those whose note carries no
+  // "Requires X" prefix. The rest land in the hand later when the player
+  // plays the matching tech card (`grantTechUnlocks` in
+  // `game/tech/effects.ts` pushes them in). This keeps the hand small at
+  // game start and makes tech-play visibly progress the buildable list.
+  const hand: BuildingDef[] = BUILDINGS.filter(
+    (b) => !/^Requires\b/i.test((b.note ?? '').trim()),
+  );
 
   // Reserved-for-future filter; today the hand has no TechnologyDef
   // entries, so the set has no effect. Reference the parameter so strict

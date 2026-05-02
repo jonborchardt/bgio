@@ -149,3 +149,35 @@ export const __testSetOthersDone: Move<SettlementState> = (
   if (!G.othersDone) G.othersDone = {};
   G.othersDone[seat] = true;
 };
+
+// Dev-only: top up the bank by `amount` of every resource. Used by the
+// DevSidebar's "give chief +10 each" button so a tester can skip the
+// chief-collect cycle and exercise downstream flows. Logged through the
+// audit trail so the chief tooltip still narrates what happened.
+export const __devBankAddAll: Move<SettlementState> = (
+  { G },
+  amount: number,
+) => {
+  const safeAmount =
+    typeof amount === 'number' && Number.isFinite(amount) && amount > 0
+      ? Math.floor(amount)
+      : 10;
+  // Lazy-import to avoid circular module init: bank/bankLog import
+  // SettlementState from this file's neighbor `types.ts`.
+  const RESOURCE_KEYS = [
+    'gold', 'wood', 'stone', 'steel', 'horse',
+    'food', 'production', 'science', 'happiness', 'worker',
+  ] as const;
+  const delta: Record<string, number> = {};
+  for (const r of RESOURCE_KEYS) {
+    G.bank[r] = (G.bank[r] ?? 0) + safeAmount;
+    delta[r] = safeAmount;
+  }
+  if (G.bankLog === undefined) G.bankLog = [];
+  G.bankLog.push({
+    round: G.round,
+    source: 'dev',
+    delta,
+    detail: `Dev: +${safeAmount} of each`,
+  });
+};

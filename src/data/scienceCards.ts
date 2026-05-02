@@ -137,3 +137,69 @@ const deepFreezeArray = <T extends object>(arr: T[]): ReadonlyArray<T> => {
 export const SCIENCE_CARDS: ReadonlyArray<ScienceCardDef> = deepFreezeArray(
   validateScienceCards(scienceCardsRaw),
 );
+
+// ---------------------------------------------------------------------------
+// Canonical science card view.
+//
+// Gameplay treats every (color, tier, level) cell as the SAME science card —
+// only the cost varies, and the cell-level rewards (4 random techs from the
+// matching branch) are determined by color, not by which variant was placed.
+// External code that wants to talk about "Gold L2 Advanced" as a single
+// thing — the relationships graph, the per-card `?` info modal, the
+// autocomplete picker — should use this canonical view, not the raw variant
+// list.
+//
+// Game logic (setup, science slice) keeps using the per-variant SCIENCE_CARDS
+// list above; only the registry / UI layers consume the canonical view.
+//
+// Canonical id format: `${color}-${tier}-L${level}` (no `science:` prefix —
+// the registry adds that). Each canonical entry exposes its variants array
+// so consumers can list the cost options.
+// ---------------------------------------------------------------------------
+
+export interface CanonicalScienceCardDef {
+  /** Stable canonical key derived from coordinates. */
+  id: string;
+  color: ScienceColor;
+  tier: ScienceTier;
+  level: ScienceLevel;
+  /** All cost variants for this cell, in the order they appear in the
+   *  source JSON. Each variant carries its own raw `id` and `cost`. */
+  variants: ReadonlyArray<ScienceCardDef>;
+}
+
+export const canonicalScienceCardId = (
+  coords: { color: ScienceColor; tier: ScienceTier; level: ScienceLevel },
+): string => `${coords.color}-${coords.tier}-L${coords.level}`;
+
+const buildCanonicalScienceCards = (
+  cards: ReadonlyArray<ScienceCardDef>,
+): CanonicalScienceCardDef[] => {
+  const groups = new Map<string, ScienceCardDef[]>();
+  for (const card of cards) {
+    const key = canonicalScienceCardId(card);
+    const arr = groups.get(key);
+    if (arr) arr.push(card);
+    else groups.set(key, [card]);
+  }
+  return [...groups.entries()].map(([id, variants]) => {
+    const head = variants[0];
+    return {
+      id,
+      color: head.color,
+      tier: head.tier,
+      level: head.level,
+      variants: Object.freeze([...variants]),
+    };
+  });
+};
+
+const deepFreezeCanonical = (
+  arr: CanonicalScienceCardDef[],
+): ReadonlyArray<CanonicalScienceCardDef> => {
+  for (const c of arr) Object.freeze(c);
+  return Object.freeze(arr);
+};
+
+export const SCIENCE_CANONICAL_CARDS: ReadonlyArray<CanonicalScienceCardDef> =
+  deepFreezeCanonical(buildCanonicalScienceCards(SCIENCE_CARDS));

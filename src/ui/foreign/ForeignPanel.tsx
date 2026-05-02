@@ -37,8 +37,17 @@ import { Decks } from './Decks.tsx';
 import { BattlePanel } from './BattlePanel.tsx';
 import { RolePanel } from '../layout/RolePanel.tsx';
 import { StashBar } from '../resources/StashBar.tsx';
+import { TechCard } from '../cards/TechCard.tsx';
 import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
 import { nextSeatAfterDone } from '../layout/nextSeat.ts';
+import { UnitCard } from '../cards/UnitCard.tsx';
+import { UNITS } from '../../data/index.ts';
+import { GraveyardButton } from '../layout/GraveyardButton.tsx';
+
+// Module-level lookup so the recruit hand can render the canonical
+// UnitCard (which needs the full UnitDef) for a hand entry that only
+// carries the unit's name.
+const unitDefByName = new Map(UNITS.map((u) => [u.name, u]));
 
 // Compact "5g" / "5g 2 steel" formatter for the recruit button label.
 // Gold renders as "Ng" with no space; other resources render as "N <name>".
@@ -152,6 +161,10 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
       role="foreign"
       actions={
         <>
+          <GraveyardButton
+            role="foreign"
+            entries={G.graveyards?.[playerID] ?? []}
+          />
           <Tooltip
             title={upkeepTooltip}
             placement="top"
@@ -230,55 +243,118 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
           direction="row"
           spacing={1}
           aria-label="Foreign hand"
-          sx={{ flexWrap: 'wrap', rowGap: 1 }}
+          sx={{ flexWrap: 'wrap', rowGap: 1, alignItems: 'flex-start' }}
         >
-          {foreign.hand.length === 0 ? (
+          {foreign.hand.length === 0 && (foreign.techHand ?? []).length === 0 ? (
             <Typography
               variant="caption"
               sx={{ color: (t) => t.palette.status.muted }}
             >
-              No recruitable units.
+              No cards in hand.
             </Typography>
           ) : (
-            foreign.hand.map((unit) => {
-              const costBag = computeUnitRecruitCostBag(G, unit.name);
-              const stash = G.mats?.[playerID]?.stash;
-              const affordable =
-                stash !== undefined && canAfford(stash, costBag);
-              const costLabel = formatCostBag(costBag);
-              const shortfall = stash
-                ? listShortfall(stash, costBag)
-                : 'no stash';
-              const tooltip = !canActOnTurn
-                ? "Wait for the Foreign seat's turn"
-                : !affordable
-                  ? `Not enough resources: costs ${costLabel}, short on ${shortfall}`
-                  : '';
-              return (
-                <Tooltip
-                  key={unit.name}
-                  title={tooltip}
-                  placement="top"
-                  disableHoverListener={tooltip === ''}
-                >
-                  <Box component="span" sx={{ display: 'inline-flex' }}>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      disabled={!canActOnTurn || !affordable}
-                      onClick={() => handleRecruit(unit.name)}
-                      aria-label={`Recruit one ${unit.name}`}
-                      sx={{
-                        color: (t) => t.palette.role.foreign.main,
-                        borderColor: (t) => t.palette.role.foreign.main,
-                      }}
-                    >
-                      + {unit.name} ({costLabel})
-                    </Button>
-                  </Box>
-                </Tooltip>
-              );
-            })
+            <>
+              {foreign.hand.map((unit) => {
+                const def = unitDefByName.get(unit.name);
+                const costBag = computeUnitRecruitCostBag(G, unit.name);
+                const stash = G.mats?.[playerID]?.stash;
+                const affordable =
+                  stash !== undefined && canAfford(stash, costBag);
+                const costLabel = formatCostBag(costBag);
+                const shortfall = stash
+                  ? listShortfall(stash, costBag)
+                  : 'no stash';
+                const tooltip = !canActOnTurn
+                  ? "Wait for the Foreign seat's turn"
+                  : !affordable
+                    ? `Not enough resources: costs ${costLabel}, short on ${shortfall}`
+                    : '';
+                return (
+                  <Tooltip
+                    key={`unit-${unit.name}`}
+                    title={tooltip}
+                    placement="top"
+                    disableHoverListener={tooltip === ''}
+                  >
+                    <Stack spacing={0.5} sx={{ alignItems: 'stretch' }}>
+                      {def ? (
+                        <UnitCard def={def} size="small" />
+                      ) : (
+                        <Typography
+                          variant="caption"
+                          sx={{ color: (t) => t.palette.role.foreign.main, fontWeight: 700 }}
+                        >
+                          {unit.name}
+                        </Typography>
+                      )}
+                      <Button
+                        size="small"
+                        variant="contained"
+                        disabled={!canActOnTurn || !affordable}
+                        onClick={() => handleRecruit(unit.name)}
+                        aria-label={`Recruit one ${unit.name}`}
+                        sx={{
+                          bgcolor: (t) => t.palette.role.foreign.main,
+                          color: (t) => t.palette.role.foreign.contrastText,
+                          '&:hover': {
+                            bgcolor: (t) => t.palette.role.foreign.dark,
+                          },
+                        }}
+                      >
+                        Recruit
+                      </Button>
+                    </Stack>
+                  </Tooltip>
+                );
+              })}
+              {(foreign.techHand ?? []).map((tech) => {
+                const stash = G.mats?.[playerID]?.stash;
+                const costBag = tech.costBag ?? {};
+                const costEntries = (Object.entries(costBag) as Array<[string, number]>)
+                  .filter(([, v]) => (v ?? 0) > 0);
+                const affordable =
+                  costEntries.length === 0 ||
+                  (stash !== undefined && canAfford(stash, costBag));
+                const enabled = canActOnTurn && !alreadyDone && affordable;
+                const costLabel =
+                  costEntries.length === 0
+                    ? 'free'
+                    : costEntries.map(([r, v]) => `${v} ${r}`).join(', ');
+                const tooltip = !canActOnTurn
+                  ? "Wait for the Foreign seat's turn"
+                  : !affordable
+                    ? `Need ${costLabel}`
+                    : '';
+                return (
+                  <Tooltip
+                    key={`tech-${tech.name}`}
+                    title={tooltip}
+                    placement="top"
+                    disableHoverListener={tooltip === ''}
+                  >
+                    <Stack spacing={0.5} sx={{ alignItems: 'stretch' }}>
+                      <TechCard def={tech} holderRole="foreign" size="small" />
+                      <Button
+                        size="small"
+                        variant="contained"
+                        disabled={!enabled}
+                        onClick={() => moves.foreignPlayTech(tech.name)}
+                        aria-label={`Play ${tech.name}`}
+                        sx={{
+                          bgcolor: (t) => t.palette.role.foreign.main,
+                          color: (t) => t.palette.role.foreign.contrastText,
+                          '&:hover': {
+                            bgcolor: (t) => t.palette.role.foreign.dark,
+                          },
+                        }}
+                      >
+                        Play
+                      </Button>
+                    </Stack>
+                  </Tooltip>
+                );
+              })}
+            </>
           )}
         </Stack>
 

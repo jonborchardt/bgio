@@ -28,6 +28,7 @@ import { Hand } from './Hand.tsx';
 import { BuildingGrid } from './BuildingGrid.tsx';
 import { RolePanel } from '../layout/RolePanel.tsx';
 import { StashBar } from '../resources/StashBar.tsx';
+import { GraveyardButton } from '../layout/GraveyardButton.tsx';
 import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
 import { nextSeatAfterDone } from '../layout/nextSeat.ts';
 
@@ -75,25 +76,42 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
     if (seatCtx) seatCtx.setSeat(nextSeatAfterDone(G, playerID));
   };
 
+  // The hand IS the source of truth for "what this seat can build" —
+  // buildings are added to it by setup (starters), by `grantTechUnlocks`
+  // when a tech is played, and (later) by other card-spawning effects.
+  // The previous "Requires X" UI filter was a second gate on top of that
+  // and hid most of the hand because the requirement text often listed
+  // multiple prereqs (e.g. Library "Requires Library (tech) + Reading"),
+  // any one of which being unsatisfied dropped the card. The engine
+  // already controls which buildings reach the hand; the UI just
+  // renders the hand directly.
+  const visibleHand = domestic.hand;
+
   return (
     <RolePanel
       role="domestic"
       actions={
-        <Button
-          variant="contained"
-          disabled={!canAct || alreadyDone}
-          onClick={handleSeatDone}
-          aria-label="End my Domestic turn"
-          sx={{
-            bgcolor: (t) => t.palette.role.domestic.main,
-            color: (t) => t.palette.role.domestic.contrastText,
-            '&:hover': {
-              bgcolor: (t) => t.palette.role.domestic.dark,
-            },
-          }}
-        >
-          {alreadyDone ? 'Turn ended' : 'End my turn'}
-        </Button>
+        <>
+          <GraveyardButton
+            role="domestic"
+            entries={G.graveyards?.[playerID] ?? []}
+          />
+          <Button
+            variant="contained"
+            disabled={!canAct || alreadyDone}
+            onClick={handleSeatDone}
+            aria-label="End my Domestic turn"
+            sx={{
+              bgcolor: (t) => t.palette.role.domestic.main,
+              color: (t) => t.palette.role.domestic.contrastText,
+              '&:hover': {
+                bgcolor: (t) => t.palette.role.domestic.dark,
+              },
+            }}
+          >
+            {alreadyDone ? 'Turn ended' : 'End my turn'}
+          </Button>
+        </>
       }
     >
       <Stack spacing={1.5}>
@@ -103,11 +121,14 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
         />
 
         <Hand
-          hand={[...domestic.hand]}
+          hand={visibleHand}
+          techs={domestic.techHand ?? []}
+          canAct={canAct && !alreadyDone}
+          onPlayTech={(name) => moves.domesticPlayTech(name)}
           selectedName={selectedCardName}
           onSelect={handleSelect}
-          playerGold={G.mats?.[playerID]?.stash.gold ?? 0}
           stash={G.mats?.[playerID]?.stash}
+          emptyHint="No buildings unlocked yet — complete a green science card to gain Civic techs that enable buildings."
         />
 
         <BuildingGrid

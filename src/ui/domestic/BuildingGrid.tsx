@@ -34,10 +34,16 @@ interface Bounds {
 
 const computeBounds = (
   grid: Record<string, DomesticBuilding>,
+  pad: boolean,
 ): Bounds => {
   const keys = Object.keys(grid);
   if (keys.length === 0) {
-    return { xMin: -1, xMax: 1, yMin: -1, yMax: 1 };
+    // Empty grid: only meaningful while placing (3x3 around origin lets the
+    // first placement land somewhere). When not placing we'd render nothing,
+    // so the panel-level empty state takes over instead.
+    return pad
+      ? { xMin: -1, xMax: 1, yMin: -1, yMax: 1 }
+      : { xMin: 0, xMax: 0, yMin: 0, yMax: 0 };
   }
   let xMin = Number.POSITIVE_INFINITY;
   let xMax = Number.NEGATIVE_INFINITY;
@@ -54,7 +60,12 @@ const computeBounds = (
     if (y < yMin) yMin = y;
     if (y > yMax) yMax = y;
   }
-  // Pad by one cell so empty neighbors are visible / clickable.
+  // Pad by one cell only while the player is actively placing — otherwise
+  // the grid would visually shift after each placement (a freshly-placed
+  // edge cell would suddenly appear interior because the bounds grew on
+  // every side). With pad gated on isPlacing, the placed building stays
+  // exactly where the player clicked it.
+  if (!pad) return { xMin, xMax, yMin, yMax };
   return {
     xMin: xMin - 1,
     xMax: xMax + 1,
@@ -68,9 +79,10 @@ export function BuildingGrid({
   activeCard,
   onPlace,
 }: BuildingGridProps) {
-  const { xMin, xMax, yMin, yMax } = computeBounds(grid);
-  const cols = xMax - xMin + 1;
   const isPlacing = activeCard !== undefined;
+  const { xMin, xMax, yMin, yMax } = computeBounds(grid, isPlacing);
+  const cols = xMax - xMin + 1;
+  const isEmpty = Object.keys(grid).length === 0;
 
   // Render rows top-to-bottom, columns left-to-right. y descends visually
   // (so y=yMax is the top row) — matches a typical "looking down at the
@@ -101,49 +113,58 @@ export function BuildingGrid({
       >
         Village
       </Typography>
-      <Box
-        sx={{
-          width: '100%',
-          minWidth: 0,
-          overflowX: 'auto',
-          display: 'flex',
-          justifyContent: 'center',
-        }}
-      >
-      <Box
-        aria-label="Domestic building grid"
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: `repeat(${cols}, 7rem)`,
-          gap: 0.5,
-        }}
-      >
-        {rowYs.map((y) =>
-          colXs.map((x) => {
-            const key = cellKey(x, y);
-            const building = grid[key];
-            const isLegal = isPlacing
-              ? isPlacementLegal(grid, x, y)
-              : false;
-            return (
-              <CellSlot
-                key={key}
-                x={x}
-                y={y}
-                building={building}
-                isLegal={isLegal}
-                isPlacing={isPlacing}
-                onClick={() => {
-                  if (building !== undefined) return;
-                  if (!isPlacing || !isLegal) return;
-                  onPlace(x, y);
-                }}
-              />
-            );
-          }),
-        )}
-      </Box>
-      </Box>
+      {isEmpty && !isPlacing ? (
+        <Typography
+          variant="caption"
+          sx={{ color: (t) => t.palette.status.muted, fontStyle: 'italic' }}
+        >
+          Empty village — select a building to place.
+        </Typography>
+      ) : (
+        <Box
+          sx={{
+            width: '100%',
+            minWidth: 0,
+            overflowX: 'auto',
+            display: 'flex',
+            justifyContent: 'center',
+          }}
+        >
+          <Box
+            aria-label="Domestic building grid"
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: `repeat(${cols}, 7rem)`,
+              gap: 0.5,
+            }}
+          >
+            {rowYs.map((y) =>
+              colXs.map((x) => {
+                const key = cellKey(x, y);
+                const building = grid[key];
+                const isLegal = isPlacing
+                  ? isPlacementLegal(grid, x, y)
+                  : false;
+                return (
+                  <CellSlot
+                    key={key}
+                    x={x}
+                    y={y}
+                    building={building}
+                    isLegal={isLegal}
+                    isPlacing={isPlacing}
+                    onClick={() => {
+                      if (building !== undefined) return;
+                      if (!isPlacing || !isLegal) return;
+                      onPlace(x, y);
+                    }}
+                  />
+                );
+              }),
+            )}
+          </Box>
+        </Box>
+      )}
     </Stack>
   );
 }

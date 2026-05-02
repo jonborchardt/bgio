@@ -10,9 +10,10 @@
 //
 // All visual choices route through theme tokens.
 
-import { Box, Stack, Tooltip, Typography } from '@mui/material';
+import { Box, Tooltip, Typography } from '@mui/material';
 import type { DomesticBuilding } from '../../game/roles/domestic/types.ts';
 import { BUILDINGS } from '../../data/index.ts';
+import { BuildingCard } from '../cards/BuildingCard.tsx';
 
 export interface CellSlotProps {
   x: number;
@@ -101,68 +102,27 @@ export function CellSlot({
     >
       {occupied ? (
         <>
-          <Box
-            sx={{
-              px: 0.75,
-              py: 0.5,
-              bgcolor: (t) => t.palette.role.domestic.dark,
-              color: (t) => t.palette.role.domestic.contrastText,
-              borderBottom: '1px solid',
-              borderColor: (t) => t.palette.role.domestic.light,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'baseline',
-              gap: 0.5,
-            }}
-          >
+          {def ? (
+            <BuildingCard
+              def={def}
+              count={building.upgrades > 0 ? building.upgrades + 1 : undefined}
+              size="small"
+            />
+          ) : (
             <Typography
               variant="caption"
-              sx={{
-                fontWeight: 700,
-                lineHeight: 1.2,
-                letterSpacing: 0.2,
-              }}
+              sx={{ fontWeight: 700, p: 0.5 }}
             >
               {building.defID}
             </Typography>
-            {building.upgrades > 0 ? (
-              <Typography
-                variant="caption"
-                sx={{ fontWeight: 700 }}
-              >
-                +{building.upgrades}
-              </Typography>
-            ) : null}
-          </Box>
-          <Stack
-            sx={{
-              flex: 1,
-              px: 0.75,
-              py: 0.5,
-              justifyContent: 'flex-start',
-            }}
-          >
-            {def?.benefit ? (
-              <Typography
-                variant="caption"
-                sx={{
-                  color: (t) => t.palette.card.text,
-                  lineHeight: 1.3,
-                  opacity: 0.95,
-                  wordBreak: 'break-word',
-                }}
-              >
-                {def.benefit}
-              </Typography>
-            ) : null}
-          </Stack>
+          )}
           {building.worker !== null ? (
             <Box
               aria-label="Worker"
               sx={{
                 position: 'absolute',
-                top: 4,
-                right: 4,
+                bottom: 4,
+                left: 4,
                 width: '0.625rem',
                 height: '0.625rem',
                 borderRadius: '50%',

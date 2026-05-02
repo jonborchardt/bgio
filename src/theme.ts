@@ -165,6 +165,16 @@ export const colors = {
     base: ramps.slate[900],
     text: ramps.slate[50],
   },
+
+  // Drop-shadow tokens. Component code reads these via
+  // `t.palette.shadow.<key>` so the only `rgba(...)` literals in the
+  // codebase live here, alongside the rest of the design tokens.
+  shadow: {
+    /** Subtle card lift. Used by the canonical CardFrame. */
+    card: '0 1px 2px rgba(0,0,0,0.35)',
+    /** Floating panel / drawer shadow (Dev sidebar, dialogs). */
+    floating: '0 4px 12px rgba(0,0,0,0.4)',
+  },
 } as const;
 
 // ── 09.4 per-domain palette groups ───────────────────────────────
@@ -240,6 +250,7 @@ declare module '@mui/material/styles' {
     card: typeof colors.card;
     status: typeof colors.status;
     appSurface: typeof colors.surface;
+    shadow: typeof colors.shadow;
     resource: Record<Resource, PaletteColor>;
     role: Record<Role, PaletteColor>;
     tier: Record<'beginner' | 'intermediate' | 'advanced', PaletteColor>;
@@ -252,6 +263,7 @@ declare module '@mui/material/styles' {
     card?: typeof colors.card;
     status?: typeof colors.status;
     appSurface?: typeof colors.surface;
+    shadow?: typeof colors.shadow;
     resource?: Record<Resource, PaletteColor>;
     role?: Record<Role, PaletteColor>;
     tier?: Record<'beginner' | 'intermediate' | 'advanced', PaletteColor>;
@@ -276,6 +288,7 @@ export const theme = createTheme({
     card: colors.card,
     status: colors.status,
     appSurface: colors.surface,
+    shadow: colors.shadow,
     resource,
     role,
     tier,

@@ -58,11 +58,20 @@ export function CircleEditor({
 }: CircleEditorProps) {
   const accent = accentRoleFor(roles);
   const label = roles.length > 0 ? roles.map(titleCase).join(' · ') : '—';
-  // Render every resource the bank holds. Gold is forced visible (it's
-  // the canonical chief output) so the row layout doesn't flicker when
-  // other resources transiently drain to zero between rounds.
+  // Render every resource that's relevant to this seat right now:
+  //   - gold is always shown (canonical chief output, prevents row
+  //     flicker between rounds when bank gold transiently drains);
+  //   - any resource the bank still holds → still pushable;
+  //   - any resource the seat's `in` slot already holds → must stay
+  //     visible so the chief can pull it back via the negative steppers.
+  // Without the third clause, pushing the bank's last unit of (e.g.)
+  // wood to a seat would hide the row immediately and lock the chief
+  // out of undoing the push.
   const resourcesShown: Resource[] = RESOURCES.filter(
-    (r) => r === 'gold' || (bank[r] ?? 0) > 0,
+    (r) =>
+      r === 'gold' ||
+      (bank[r] ?? 0) > 0 ||
+      (inBag[r] ?? 0) > 0,
   );
 
   return (
@@ -129,6 +138,13 @@ export function CircleEditor({
                 </Typography>
               </Box>
               <ButtonGroup size="small" variant="outlined">
+                <Button
+                  disabled={!canPush || placed <= 0}
+                  onClick={() => onPush(resource, -placed)}
+                  aria-label={`Pull all ${resource} from ${label}`}
+                >
+                  -all
+                </Button>
                 {STEP_AMOUNTS.slice(0, 2).map((amount) => {
                   const disabled = !canPush || placed < -amount;
                   return (
@@ -168,6 +184,13 @@ export function CircleEditor({
                     </Button>
                   );
                 })}
+                <Button
+                  disabled={!canPush || inBank <= 0}
+                  onClick={() => onPush(resource, inBank)}
+                  aria-label={`Push all ${resource} to ${label}`}
+                >
+                  +all
+                </Button>
               </ButtonGroup>
             </Stack>
           );

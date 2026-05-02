@@ -21,6 +21,8 @@ import { rolesAtSeat } from '../../game/roles.ts';
 import { CircleEditor } from './CircleEditor.tsx';
 import { RolePanel } from '../layout/RolePanel.tsx';
 import { StashBar } from '../resources/StashBar.tsx';
+import { PlayableHand } from '../cards/PlayableHand.tsx';
+import { GraveyardButton } from '../layout/GraveyardButton.tsx';
 import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
 import { firstNonChiefSeat } from '../layout/nextSeat.ts';
 
@@ -66,22 +68,28 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
     <RolePanel
       role="chief"
       actions={
-        isChiefPhase ? (
-          <Button
-            variant="contained"
-            disabled={!isChiefPhase}
-            onClick={handleEndTurn}
-            sx={{
-              bgcolor: (t) => t.palette.role.chief.main,
-              color: (t) => t.palette.role.chief.contrastText,
-              '&:hover': {
-                bgcolor: (t) => t.palette.role.chief.dark,
-              },
-            }}
-          >
-            End my turn
-          </Button>
-        ) : null
+        <>
+          <GraveyardButton
+            role="chief"
+            entries={G.graveyards?.[playerID] ?? []}
+          />
+          {isChiefPhase ? (
+            <Button
+              variant="contained"
+              disabled={!isChiefPhase}
+              onClick={handleEndTurn}
+              sx={{
+                bgcolor: (t) => t.palette.role.chief.main,
+                color: (t) => t.palette.role.chief.contrastText,
+                '&:hover': {
+                  bgcolor: (t) => t.palette.role.chief.dark,
+                },
+              }}
+            >
+              End my turn
+            </Button>
+          ) : null}
+        </>
       }
     >
       <Stack spacing={1.5}>
@@ -89,6 +97,15 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
           stash={barBag}
           label={barLabel}
           ariaLabel={`Chief ${barLabel.toLowerCase()}`}
+        />
+
+        <PlayableHand
+          techs={G.chief?.hand ?? []}
+          holderRole="chief"
+          funds={G.bank}
+          canAct={isChiefPhase}
+          onPlay={(name) => moves.chiefPlayTech(name)}
+          emptyHint="No gold tech cards yet — complete a gold science card to add one."
         />
 
         {isChiefPhase ? (

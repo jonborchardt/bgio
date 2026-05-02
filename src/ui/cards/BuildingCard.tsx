@@ -1,21 +1,91 @@
-// BuildingCard (09.2) — presentational view of a BuildingDef.
+// BuildingCard — presentational view of a BuildingDef.
 //
-// Renders the building's name, gold cost, and benefit string. When `count > 1`
-// adds a small "×N" badge — used by callers that count-collapse identical
-// buildings (e.g. the Domestic grid summary).
+// Renders five canonical sizes via the `size` prop (see `sizes.ts`).
+// The same component is used everywhere a building card appears: game
+// panels, hand strips, list views in the relationships modal, and React
+// Flow nodes in the graph. There is no second "viz-only" version.
 
 import { Box, Stack, Typography } from '@mui/material';
 import type { BuildingDef } from '../../data/schema.ts';
 import { CardFrame } from './CardFrame.tsx';
+import type { CardSize } from './sizes.ts';
+import { idForBuilding } from '../../cards/registry.ts';
 
 export interface BuildingCardProps {
   def: BuildingDef;
   count?: number;
+  size?: CardSize;
+  /** Override the auto-derived card id (`building:<name>`). Pass an
+   *  empty string to suppress the `?` button entirely. */
+  cardId?: string;
 }
 
-export function BuildingCard({ def, count }: BuildingCardProps) {
+export function BuildingCard({
+  def,
+  count,
+  size = 'normal',
+  cardId,
+}: BuildingCardProps) {
+  const id = cardId === undefined ? idForBuilding(def) : cardId || undefined;
+
+  if (size === 'micro') {
+    return (
+      <CardFrame size="micro" cardId={id}>
+        <Stack
+          direction="row"
+          spacing={0.5}
+          sx={{ alignItems: 'center', justifyContent: 'space-between' }}
+        >
+          <Typography variant="caption" sx={{ fontWeight: 700 }} noWrap>
+            🏛 {def.name}
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{ color: (t) => t.palette.resource.gold.main, fontWeight: 600 }}
+          >
+            {def.cost}g
+          </Typography>
+        </Stack>
+      </CardFrame>
+    );
+  }
+
+  if (size === 'small') {
+    return (
+      <CardFrame size="small" cardId={id}>
+        <Stack spacing={0.25}>
+          <Typography variant="caption" sx={{ fontWeight: 700, lineHeight: 1.1 }}>
+            {def.name}
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              color: (t) => t.palette.resource.gold.main,
+              fontWeight: 600,
+              fontSize: '0.65rem',
+            }}
+          >
+            {def.cost}g
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              color: (t) => t.palette.status.muted,
+              fontSize: '0.6rem',
+              lineHeight: 1.2,
+            }}
+          >
+            {def.benefit}
+          </Typography>
+        </Stack>
+      </CardFrame>
+    );
+  }
+
+  // normal / detailed / page share the same body; detailed/page extend
+  // with note + cost-bag breakdown.
   return (
-    <CardFrame>
+    <CardFrame size={size} cardId={id}>
       <Stack spacing={0.5}>
         <Stack
           direction="row"
@@ -56,6 +126,11 @@ export function BuildingCard({ def, count }: BuildingCardProps) {
             sx={{ color: (t) => t.palette.resource.gold.main, fontWeight: 600 }}
           >
             {def.cost}g
+            {def.costBag
+              ? ` (${Object.entries(def.costBag)
+                  .map(([k, v]) => `${v} ${k}`)
+                  .join(', ')})`
+              : ''}
           </Typography>
         </Stack>
         <Typography
@@ -64,6 +139,19 @@ export function BuildingCard({ def, count }: BuildingCardProps) {
         >
           {def.benefit}
         </Typography>
+        {(size === 'detailed' || size === 'page') && def.note ? (
+          <Typography
+            variant="caption"
+            sx={{
+              color: (t) => t.palette.status.muted,
+              fontStyle: 'italic',
+              lineHeight: 1.35,
+              pt: 0.5,
+            }}
+          >
+            {def.note}
+          </Typography>
+        ) : null}
       </Stack>
     </CardFrame>
   );

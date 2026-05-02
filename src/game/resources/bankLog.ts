@@ -23,7 +23,11 @@ export type BankLogSource =
   | 'scienceSweep'
   | 'stashPayment'
   | 'distribute'
-  | 'release';
+  | 'release'
+  // Dev-only: top-up via DevSidebar's "Bank: +N of each" button. Tagged
+  // distinctly so the chief tooltip's income/stash split (computeBankView)
+  // doesn't lump the injection in with real round-zero setup amounts.
+  | 'dev';
 
 export interface BankLogEntry {
   /** `G.round` at the time the mutation happened. */

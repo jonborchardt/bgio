@@ -21,6 +21,8 @@ import type { ScienceCardDef, ScienceColor } from '../../data/scienceCards.ts';
 import type { TechnologyDef } from '../../data/schema.ts';
 import { RESOURCES } from '../../game/resources/types.ts';
 import type { Resource, ResourceBag } from '../../game/resources/types.ts';
+import { CardInfoButton } from '../cards/CardInfoButton.tsx';
+import { idForScience } from '../../cards/registry.ts';
 
 export interface ScienceCardProps {
   card: ScienceCardDef;
@@ -28,6 +30,11 @@ export interface ScienceCardProps {
   stash: ResourceBag;
   canAct: boolean;
   canComplete: boolean;
+  /** Optional human-readable reason the Complete button is disabled.
+   *  Surfaced as a tooltip on the button. The most common case is the
+   *  one-completion-per-round cap, which is otherwise indistinguishable
+   *  from "not yet paid" without context. */
+  completionDisabledReason?: string;
   isLowest: boolean;
   // Tech cards that will be distributed on completion. Empty array when the
   // science slice has no entry for this card (legacy fixtures); the panel
@@ -89,6 +96,7 @@ export function ScienceCard({
   stash,
   canAct,
   canComplete,
+  completionDisabledReason,
   isLowest,
   underTechs,
   onContribute,
@@ -104,6 +112,7 @@ export function ScienceCard({
     <Box
       aria-label={`Science card ${card.id}`}
       sx={{
+        position: 'relative',
         borderRadius: 1.5,
         border: '1px solid',
         borderColor: (t) =>
@@ -122,6 +131,11 @@ export function ScienceCard({
         transition: 'box-shadow 120ms, border-color 120ms',
       }}
     >
+      <CardInfoButton
+        cardId={idForScience(card)}
+        size="normal"
+        highlightSubId={card.id}
+      />
       <Tooltip title={headerTooltip} placement="top">
         <Box
           sx={{
@@ -341,23 +355,35 @@ export function ScienceCard({
       </Stack>
 
       <Box sx={{ px: 1, pb: 1 }}>
-        <Button
-          fullWidth
-          size="small"
-          variant="contained"
-          disabled={!canComplete || !isLowest}
-          onClick={onComplete}
-          aria-label={`Complete science card ${card.id}`}
-          sx={{
-            bgcolor: (t) => t.palette.eventColor[card.color].main,
-            color: (t) => t.palette.eventColor[card.color].contrastText,
-            '&:hover': {
-              bgcolor: (t) => t.palette.eventColor[card.color].dark,
-            },
-          }}
+        <Tooltip
+          title={completionDisabledReason ?? ''}
+          placement="top"
+          disableHoverListener={
+            !completionDisabledReason || canComplete
+          }
         >
-          Complete
-        </Button>
+          {/* Wrap the disabled Button in a span so the Tooltip still
+              receives pointer events — disabled buttons swallow them. */}
+          <Box component="span" sx={{ display: 'block' }}>
+            <Button
+              fullWidth
+              size="small"
+              variant="contained"
+              disabled={!canComplete || !isLowest}
+              onClick={onComplete}
+              aria-label={`Complete science card ${card.id}`}
+              sx={{
+                bgcolor: (t) => t.palette.eventColor[card.color].main,
+                color: (t) => t.palette.eventColor[card.color].contrastText,
+                '&:hover': {
+                  bgcolor: (t) => t.palette.eventColor[card.color].dark,
+                },
+              }}
+            >
+              Complete
+            </Button>
+          </Box>
+        </Tooltip>
       </Box>
     </Box>
   );

@@ -1,10 +1,14 @@
 // foreignUpkeep (07.2) — pay maintenance gold for every unit in
 // `G.foreign.inPlay` at the start of the Foreign seat's stage.
 //
-// V1 stub maintenance: per-unit `def.cost` (one cost = one upkeep). Reduced
-// by the sum of Domestic `unitMaintenance` BenefitEffects (Walls: -2,
-// Tower: -4). Negative effect amounts mean "decreases upkeep"; the parser
-// already encodes the sign.
+// Per-unit upkeep is `ceil(def.cost / 2)` (rounded up so a 1g unit still
+// costs 1g), then reduced by the sum of Domestic `unitMaintenance`
+// BenefitEffects (Walls: -2, Tower: -4). Negative effect amounts mean
+// "decreases upkeep"; the parser already encodes the sign.
+//
+// The half-cost rule (was: full `def.cost`) keeps standing armies
+// affordable across multiple rounds; full-cost upkeep was eating the
+// Foreign stash too fast for the recruit/release cycle to feel useful.
 //
 // Units recruited during the current foreign turn are exempt from upkeep
 // this round — they "joined too late to draw a paycheck." The exemption is
@@ -102,7 +106,8 @@ export const computeForeignUpkeepGold = (G: SettlementState): number => {
   for (const entry of upkeepableUnits(G)) {
     const def = UNITS.find((u) => u.name === entry.defID);
     if (def === undefined) continue;
-    const perUnit = Math.max(0, def.cost + modifier);
+    const baseUpkeep = Math.ceil(def.cost / 2);
+    const perUnit = Math.max(0, baseUpkeep + modifier);
     total += perUnit * entry.count;
   }
   return total;

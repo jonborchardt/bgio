@@ -1,8 +1,8 @@
 [
-  { "name": "Granary", "cost": 10, "benefit": "2 food", "note": "Requires Farming. Stores grain so the settlement eats through a bad week." },
-  { "name": "Cellar", "cost": 8, "costBag": { "gold": 5, "wood": 2 }, "benefit": "1 food", "note": "Requires Pantry. A cool root cellar — first-round food for a settlement that hasn't broken ground on a Granary yet." },
+  { "name": "Granary", "cost": 8, "costBag": { "gold": 8 }, "benefit": "2 food", "note": "Stores grain so the settlement eats through a bad week. (Starter — no tech required.)" },
+  { "name": "Cellar", "cost": 5, "costBag": { "gold": 5 }, "benefit": "1 food", "note": "A cool root cellar — first-round food for a settlement that hasn't broken ground on a Granary yet. (Starter — no tech required.)" },
   { "name": "Smokehouse", "cost": 10, "costBag": { "gold": 5, "wood": 3 }, "benefit": "1 food and +1 happiness", "note": "Requires Cooking. Cured meat keeps spirits up through winter." },
-  { "name": "Trading Post", "cost": 10, "costBag": { "gold": 6, "wood": 2 }, "benefit": "1 gold", "note": "Requires Bartering. A roadside stall with a post and a horn — first taste of trade revenue." },
+  { "name": "Trading Post", "cost": 6, "costBag": { "gold": 6 }, "benefit": "1 gold", "note": "A roadside stall with a post and a horn — first taste of trade revenue. (Starter — no tech required.)" },
   { "name": "Hunter's Lodge", "cost": 13, "costBag": { "gold": 7, "wood": 3 }, "benefit": "1 food and 1 production", "note": "Requires Foraging. Game and pelts in equal measure." },
   { "name": "Apiary", "cost": 13, "costBag": { "gold": 6, "wood": 3, "food": 1 }, "benefit": "1 food and +1 happiness", "note": "Requires bee keeping. Bees provide more than honey." },
 

@@ -57,13 +57,15 @@ describe('TechCard', () => {
     expect(html).toContain('Civic');
   });
 
-  it('renders the order line when present', () => {
-    expect(render(fullTech)).toContain('after Foo + Bar');
+  it('omits the order line (cost+unlocks already convey the info)', () => {
+    expect(render(fullTech)).not.toContain('after Foo + Bar');
   });
 
-  it('renders the cost text and costBag chips when present', () => {
+  it('renders the costBag chips when present (no duplicate cost text)', () => {
     const html = render(fullTech);
-    expect(html).toContain('3 wood + 1 gold');
+    // When costBag chips are rendered, the redundant `cost` string is
+    // suppressed so the same cost doesn't appear twice on the card.
+    expect(html).not.toContain('3 wood + 1 gold');
     // ResourceChip renders aria-label="<resource> <count>"
     expect(html).toContain('aria-label="wood 3"');
     expect(html).toContain('aria-label="gold 1"');
@@ -71,7 +73,10 @@ describe('TechCard', () => {
 
   it('renders the unlocks block (buildings + units) when populated', () => {
     const html = render(fullTech);
-    expect(html).toContain('Unlocks');
+    // Heading was renamed from "Unlocks" → "On play, grants" so the
+    // recipient role names ("Domestic gets:" / "Foreign gets:") are the
+    // verb-driven affordance.
+    expect(html).toContain('On play, grants');
     expect(html).toContain('Granary, Mill');
     expect(html).toContain('Spearman');
   });

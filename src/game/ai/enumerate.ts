@@ -328,21 +328,12 @@ const enumerateForeign = (
     }
   }
 
-  // foreignPlayTech. ForeignState.hand currently holds UnitDefs but
-  // 05.3 also pushes TechnologyDefs through the same slot (see the
-  // file-level note in 05.3). We tolerate both — only enumerate
-  // entries that look like a tech (have an `onPlayEffects` field).
-  for (const entry of foreign.hand as ReadonlyArray<unknown>) {
-    if (
-      typeof entry === 'object' &&
-      entry !== null &&
-      Array.isArray((entry as { onPlayEffects?: unknown[] }).onPlayEffects) &&
-      ((entry as { onPlayEffects: unknown[] }).onPlayEffects.length ?? 0) > 0
-    ) {
-      const name = (entry as { name?: unknown }).name;
-      if (typeof name === 'string') {
-        out.push({ move: 'foreignPlayTech', args: [name] });
-      }
+  // foreignPlayTech. Red techs distributed by 05.3 live in
+  // `foreign.techHand` (separate from `foreign.hand`, which holds
+  // recruitable units).
+  for (const tech of foreign.techHand ?? []) {
+    if ((tech.onPlayEffects?.length ?? 0) > 0) {
+      out.push({ move: 'foreignPlayTech', args: [tech.name] });
     }
   }
 

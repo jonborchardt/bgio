@@ -26,6 +26,8 @@ import { canAfford } from '../../resources/bag.ts';
 import { RESOURCES } from '../../resources/types.ts';
 import type { Resource, ResourceBag } from '../../resources/types.ts';
 import { parseBenefit } from '../domestic/parseBenefit.ts';
+import { pushGraveyard } from '../../graveyard.ts';
+import { idForUnit } from '../../../cards/registry.ts';
 
 /**
  * Sum of every `unitCost` BenefitEffect across in-play Domestic buildings.
@@ -173,4 +175,15 @@ export const foreignRecruit: Move<SettlementState> = (
     (foreign._recruitedThisTurn[defID] ?? 0) + n;
 
   foreign._lastRelease = undefined;
+
+  // Log each recruited copy as its own graveyard entry so the player's
+  // history reads "Scout, Scout, Scout" rather than "Scout x3" — matches
+  // how an order-preserving discard pile looks on a real table.
+  for (let i = 0; i < n; i += 1) {
+    pushGraveyard(G, playerID, {
+      cardId: idForUnit(def),
+      kind: 'unit',
+      name: defID,
+    });
+  }
 };

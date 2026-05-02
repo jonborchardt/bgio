@@ -16,6 +16,7 @@ import {
   type SessionCreds,
 } from './lobby/credentials.ts';
 import { SeatPickerContext } from './ui/layout/SeatPickerContext.ts';
+import { CardInfoProvider } from './ui/cards/CardInfoContext.tsx';
 import type { PlayerID } from './game/index.ts';
 
 /** Whether to show bgio's built-in Debug panel (12.2).
@@ -204,14 +205,28 @@ const HotSeatShell: ComponentType = () => {
 
 /** Top-level App: pick networked vs hot-seat once at mount. The mode is
  * a build-time setting (`VITE_CLIENT_MODE`), so a re-evaluation on every
- * render would only burn CPU. */
-const App: ComponentType = () => {
+ * render would only burn CPU.
+ *
+ * Wraps both modes in `CardInfoProvider` + `DevTabContext.Provider` so
+ * any card's `?` button and the dev-tab "Card relationships" entry both
+ * open the same `RelationshipsModalHost`. The modal is a Dialog over
+ * the running game — no navigation, the underlying boardgame.io Client
+ * keeps ticking. */
+const AppShell: ComponentType = () => {
   const mode = detectMode();
-  if (mode === 'networked') {
-    return <Networked />;
-  }
-  return <HotSeatShell />;
+  // The relationships modal host now lives inside Board.tsx so it can
+  // forward the live `G` to `buildCardGraph`. The DevSidebar also mounts
+  // inside Board now so it has `props.moves` access for testing
+  // shortcuts; it self-gates on `import.meta.env.DEV` and disappears in
+  // production builds.
+  return (
+    <CardInfoProvider>
+      {mode === 'networked' ? <Networked /> : <HotSeatShell />}
+    </CardInfoProvider>
+  );
 };
+
+const App: ComponentType = AppShell;
 
 export default App;
 

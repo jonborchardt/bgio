@@ -182,6 +182,9 @@ export const playerViewFor = (
     foreign = {
       ...foreign,
       hand: redactHand(foreign.hand),
+      ...(foreign.techHand !== undefined
+        ? { techHand: redactHand(foreign.techHand) }
+        : {}),
       battleDeck: redactDeckOrder(foreign.battleDeck),
       tradeDeck: redactDeckOrder(foreign.tradeDeck),
       // Hide the in-flight battle card itself; keep `committed` visible

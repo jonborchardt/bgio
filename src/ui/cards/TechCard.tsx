@@ -1,17 +1,7 @@
-// TechCard — presentational view of a TechnologyDef.
-//
-// Renders every populated field on the def so the card sells itself at the
-// table:
-//   - Header: name + branch + cost
-//   - Order line (prereq techs)
-//   - costBag chips (when present) for the science contribute path
-//   - Unlocks: buildings + units (only the rows that are non-empty)
-//   - The per-color event line that matches `holderRole`, highlighted as
-//     "For you"; the other three color lines render below as muted context
-//   - Effect badges: 'auto' / 'play' / 'passive' for the typed 08.6 fields
-//
-// `holderRole` is optional: when undefined (e.g. SciencePanel preview before
-// distribution), all four color lines render equally.
+// TechCard — presentational view of a TechnologyDef. Five canonical
+// sizes (see `sizes.ts`). The micro / small sizes show name + branch +
+// cost only; normal mirrors the prior in-game look; detailed / page
+// surface the unlocks, all four event lines, and effect badges.
 
 import { Box, Chip, Stack, Typography } from '@mui/material';
 import type { TechnologyDef } from '../../data/schema.ts';
@@ -20,13 +10,16 @@ import { RESOURCES } from '../../game/resources/types.ts';
 import type { Resource, ResourceBag } from '../../game/resources/types.ts';
 import { CardFrame } from './CardFrame.tsx';
 import { ResourceChip } from '../resources/ResourceChip.tsx';
+import type { CardSize } from './sizes.ts';
+import { idForTech } from '../../cards/registry.ts';
 
 export interface TechCardProps {
   def: TechnologyDef;
-  // The role currently holding this tech in hand. Drives which color event
-  // line is highlighted as "for you". Mirrors the fixed mapping in
-  // scienceComplete + the SciencePanel ScienceCard tooltip.
+  /** The role currently holding this tech in hand. Drives which color
+   *  event line is highlighted. */
   holderRole?: Role;
+  size?: CardSize;
+  cardId?: string;
 }
 
 type EventColor = 'blue' | 'green' | 'red' | 'gold';
@@ -65,7 +58,148 @@ const costResources = (cost: Partial<ResourceBag>): Resource[] => {
 const isNonEmpty = (s: string | undefined): s is string =>
   typeof s === 'string' && s.trim().length > 0;
 
-export function TechCard({ def, holderRole }: TechCardProps) {
+export function TechCard({
+  def,
+  holderRole,
+  size = 'normal',
+  cardId,
+}: TechCardProps) {
+  const id = cardId === undefined ? idForTech(def) : cardId || undefined;
+
+  if (size === 'micro') {
+    return (
+      <CardFrame size="micro" cardId={id}>
+        <Stack
+          direction="row"
+          spacing={0.5}
+          sx={{ alignItems: 'center', justifyContent: 'space-between' }}
+        >
+          <Typography variant="caption" sx={{ fontWeight: 700 }} noWrap>
+            🔬 {def.name}
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              color: (t) => t.palette.status.muted,
+              fontSize: '0.6rem',
+              textTransform: 'uppercase',
+              letterSpacing: 0.4,
+            }}
+          >
+            {def.branch}
+          </Typography>
+        </Stack>
+      </CardFrame>
+    );
+  }
+
+  if (size === 'small') {
+    const smallCostBag = def.costBag ? costResources(def.costBag) : [];
+    // Cards like Compass have no building/unit grants — their entire
+    // value is the per-color event reactions. Surface those reactions
+    // on the small card so the player can see what the card is FOR
+    // without flipping to the full view.
+    const hasGrants = isNonEmpty(def.buildings) || isNonEmpty(def.units);
+    const eventLines: Array<{ color: EventColor; text: string }> = ALL_COLORS
+      .map((c) => {
+        const v = def[COLOR_FIELD[c]];
+        return typeof v === 'string' && v.trim().length > 0
+          ? { color: c, text: v }
+          : null;
+      })
+      .filter(
+        (e): e is { color: EventColor; text: string } => e !== null,
+      );
+    return (
+      <CardFrame size="small" cardId={id}>
+        <Stack spacing={0.25}>
+          <Typography variant="caption" sx={{ fontWeight: 700, lineHeight: 1.1 }}>
+            {def.name}
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              color: (t) => t.palette.status.muted,
+              fontSize: '0.6rem',
+              textTransform: 'uppercase',
+              letterSpacing: 0.4,
+            }}
+          >
+            {def.branch}
+          </Typography>
+          {smallCostBag.length > 0 ? (
+            <Stack direction="row" spacing={0.25} sx={{ flexWrap: 'wrap', rowGap: 0.25 }}>
+              {smallCostBag.map((resource) => {
+                const need = def.costBag?.[resource] ?? 0;
+                return (
+                  <ResourceChip
+                    key={resource}
+                    resource={resource}
+                    count={need}
+                    size="sm"
+                    label={`${resource} ${need}`}
+                  />
+                );
+              })}
+            </Stack>
+          ) : isNonEmpty(def.cost) ? (
+            <Typography
+              variant="caption"
+              sx={{ color: (t) => t.palette.status.muted, fontSize: '0.6rem' }}
+            >
+              {def.cost}
+            </Typography>
+          ) : null}
+          {isNonEmpty(def.buildings) ? (
+            <Typography variant="caption" sx={{ fontSize: '0.6rem', lineHeight: 1.2 }}>
+              <Box
+                component="span"
+                sx={{ fontWeight: 700, color: (t) => t.palette.role.domestic.main }}
+              >
+                Domestic gets:
+              </Box>{' '}
+              {def.buildings}
+            </Typography>
+          ) : null}
+          {isNonEmpty(def.units) ? (
+            <Typography variant="caption" sx={{ fontSize: '0.6rem', lineHeight: 1.2 }}>
+              <Box
+                component="span"
+                sx={{ fontWeight: 700, color: (t) => t.palette.role.foreign.main }}
+              >
+                Foreign gets:
+              </Box>{' '}
+              {def.units}
+            </Typography>
+          ) : null}
+          {!hasGrants && eventLines.length > 0 ? (
+            <Stack spacing={0.125}>
+              {eventLines.map((entry) => (
+                <Typography
+                  key={entry.color}
+                  variant="caption"
+                  sx={{ fontSize: '0.6rem', lineHeight: 1.2 }}
+                >
+                  <Box
+                    component="span"
+                    sx={{
+                      fontWeight: 700,
+                      color: (t) => t.palette.eventColor[entry.color].main,
+                    }}
+                  >
+                    {entry.color[0]!.toUpperCase() + entry.color.slice(1)}:
+                  </Box>{' '}
+                  {entry.text}
+                </Typography>
+              ))}
+            </Stack>
+          ) : null}
+        </Stack>
+      </CardFrame>
+    );
+  }
+
+  // normal / detailed / page
   const myColor: EventColor | undefined = holderRole
     ? COLOR_BY_ROLE[holderRole]
     : undefined;
@@ -74,9 +208,7 @@ export function TechCard({ def, holderRole }: TechCardProps) {
     myEventField && typeof def[myEventField] === 'string'
       ? (def[myEventField] as string)
       : '';
-
   const costBagResources = def.costBag ? costResources(def.costBag) : [];
-
   const otherColorLines = ALL_COLORS.filter((c) => c !== myColor)
     .map((c) => {
       const v = def[COLOR_FIELD[c]];
@@ -84,8 +216,10 @@ export function TechCard({ def, holderRole }: TechCardProps) {
         ? { color: c, label: COLOR_LABEL[c], text: v }
         : null;
     })
-    .filter((entry): entry is { color: EventColor; label: string; text: string } => entry !== null);
-
+    .filter(
+      (entry): entry is { color: EventColor; label: string; text: string } =>
+        entry !== null,
+    );
   const effectBadges: Array<{ label: string; title: string }> = [];
   if ((def.onAcquireEffects?.length ?? 0) > 0) {
     effectBadges.push({
@@ -107,14 +241,17 @@ export function TechCard({ def, holderRole }: TechCardProps) {
   }
 
   return (
-    <CardFrame>
+    <CardFrame size={size} cardId={id}>
       <Stack spacing={0.75}>
-        {/* Header: name + branch + cost text */}
         <Stack spacing={0.25}>
           <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
             {def.name}
           </Typography>
-          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'baseline', flexWrap: 'wrap' }}>
+          <Stack
+            direction="row"
+            spacing={0.5}
+            sx={{ alignItems: 'baseline', flexWrap: 'wrap' }}
+          >
             {isNonEmpty(def.branch) ? (
               <Typography
                 variant="caption"
@@ -128,7 +265,10 @@ export function TechCard({ def, holderRole }: TechCardProps) {
                 {def.branch}
               </Typography>
             ) : null}
-            {isNonEmpty(def.cost) ? (
+            {/* Surface human-readable `cost` text only when the structured
+                `costBag` chips below are absent — otherwise we'd render the
+                same cost twice. */}
+            {costBagResources.length === 0 && isNonEmpty(def.cost) ? (
               <Typography
                 variant="caption"
                 sx={{ color: (t) => t.palette.status.muted }}
@@ -139,7 +279,6 @@ export function TechCard({ def, holderRole }: TechCardProps) {
           </Stack>
         </Stack>
 
-        {/* costBag chips (machine-readable cost) */}
         {costBagResources.length > 0 ? (
           <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', rowGap: 0.5 }}>
             {costBagResources.map((resource) => {
@@ -157,20 +296,6 @@ export function TechCard({ def, holderRole }: TechCardProps) {
           </Stack>
         ) : null}
 
-        {/* Order (prereq techs) */}
-        {isNonEmpty(def.order) ? (
-          <Typography
-            variant="caption"
-            sx={{ color: (t) => t.palette.status.muted, lineHeight: 1.3 }}
-          >
-            <Box component="span" sx={{ fontWeight: 700 }}>
-              Order:
-            </Box>{' '}
-            {def.order}
-          </Typography>
-        ) : null}
-
-        {/* Unlocks */}
         {isNonEmpty(def.buildings) || isNonEmpty(def.units) ? (
           <Stack spacing={0.125}>
             <Typography
@@ -183,20 +308,26 @@ export function TechCard({ def, holderRole }: TechCardProps) {
                 fontSize: '0.65rem',
               }}
             >
-              Unlocks
+              On play, grants
             </Typography>
             {isNonEmpty(def.buildings) ? (
               <Typography variant="caption" sx={{ lineHeight: 1.3 }}>
-                <Box component="span" sx={{ fontWeight: 700 }}>
-                  Buildings:
+                <Box
+                  component="span"
+                  sx={{ fontWeight: 700, color: (t) => t.palette.role.domestic.main }}
+                >
+                  Domestic gets:
                 </Box>{' '}
                 {def.buildings}
               </Typography>
             ) : null}
             {isNonEmpty(def.units) ? (
               <Typography variant="caption" sx={{ lineHeight: 1.3 }}>
-                <Box component="span" sx={{ fontWeight: 700 }}>
-                  Units:
+                <Box
+                  component="span"
+                  sx={{ fontWeight: 700, color: (t) => t.palette.role.foreign.main }}
+                >
+                  Foreign gets:
                 </Box>{' '}
                 {def.units}
               </Typography>
@@ -204,7 +335,6 @@ export function TechCard({ def, holderRole }: TechCardProps) {
           </Stack>
         ) : null}
 
-        {/* Highlighted "for you" event line, when the holder role is known */}
         {myColor && isNonEmpty(myEventText) ? (
           <Box
             sx={{
@@ -236,7 +366,6 @@ export function TechCard({ def, holderRole }: TechCardProps) {
           </Box>
         ) : null}
 
-        {/* Other color lines — context only, muted. */}
         {otherColorLines.length > 0 ? (
           <Stack spacing={0.125}>
             {otherColorLines.map((entry) => (
@@ -264,7 +393,6 @@ export function TechCard({ def, holderRole }: TechCardProps) {
           </Stack>
         ) : null}
 
-        {/* Effect badges — only when the typed 08.6 fields are populated. */}
         {effectBadges.length > 0 ? (
           <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', rowGap: 0.5 }}>
             {effectBadges.map((b) => (

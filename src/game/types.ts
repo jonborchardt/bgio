@@ -220,4 +220,22 @@ export interface SettlementState {
   // and so the `opponent:wander-step` round-end hook can no-op cleanly
   // when not present.
   opponent?: { wander: WanderState };
+
+  // Per-seat ordered log of cards the seat has played / placed /
+  // recruited. Each entry carries enough info for the UI to render the
+  // card via `cardById(id)` and surface "what round did I play this in".
+  // Public state — every seat sees every other seat's graveyard (it's a
+  // table-visible discard pile, not secret information). Optional so
+  // older test fixtures stay source-compatible; helpers lazy-init.
+  graveyards?: Record<PlayerID, GraveyardEntry[]>;
+}
+
+/** A single entry in a seat's graveyard log. `cardId` is the canonical
+ *  `<kind>:<name>` id from `src/cards/registry.ts` so the UI can resolve
+ *  it back to the card def via `cardById`. */
+export interface GraveyardEntry {
+  cardId: string;
+  kind: 'tech' | 'building' | 'unit';
+  name: string;
+  round: number;
 }

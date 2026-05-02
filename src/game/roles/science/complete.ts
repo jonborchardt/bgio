@@ -109,22 +109,20 @@ export const scienceComplete: Move<SettlementState> = (
   };
   switch (card.color) {
     case 'red': {
-      // Foreign role. ForeignState.hand is currently typed as `unknown[]`;
-      // 07.4 will refine it. Push tech cards through that loose slot — the
-      // type-level reconciliation happens once 07.4 lands the proper hand
-      // shape. Casting to `unknown` keeps strict mode happy without
-      // committing to an intermediate hand type that 07.4 will rework.
+      // Foreign role. Red techs go into `foreign.techHand` — distinct from
+      // `foreign.hand` (units to recruit). 05.3 originally piggy-backed on
+      // `hand` while it was typed loosely; the dedicated slot landed when
+      // the play-tech UI was wired so the unit and tech lists could render
+      // separately under one PlayableHand.
       if (G.foreign === undefined) {
-        // Defensive: if the Foreign slice was somehow not initialized,
-        // there's nowhere to deliver the cards. Throw loudly — this is a
-        // logic bug, not a player-recoverable INVALID_MOVE.
         throw new Error(
           'scienceComplete: G.foreign is undefined; cannot deliver red tech cards',
         );
       }
+      if (G.foreign.techHand === undefined) G.foreign.techHand = [];
       const recipient = trySeatOf('foreign');
       for (const tech of techStack) {
-        (G.foreign.hand as unknown as TechnologyDef[]).push(tech);
+        G.foreign.techHand.push(tech);
         if (recipient !== null) applyTechOnAcquire(G, ctx, r, recipient, tech);
       }
       break;

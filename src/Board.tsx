@@ -26,6 +26,8 @@ import { StatusBar } from './ui/layout/StatusBar.tsx';
 import type { GameOutcome } from './game/endConditions.ts';
 import { CenterMat } from './ui/mat/CenterMat.tsx';
 import { ChatSection } from './ui/chat/ChatSection.tsx';
+import { RelationshipsModalHost } from './ui/relationships/RelationshipsModalHost.tsx';
+import { DevSidebar } from './ui/layout/DevSidebar.tsx';
 
 export function SettlementBoard(props: BoardProps<SettlementState>) {
   const { G, ctx, playerID } = props;
@@ -142,6 +144,7 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
         />
       ) : null}
 
+
       {/* 3. Player mats / stats of all seats (incl. other players). */}
       <CenterMat {...props} />
 
@@ -176,6 +179,17 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
           `pass()`. Chief uses ChiefPanel's own "End my turn" button
           (chiefEndPhase); every non-chief role uses the matching
           per-panel `<role>SeatDone` button. */}
+
+      {/* Relationships modal lives here (inside the bgio Client) so it
+          can forward the live `G` to `buildCardGraph`. The modal itself
+          is a Dialog portalled to document.body, so positioning under
+          the Board is fine. */}
+      <RelationshipsModalHost matchState={G} />
+      {/* DevSidebar mounts inside Board so it has `props.moves` access
+          for testing shortcuts (e.g. "give bank +10 of each"). The
+          sidebar self-gates on `import.meta.env.DEV` and renders nothing
+          in production builds. */}
+      <DevSidebar moves={props.moves} />
     </Box>
   );
 }

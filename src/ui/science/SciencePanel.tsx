@@ -31,6 +31,8 @@ import type { ScienceCardDef } from '../../data/scienceCards.ts';
 import { ScienceCard } from './ScienceCard.tsx';
 import { RolePanel } from '../layout/RolePanel.tsx';
 import { StashBar } from '../resources/StashBar.tsx';
+import { PlayableHand } from '../cards/PlayableHand.tsx';
+import { GraveyardButton } from '../layout/GraveyardButton.tsx';
 import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
 import { nextSeatAfterDone } from '../layout/nextSeat.ts';
 
@@ -94,25 +96,40 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
     <RolePanel
       role="science"
       actions={
-        <Button
-          variant="contained"
-          disabled={!canAct || alreadyDone}
-          onClick={handleSeatDone}
-          aria-label="End my Science turn"
-          sx={{
-            bgcolor: (t) => t.palette.role.science.main,
-            color: (t) => t.palette.role.science.contrastText,
-            '&:hover': {
-              bgcolor: (t) => t.palette.role.science.dark,
-            },
-          }}
-        >
-          {alreadyDone ? 'Turn ended' : 'End my turn'}
-        </Button>
+        <>
+          <GraveyardButton
+            role="science"
+            entries={G.graveyards?.[playerID] ?? []}
+          />
+          <Button
+            variant="contained"
+            disabled={!canAct || alreadyDone}
+            onClick={handleSeatDone}
+            aria-label="End my Science turn"
+            sx={{
+              bgcolor: (t) => t.palette.role.science.main,
+              color: (t) => t.palette.role.science.contrastText,
+              '&:hover': {
+                bgcolor: (t) => t.palette.role.science.dark,
+              },
+            }}
+          >
+            {alreadyDone ? 'Turn ended' : 'End my turn'}
+          </Button>
+        </>
       }
     >
       <Stack spacing={1.5}>
         <StashBar stash={stash} ariaLabel="Science stash" />
+
+        <PlayableHand
+          techs={science.hand}
+          holderRole="science"
+          funds={stash}
+          canAct={canAct && !alreadyDone}
+          onPlay={(name) => moves.sciencePlayTech(name)}
+          emptyHint="No blue tech cards yet — complete a blue science card to add one."
+        />
 
         <Box
           aria-label="Science grid"
@@ -155,6 +172,26 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
                   !isCompleted &&
                   canAfford(paid, card.cost);
 
+                // Pick the most informative reason the Complete button is
+                // disabled so ScienceCard can surface it as a tooltip.
+                // Order matters: the per-round cap comes BEFORE
+                // affordability so a seat that's already used their one
+                // completion sees the cap message rather than a generic
+                // "pay first" hint when they happen to also be short on
+                // resources. `!isLowest` and `isCompleted` are surfaced
+                // visually elsewhere (dimmed card body), so we don't
+                // double-narrate them here.
+                let completionDisabledReason: string | undefined;
+                if (!canAct) {
+                  completionDisabledReason = "Wait for Science's turn.";
+                } else if (!isCompleted && !completionsLeft) {
+                  completionDisabledReason =
+                    'Already completed a science card this round — only one per round.';
+                } else if (!isCompleted && !canAfford(paid, card.cost)) {
+                  completionDisabledReason =
+                    'Pay the full cost first (contribute resources below).';
+                }
+
                 const underTechs = science.underCards[card.id] ?? [];
                 return (
                   <ScienceCard
@@ -164,6 +201,7 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
                     stash={stash}
                     canAct={canAct && !isCompleted}
                     canComplete={completable}
+                    completionDisabledReason={completionDisabledReason}
                     isLowest={isLowest}
                     underTechs={underTechs}
                     onContribute={(resource, amount) =>
