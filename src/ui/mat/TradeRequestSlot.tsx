@@ -94,7 +94,7 @@ export function TradeRequestSlot({
           >
             Required
           </Typography>
-          <ResourceBag bag={fullBag(tradeRequest.required)} size="sm" />
+          <ResourceBag bag={fullBag(tradeRequest.required)} />
         </Stack>
         <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
           <Typography
@@ -103,7 +103,7 @@ export function TradeRequestSlot({
           >
             Reward
           </Typography>
-          <ResourceBag bag={fullBag(tradeRequest.reward)} size="sm" />
+          <ResourceBag bag={fullBag(tradeRequest.reward)} />
         </Stack>
         {onFulfill !== undefined ? (
           <Tooltip

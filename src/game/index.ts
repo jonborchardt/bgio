@@ -37,7 +37,7 @@ import {
   foreignSeatDone,
   __testSetPhaseDone,
   __testSetOthersDone,
-  __devBankAddAll,
+  __devGrantAllRoles,
 } from './moves.ts';
 import { chiefPhase, othersPhase, endOfRound } from './phases/index.ts';
 import { playerView } from './playerView.ts';
@@ -106,7 +106,7 @@ export const __SettlementTestMoves = {
  * production NODE_ENV (test + development) so the DevSidebar's testing
  * shortcuts are reachable. Stripped from production builds. */
 export const __SettlementDevMoves = {
-  __devBankAddAll,
+  __devGrantAllRoles,
 };
 
 const isTestEnv =

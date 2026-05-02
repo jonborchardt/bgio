@@ -4,7 +4,7 @@
 // per-player private hands arrive in 02.x / 03.x; until then `hands` is
 // an empty placeholder and the bank is seeded with the default starter
 // `gold: 3` (per 03.2). The center mat (03.3) builds one circle per
-// non-chief seat and an empty trade-request slot. The Science role's 3×3
+// non-chief seat and an empty trade-request slot. The Science role's 3×4
 // grid + per-cell tech stacks land in 05.1.
 
 import type { Ctx } from 'boardgame.io';

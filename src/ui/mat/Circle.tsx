@@ -214,7 +214,7 @@ function MatLane({ label, bag, empty }: MatLaneProps) {
           —
         </Box>
       ) : (
-        <ResourceBag bag={bag} size="sm" />
+        <ResourceBag bag={bag} />
       )}
     </Stack>
   );

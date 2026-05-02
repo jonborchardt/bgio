@@ -41,7 +41,7 @@ export const scienceContribute: Move<SettlementState> = (
   const science = G.science;
   if (science === undefined) return INVALID_MOVE;
 
-  // Locate the card on the flattened grid. The grid is small (3×3) so a
+  // Locate the card on the flattened grid. The grid is small (3×4) so a
   // linear scan is fine — and clearer than threading column/row through.
   const card = science.grid.flat().find((c) => c.id === cardID);
   if (card === undefined) return INVALID_MOVE;

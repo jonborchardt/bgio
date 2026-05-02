@@ -117,7 +117,7 @@ export function BattlePanel({
                 key={`${u.name}-${i}`}
                 def={def}
                 count={u.count}
-                size="small"
+                size="normal"
               />
             );
           })}

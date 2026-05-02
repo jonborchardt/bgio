@@ -69,7 +69,7 @@ export function Army({ inPlay, canAct, onRelease, canUndo, onUndo }: ArmyProps) 
                 sx={{ alignItems: 'stretch' }}
               >
                 {def ? (
-                  <UnitCard def={def} size="small" />
+                  <UnitCard def={def} size="normal" />
                 ) : (
                   <Box>
                     <Typography

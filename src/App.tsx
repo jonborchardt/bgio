@@ -17,6 +17,7 @@ import {
 } from './lobby/credentials.ts';
 import { SeatPickerContext } from './ui/layout/SeatPickerContext.ts';
 import { CardInfoProvider } from './ui/cards/CardInfoContext.tsx';
+import { CardPreviewPage } from './ui/cardPreview/CardPreviewPage.tsx';
 import type { PlayerID } from './game/index.ts';
 
 /** Whether to show bgio's built-in Debug panel (12.2).
@@ -219,6 +220,16 @@ const AppShell: ComponentType = () => {
   // inside Board now so it has `props.moves` access for testing
   // shortcuts; it self-gates on `import.meta.env.DEV` and disappears in
   // production builds.
+  //
+  // Hash override: `#cards` opens the card-design preview page in any
+  // build. Read at first render only — the preview page exposes a
+  // "Back to game" button that resets the hash + reloads.
+  if (
+    typeof window !== 'undefined' &&
+    window.location.hash === '#cards'
+  ) {
+    return <CardPreviewPage />;
+  }
   return (
     <CardInfoProvider>
       {mode === 'networked' ? <Networked /> : <HotSeatShell />}

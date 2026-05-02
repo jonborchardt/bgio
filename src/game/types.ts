@@ -128,7 +128,7 @@ export interface SettlementState {
   // narrower `StageName` subtype.
   _stageStack?: Record<PlayerID, string[]>;
 
-  // Science role state — 3×3 grid of science cards, the tech cards stacked
+  // Science role state — 3×4 grid of science cards, the tech cards stacked
   // under each, per-card resource contributions, completion log, and the
   // per-round completion counter that the `science:reset-completions` hook
   // clears at endOfRound. Optional so older test fixtures that pre-date 05.1

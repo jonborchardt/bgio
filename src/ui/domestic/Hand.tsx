@@ -119,7 +119,7 @@ export function Hand({
                   borderRadius: 1.5,
                 }}
               >
-                <BuildingCard def={card} size="small" />
+                <BuildingCard def={card} size="normal" />
                 <Button
                   size="small"
                   variant="contained"
@@ -167,7 +167,7 @@ export function Hand({
               disableHoverListener={tooltip === ''}
             >
               <Stack spacing={0.5} sx={{ alignItems: 'stretch' }}>
-                <TechCard def={tech} holderRole="domestic" size="small" />
+                <TechCard def={tech} holderRole="domestic" size="normal" />
                 <Button
                   size="small"
                   variant="contained"

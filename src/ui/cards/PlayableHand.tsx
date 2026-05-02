@@ -123,7 +123,7 @@ export function PlayableHand({
                   gap: 0.5,
                 }}
               >
-                <TechCard def={tech} holderRole={holderRole} size="small" />
+                <TechCard def={tech} holderRole={holderRole} size="normal" />
                 <Tooltip
                   title={tooltip}
                   placement="bottom"

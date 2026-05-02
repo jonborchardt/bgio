@@ -1,11 +1,11 @@
-// Science role — initial 3×3 grid + per-cell stack of tech cards.
+// Science role — initial 3×4 grid + per-cell stack of tech cards.
 //
-// Per game-design.md §Science Option 1, the science board is a 3-tier × 3-color
-// grid. We pick the three columns out of the four science-card colors at game
-// start (random subset; the fourth color sits out for the game), then for each
-// (tier, color) cell we shuffle the matching subset of SCIENCE_CARDS and pick
-// one. Under each science card we slot 4 random TECHNOLOGIES drawn from the
-// branch that maps to that card's color.
+// The science board is a 3-tier × 4-color grid — one column per science color
+// so every tech branch (and therefore every role that receives a tech card on
+// completion) is represented every game. For each (tier, color) cell we
+// shuffle the matching subset of SCIENCE_CARDS and pick one. Under each
+// science card we slot 4 random TECHNOLOGIES drawn from the branch that maps
+// to that card's color.
 //
 // Color → branch mapping (decision noted in 05.1):
 //   red    → Fighting     (combat / warfare)
@@ -58,13 +58,6 @@ const TIERS_IN_ROW_ORDER: readonly ScienceTier[] = [
   'advanced',
 ] as const;
 
-const ALL_COLORS: readonly ScienceColor[] = [
-  'red',
-  'gold',
-  'green',
-  'blue',
-] as const;
-
 // Pick the lowest-level card from `pool` (it's already in random order). When
 // multiple cards share the same level we keep the one that surfaced first in
 // the shuffle, which keeps the row-0=lowest invariant deterministic per seed.
@@ -80,10 +73,9 @@ const pickLowestLevel = (pool: ScienceCardDef[]): ScienceCardDef => {
 };
 
 export const setupScience = (random: RandomAPI): ScienceState => {
-  // Shuffle each tier's pool independently — the plan calls for "shuffle
-  // each tier separately, take 9 from each tier". Even though the 3×3 grid
-  // only uses 9 cells total (3 colors × 3 tiers = 9), we shuffle per tier
-  // first so the per-cell selection still draws from a randomized order.
+  // Shuffle each tier's pool independently so the per-cell selection draws
+  // from a randomized order — the 3×4 grid uses 12 cells total (4 colors ×
+  // 3 tiers).
   const byTier: Record<ScienceTier, ScienceCardDef[]> = {
     beginner: random.shuffle(
       SCIENCE_CARDS.filter((c) => c.tier === 'beginner'),
@@ -96,9 +88,12 @@ export const setupScience = (random: RandomAPI): ScienceState => {
     ),
   };
 
-  // Pick 3 columns out of the 4 science colors. The fourth color sits out.
-  const shuffledColors = random.shuffle(ALL_COLORS);
-  const selectedColors: ScienceColor[] = shuffledColors.slice(0, 3);
+  // Use all 4 science colors — every tech branch (and therefore every role
+  // that receives a tech card on completion) gets a column on the grid.
+  // Columns are fixed in role order — chief, science, domestic, foreign —
+  // which maps to colors gold, blue, green, red (the same role→color
+  // mapping used for event hands).
+  const selectedColors: ScienceColor[] = ['gold', 'blue', 'green', 'red'];
 
   const grid: ScienceCardDef[][] = [];
   const underCards: Record<string, TechnologyDef[]> = {};

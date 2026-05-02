@@ -22,6 +22,10 @@ export interface CellSlotProps {
   isLegal: boolean;
   isPlacing: boolean;
   onClick: () => void;
+  /** defIDs of the (up to four) orthogonally-adjacent placed buildings.
+   *  When present we forward this set to the placed-building card so its
+   *  adjacency rules render with active/inactive flags. */
+  activeNeighbors?: ReadonlySet<string>;
 }
 
 export function CellSlot({
@@ -31,6 +35,7 @@ export function CellSlot({
   isLegal,
   isPlacing,
   onClick,
+  activeNeighbors,
 }: CellSlotProps) {
   const occupied = building !== undefined;
   const showBuild = !occupied && isPlacing && isLegal;
@@ -70,7 +75,13 @@ export function CellSlot({
       onClick={clickable ? onClick : undefined}
       sx={{
         position: 'relative',
-        minHeight: '5.25rem',
+        // Placed buildings render at the `normal` card size so the
+        // village reads as a tile grid; the inner BuildingCard's fixed
+        // height (CARD_HEIGHT.normal) drives the actual occupied row
+        // height. The floor below covers the rare def-missing fallback
+        // and keeps empty cells short so the grid doesn't dominate the
+        // panel before the player has built much.
+        minHeight: occupied ? '240px' : '5.25rem',
         width: '100%',
         borderRadius: 1.5,
         border: occupied ? '1px solid' : '1px dashed',
@@ -106,7 +117,8 @@ export function CellSlot({
             <BuildingCard
               def={def}
               count={building.upgrades > 0 ? building.upgrades + 1 : undefined}
-              size="small"
+              size="normal"
+              activeNeighbors={activeNeighbors}
             />
           ) : (
             <Typography

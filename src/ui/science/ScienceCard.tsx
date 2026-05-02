@@ -22,6 +22,7 @@ import type { TechnologyDef } from '../../data/schema.ts';
 import { RESOURCES } from '../../game/resources/types.ts';
 import type { Resource, ResourceBag } from '../../game/resources/types.ts';
 import { CardInfoButton } from '../cards/CardInfoButton.tsx';
+import { ResourceToken } from '../resources/ResourceToken.tsx';
 import { idForScience } from '../../cards/registry.ts';
 
 export interface ScienceCardProps {
@@ -302,15 +303,10 @@ export function ScienceCard({
                 spacing={0.5}
                 sx={{ alignItems: 'center', minWidth: 0 }}
               >
-                <Box
-                  aria-hidden
-                  sx={{
-                    width: '0.5rem',
-                    height: '0.5rem',
-                    borderRadius: '50%',
-                    bgcolor: (t) => t.palette.resource[resource].main,
-                    flexShrink: 0,
-                  }}
+                <ResourceToken
+                  resource={resource}
+                  count={need}
+                  size="normal"
                 />
                 <Tooltip title={`${resource}: ${have}/${need}`} placement="top">
                   <Typography
@@ -330,7 +326,7 @@ export function ScienceCard({
                       textDecoration: fulfilled ? 'line-through' : 'none',
                     }}
                   >
-                    {resource}: {have}/{need}
+                    {have}/{need}
                   </Typography>
                 </Tooltip>
                 <Button

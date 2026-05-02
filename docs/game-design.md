@@ -74,10 +74,13 @@ shared bank.
 
 ### 3.2 Science
 
-**Current (Option 1, hybrid):** 3×3 grid of science cards. Three of
-four colors picked at game-start; the fourth sits out. Lowest-level card
-in each column must be completed first. Each card has 4 face-down tech
-cards under it that distribute on completion.
+**Current (Option 1, hybrid):** 3×4 grid of science cards — one column
+per color, fixed in role order (chief→gold, science→blue, domestic→green,
+foreign→red). Lowest-level card in each column must be completed first.
+Each card has 4 face-down tech cards under it that distribute on
+completion. (Earlier revisions picked 3 of 4 colors per game and let the
+fourth sit out; we dropped that variance because it consistently locked
+one role out of receiving any tech that game.)
 
 **Alternatives considered**
 
@@ -252,8 +255,9 @@ Treat these as historical targets; live content lives in `src/data/`.
 
 Carried over from the original design doc, partially still live:
 
-- **Random science variance.** The 3×3 grid is randomized per match;
-  some games will surface stronger combinations than others. Is the
+- **Random science variance.** The 3×4 grid still randomizes which
+  specific card fills each (tier, color) cell per match, so some games
+  will surface stronger combinations than others. Is the remaining
   variance acceptable, or do we need a "less random science" treatment?
 - **Cars without science.** Endgame items shouldn't be locked behind a
   specific tech that may or may not appear.

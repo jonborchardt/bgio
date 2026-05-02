@@ -24,9 +24,14 @@ export function DevSidebar({ moves }: DevSidebarProps = {}) {
   const [open, setOpen] = useState(false);
   const cardInfo = useCardInfo();
   const onOpenRelationships = () => cardInfo?.openWithoutFocus();
-  const onGiveChiefAll = () => {
-    const fn = moves?.__devBankAddAll;
+  const onGrantAllRoles = () => {
+    const fn = moves?.__devGrantAllRoles;
     if (typeof fn === 'function') fn(10);
+  };
+  const onOpenCardPreview = () => {
+    if (typeof window === 'undefined') return;
+    window.location.hash = '#cards';
+    window.location.reload();
   };
   if (!isDev) return null;
 
@@ -118,12 +123,21 @@ export function DevSidebar({ moves }: DevSidebarProps = {}) {
         <Button
           variant="outlined"
           size="small"
-          onClick={onGiveChiefAll}
-          disabled={typeof moves?.__devBankAddAll !== 'function'}
+          onClick={onGrantAllRoles}
+          disabled={typeof moves?.__devGrantAllRoles !== 'function'}
           fullWidth
           sx={{ textTransform: 'none', justifyContent: 'flex-start' }}
         >
-          Bank: +10 of each
+          All roles: +10 of each
+        </Button>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={onOpenCardPreview}
+          fullWidth
+          sx={{ textTransform: 'none', justifyContent: 'flex-start' }}
+        >
+          Card design preview
         </Button>
       </Stack>
     </Box>

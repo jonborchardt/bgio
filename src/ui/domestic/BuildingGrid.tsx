@@ -134,8 +134,13 @@ export function BuildingGrid({
             aria-label="Domestic building grid"
             sx={{
               display: 'grid',
-              gridTemplateColumns: `repeat(${cols}, 7rem)`,
-              gap: 0.5,
+              // Column width matches the `normal` card (180px) plus a
+              // small gutter; cells are fixed-aspect to match the
+              // physical-card height. Village cards render at the
+              // medium / `normal` size so the village board reads as a
+              // tile grid rather than a detailed deck.
+              gridTemplateColumns: `repeat(${cols}, 190px)`,
+              gap: 0.75,
             }}
           >
             {rowYs.map((y) =>
@@ -145,6 +150,23 @@ export function BuildingGrid({
                 const isLegal = isPlacing
                   ? isPlacementLegal(grid, x, y)
                   : false;
+                // Compute the (up to four) orthogonal-neighbour defIDs so
+                // the placed BuildingCard can paint each adjacency rule
+                // as currently-firing or latent.
+                let activeNeighbors: ReadonlySet<string> | undefined;
+                if (building !== undefined) {
+                  const ns = new Set<string>();
+                  for (const [dx, dy] of [
+                    [1, 0],
+                    [-1, 0],
+                    [0, 1],
+                    [0, -1],
+                  ] as const) {
+                    const n = grid[cellKey(x + dx, y + dy)];
+                    if (n !== undefined) ns.add(n.defID);
+                  }
+                  activeNeighbors = ns;
+                }
                 return (
                   <CellSlot
                     key={key}
@@ -153,6 +175,7 @@ export function BuildingGrid({
                     building={building}
                     isLegal={isLegal}
                     isPlacing={isPlacing}
+                    activeNeighbors={activeNeighbors}
                     onClick={() => {
                       if (building !== undefined) return;
                       if (!isPlacing || !isLegal) return;

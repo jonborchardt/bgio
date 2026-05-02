@@ -278,7 +278,7 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
                   >
                     <Stack spacing={0.5} sx={{ alignItems: 'stretch' }}>
                       {def ? (
-                        <UnitCard def={def} size="small" />
+                        <UnitCard def={def} size="normal" />
                       ) : (
                         <Typography
                           variant="caption"
@@ -333,7 +333,7 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
                     disableHoverListener={tooltip === ''}
                   >
                     <Stack spacing={0.5} sx={{ alignItems: 'stretch' }}>
-                      <TechCard def={tech} holderRole="foreign" size="small" />
+                      <TechCard def={tech} holderRole="foreign" size="normal" />
                       <Button
                         size="small"
                         variant="contained"

@@ -67,7 +67,7 @@ describe('setupScience (05.1)', () => {
 
   it('each column shares a single color; row 0 has the lowest level', () => {
     const science = setupScience(fromBgio(identityRandom));
-    expect(science.grid).toHaveLength(3);
+    expect(science.grid).toHaveLength(4);
     for (const column of science.grid) {
       expect(column).toHaveLength(3);
       const colors = new Set(column.map((c) => c.color));
@@ -77,6 +77,12 @@ describe('setupScience (05.1)', () => {
       const min = Math.min(...levels);
       expect(column[0]!.level).toBe(min);
     }
+  });
+
+  it('columns are ordered chief, science, domestic, foreign (gold, blue, green, red)', () => {
+    const science = setupScience(fromBgio(identityRandom));
+    const colorOrder = science.grid.map((column) => column[0]!.color);
+    expect(colorOrder).toEqual(['gold', 'blue', 'green', 'red']);
   });
 
   it('each cell has exactly 4 tech cards under it whose color matches', () => {
@@ -123,7 +129,7 @@ describe('setupScience (05.1)', () => {
         tierCounts[card.tier] = (tierCounts[card.tier] ?? 0) + 1;
       }
     }
-    expect(tierCounts).toEqual({ beginner: 3, intermediate: 3, advanced: 3 });
+    expect(tierCounts).toEqual({ beginner: 4, intermediate: 4, advanced: 4 });
   });
 
   it('round-end hook resets perRoundCompletions after the first round', () => {

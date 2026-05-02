@@ -5,7 +5,7 @@
 //   - The local seat doesn't hold the `science` role, OR
 //   - `G.science` is missing (legacy fixtures that pre-date 05.1).
 //
-// Otherwise we draw the 3×3 grid (3 colors × 3 tiers). For each cell we
+// Otherwise we draw the 3×4 grid (4 colors × 3 tiers). For each cell we
 // compute the "lowest unfinished card in that color column" — only that
 // card may receive contributions or be completed (the lowest-first rule
 // enforced by `scienceContribute` / `scienceComplete`). Higher-level cards

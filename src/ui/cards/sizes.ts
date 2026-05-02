@@ -45,10 +45,15 @@ export const CARD_WIDTH: Record<CardSize, number> = {
   page: 480,
 };
 
+// Heights are FIXED, not min — cards behave like physical playing cards.
+// Content too long for the box clips. `normal` and `detailed` both render
+// the full reward block (all four tech role sections, adjacency, etc.)
+// so `normal` is sized at roughly playing-card aspect (180 × 240 ≈ 0.75)
+// and `detailed` keeps the larger 260 × 340 footprint for hover panels.
 export const CARD_HEIGHT: Record<CardSize, number> = {
   micro: 28,
   small: 90,
-  normal: 150,
-  detailed: 220,
-  page: 360,
+  normal: 240,
+  detailed: 340,
+  page: 600,
 };

@@ -68,12 +68,12 @@ At game start:
 
 - The bank is seeded with **3 gold** (overridable per match).
 - The chief gets a starter pool of **3 worker tokens**.
-- **Science** lays out a 3×3 grid of science cards. Three of the four
-  colors (red, gold, green, blue) are picked at random; one color sits
-  out for this game. Each column is one color, ordered with the lowest
-  level closest to the player. Under each science card go 4 random tech
-  cards from the matching tech branch (red→Fighting, gold→Exploration,
-  green→Civic, blue→Education).
+- **Science** lays out a 3×4 grid of science cards — one column per
+  color, fixed in role order: **chief (gold), science (blue),
+  domestic (green), foreign (red)**. Each column is ordered with the
+  lowest level closest to the player. Under each science card go 4
+  random tech cards from the matching tech branch (gold→Exploration,
+  blue→Education, green→Civic, red→Fighting).
 - **Domestic** receives a hand containing every starter building, and an
   empty placement grid.
 - **Foreign** builds a Battle deck and a Trade deck by sorting each card

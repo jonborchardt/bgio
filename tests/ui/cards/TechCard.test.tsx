@@ -1,6 +1,8 @@
-// TechCard render tests — verify the rewritten card surfaces every
-// populated TechnologyDef field, and only highlights the per-color event
-// line that matches `holderRole`.
+// TechCard render tests — verify the v9 by-role layout renders all four
+// per-role panels (Chief / Science / Domestic / Foreign), each with the
+// lines that role receives (buildings / units / resources). The
+// `holderRole` prop no longer drives a "For you" highlight — every role
+// panel is shown at detailed/page sizes.
 //
 // `@testing-library/react` is not installed in this repo, so we use
 // `react-dom/server`'s `renderToStaticMarkup` and assert against the HTML
@@ -43,7 +45,10 @@ const sparseTech: TechnologyDef = {
   goldEvent: '',
 };
 
-const render = (def: TechnologyDef, holderRole?: 'chief' | 'science' | 'domestic' | 'foreign'): string =>
+const render = (
+  def: TechnologyDef,
+  holderRole?: 'chief' | 'science' | 'domestic' | 'foreign',
+): string =>
   renderToStaticMarkup(
     <ThemeProvider theme={theme}>
       <TechCard def={def} holderRole={holderRole} />
@@ -61,82 +66,53 @@ describe('TechCard', () => {
     expect(render(fullTech)).not.toContain('after Foo + Bar');
   });
 
-  it('renders the costBag chips when present (no duplicate cost text)', () => {
+  it('renders coloured cost tokens (no duplicate cost text)', () => {
     const html = render(fullTech);
-    // When costBag chips are rendered, the redundant `cost` string is
+    // When costBag is rendered as tokens, the redundant `cost` string is
     // suppressed so the same cost doesn't appear twice on the card.
     expect(html).not.toContain('3 wood + 1 gold');
-    // ResourceChip renders aria-label="<resource> <count>"
-    expect(html).toContain('aria-label="wood 3"');
-    expect(html).toContain('aria-label="gold 1"');
+    // ResourceToken renders title="<count> <resource>"
+    expect(html).toContain('title="3 wood"');
+    expect(html).toContain('title="1 gold"');
   });
 
-  it('renders the unlocks block (buildings + units) when populated', () => {
+  it('renders all four per-role panels with their lines populated', () => {
     const html = render(fullTech);
-    // Heading was renamed from "Unlocks" → "On play, grants" so the
-    // recipient role names ("Domestic gets:" / "Foreign gets:") are the
-    // verb-driven affordance.
-    expect(html).toContain('On play, grants');
-    expect(html).toContain('Granary, Mill');
+    // One panel header per role.
+    expect(html).toContain('Chief');
+    expect(html).toContain('Science');
+    expect(html).toContain('Domestic');
+    expect(html).toContain('Foreign');
+    // Buildings + Units appear under their owning role panels. Each
+    // listed building/unit renders as its own chip (with a `?` button
+    // when a CardInfoProvider is mounted), so we assert each name
+    // independently rather than the legacy comma-joined string.
+    expect(html).toContain('Buildings');
+    expect(html).toContain('Granary');
+    expect(html).toContain('Mill');
+    expect(html).toContain('Units');
     expect(html).toContain('Spearman');
-  });
-
-  it('highlights only the holder role event line as "For you"', () => {
-    const html = render(fullTech, 'chief');
-    // Chief → gold; the "For you" header must mention Chief.
-    expect(html).toMatch(/For you[^<]*Chief/);
-    // Highlighted text is the goldEvent string.
-    expect(html).toContain('GOLD-EVENT-LINE');
-    // The other three event strings still appear (as muted context lines)
-    // but only one "For you" header is rendered.
-    expect((html.match(/For you/g) ?? []).length).toBe(1);
-    expect(html).toContain('BLUE-EVENT-LINE');
-    expect(html).toContain('GREEN-EVENT-LINE');
-    expect(html).toContain('RED-EVENT-LINE');
-  });
-
-  it('omits the "For you" block when holderRole is not provided', () => {
-    const html = render(fullTech);
-    expect(html).not.toContain('For you');
-    // All four lines should still be visible in the muted "other colors" list.
+    // Every role's event line appears under its panel.
     expect(html).toContain('BLUE-EVENT-LINE');
     expect(html).toContain('GREEN-EVENT-LINE');
     expect(html).toContain('RED-EVENT-LINE');
     expect(html).toContain('GOLD-EVENT-LINE');
   });
 
-  it('renders effect badges only for populated typed-effect arrays', () => {
-    const html = render(fullTech);
-    expect(html).toContain('Auto');
-    expect(html).toContain('Play');
-    expect(html).toContain('Passive');
+  it('does not call out a "For you" block (v9 dropped that pattern)', () => {
+    expect(render(fullTech, 'chief')).not.toContain('For you');
+    expect(render(fullTech)).not.toContain('For you');
   });
 
-  it('does not render empty rows for a sparse tech', () => {
+  it('does not render empty role lines for a sparse tech', () => {
     const html = render(sparseTech, 'science');
     expect(html).toContain('Sparse Tech');
     expect(html).toContain('Education');
-    expect(html).not.toContain('Unlocks');
-    expect(html).not.toContain('Order:');
+    // No buildings / units / resources lines — every event field is
+    // empty, so each role panel collapses to nothing.
+    expect(html).not.toContain('Buildings');
+    expect(html).not.toContain('Units');
+    expect(html).not.toContain('Resources');
     expect(html).not.toContain('For you');
-    // No effect badges — none of the typed-effect arrays are populated.
-    expect(html).not.toContain('Auto');
-    expect(html).not.toContain('Play');
-    expect(html).not.toContain('Passive');
-  });
-
-  it('domestic holder highlights the green event line', () => {
-    const html = render(fullTech, 'domestic');
-    expect(html).toMatch(/For you[^<]*Domestic/);
-  });
-
-  it('foreign holder highlights the red event line', () => {
-    const html = render(fullTech, 'foreign');
-    expect(html).toMatch(/For you[^<]*Foreign/);
-  });
-
-  it('science holder highlights the blue event line', () => {
-    const html = render(fullTech, 'science');
-    expect(html).toMatch(/For you[^<]*Science/);
   });
 });
