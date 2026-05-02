@@ -174,6 +174,10 @@ export const colors = {
     card: '0 1px 2px rgba(0,0,0,0.35)',
     /** Floating panel / drawer shadow (Dev sidebar, dialogs). */
     floating: '0 4px 12px rgba(0,0,0,0.4)',
+    /** Inset emboss for the player-mat slot panels: a top-edge shadow
+     *  + a faint bottom highlight reads as a pressed tray. */
+    embossInset:
+      'inset 0 1px 2px rgba(0,0,0,0.5), inset 0 -1px 0 rgba(255,255,255,0.04)',
   },
 } as const;
 

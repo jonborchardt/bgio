@@ -33,6 +33,11 @@ export function DevSidebar({ moves }: DevSidebarProps = {}) {
     window.location.hash = '#cards';
     window.location.reload();
   };
+  const onOpenMatPreview = () => {
+    if (typeof window === 'undefined') return;
+    window.location.hash = '#mats';
+    window.location.reload();
+  };
   if (!isDev) return null;
 
   if (!open) {
@@ -138,6 +143,15 @@ export function DevSidebar({ moves }: DevSidebarProps = {}) {
           sx={{ textTransform: 'none', justifyContent: 'flex-start' }}
         >
           Card design preview
+        </Button>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={onOpenMatPreview}
+          fullWidth
+          sx={{ textTransform: 'none', justifyContent: 'flex-start' }}
+        >
+          Player-mat design preview
         </Button>
       </Stack>
     </Box>
