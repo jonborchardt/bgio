@@ -16,6 +16,7 @@ import { RESOURCES } from '../../resources/types.ts';
 import { canAfford, findInvalidAmount } from '../../resources/bag.ts';
 import { transfer } from '../../resources/bank.ts';
 import { rolesAtSeat } from '../../roles.ts';
+import { clearUndoable } from '../../undo.ts';
 
 export const scienceContribute: Move<SettlementState> = (
   { G, ctx, playerID },
@@ -88,6 +89,8 @@ export const scienceContribute: Move<SettlementState> = (
     capped[r] = Math.min(requested, need);
   }
 
+  if (Object.keys(capped).length === 0) return;
+  clearUndoable(G);
   // Move the capped tokens from stash → paid ledger. `transfer` re-checks
   // affordability and mutates both bags directly under Immer.
   transfer(mat.stash, paid, capped);

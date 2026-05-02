@@ -1,9 +1,5 @@
 // Normalises a SampleCard into a single "what to display" descriptor so
-// each variation renders only visuals, not data wrangling. The five new
-// design variations all consume DisplayCard; the baseline uses the
-// existing typed cards directly. A variation can be deleted in isolation
-// without disturbing this file — but if all 5 design variations go away,
-// this helper can also be deleted.
+// each variation renders only visuals, not data wrangling.
 
 import type { Role } from '../../game/types.ts';
 import type { ResourceBag } from '../../game/resources/types.ts';

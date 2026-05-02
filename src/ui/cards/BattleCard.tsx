@@ -6,7 +6,7 @@ import type { BattleCardDef } from '../../data/battleCards.ts';
 import { CardFrame } from './CardFrame.tsx';
 import type { CardSize } from './sizes.ts';
 import { idForBattle } from '../../cards/registry.ts';
-import { ResourceChip } from '../resources/ResourceChip.tsx';
+import { ResourceToken } from '../resources/ResourceToken.tsx';
 import { RESOURCES } from '../../game/resources/types.ts';
 import type { Resource, ResourceBag } from '../../game/resources/types.ts';
 
@@ -117,12 +117,11 @@ export function BattleCard({
           </Typography>
           <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', rowGap: 0.5, mt: 0.25 }}>
             {bagResources(def.reward).map((r) => (
-              <ResourceChip
+              <ResourceToken
                 key={r}
                 resource={r}
                 count={def.reward[r] ?? 0}
-                size="sm"
-                label={`${r} ${def.reward[r]}`}
+                size="small"
               />
             ))}
           </Stack>
@@ -142,17 +141,16 @@ export function BattleCard({
           </Typography>
           <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', rowGap: 0.5, mt: 0.25 }}>
             {bagResources(def.failure.tribute).map((r) => (
-              <ResourceChip
+              <ResourceToken
                 key={r}
                 resource={r}
                 count={def.failure.tribute[r] ?? 0}
-                size="sm"
-                label={`${r} ${def.failure.tribute[r]}`}
+                size="small"
               />
             ))}
           </Stack>
         </Box>
-        {def.flavor && (size === 'detailed' || size === 'page') ? (
+        {def.flavor && size === 'detailed' ? (
           <Typography
             variant="caption"
             sx={{

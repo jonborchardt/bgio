@@ -32,6 +32,7 @@ import { rolesAtSeat } from '../../roles.ts';
 import { STAGES } from '../../phases/stages.ts';
 import type { StageEvents } from '../../phases/stages.ts';
 import { placeOrInterruptTrade } from './tradeRequest.ts';
+import { clearUndoable } from '../../undo.ts';
 
 export const foreignFlipBattle: Move<SettlementState> = ({
   G,
@@ -57,6 +58,8 @@ export const foreignFlipBattle: Move<SettlementState> = ({
 
   if (foreign.battleDeck.length === 0) return INVALID_MOVE;
 
+  clearUndoable(G);
+
   // Top of deck = index 0 (per the deck-construction comment in decks.ts:
   // "lowest number on top"). Mutates the deck in place under Immer.
   const drawn = foreign.battleDeck.shift()!;
@@ -75,8 +78,6 @@ export const foreignFlipBattle: Move<SettlementState> = ({
   // seat, which is the Foreign seat — exactly who we want to gate on.
   const evts = events as StageEvents | undefined;
   evts?.setStage?.(STAGES.foreignAwaitingDamage);
-
-  foreign._lastRelease = undefined;
 };
 
 export const foreignFlipTrade: Move<SettlementState> = ({
@@ -101,6 +102,8 @@ export const foreignFlipTrade: Move<SettlementState> = ({
 
   if (foreign.tradeDeck.length === 0) return INVALID_MOVE;
 
+  clearUndoable(G);
+
   const drawn = foreign.tradeDeck.shift()!;
   placeOrInterruptTrade(G, drawn, playerID);
 
@@ -108,6 +111,4 @@ export const foreignFlipTrade: Move<SettlementState> = ({
   // can't flip a second trade card off the same battle. They'd need to
   // win another battle first.
   foreign.lastBattleOutcome = undefined;
-
-  foreign._lastRelease = undefined;
 };

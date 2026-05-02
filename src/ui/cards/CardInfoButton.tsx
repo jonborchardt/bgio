@@ -23,7 +23,6 @@ const SIZE_BY_CARD_SIZE: Record<CardSize, { px: number; font: string }> = {
   small: { px: 16, font: '0.65rem' },
   normal: { px: 18, font: '0.7rem' },
   detailed: { px: 20, font: '0.75rem' },
-  page: { px: 22, font: '0.8rem' },
 };
 
 export function CardInfoButton({

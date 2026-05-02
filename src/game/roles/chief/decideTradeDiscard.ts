@@ -35,6 +35,7 @@ import {
   clearTradeRequest,
 } from '../../resources/centerMat.ts';
 import { tradeRequestFromCard } from '../foreign/tradeRequest.ts';
+import { clearUndoable } from '../../undo.ts';
 
 export type TradeDiscardChoice = 'existing' | 'new';
 
@@ -56,6 +57,8 @@ export const chiefDecideTradeDiscard: Move<SettlementState> = (
   if (pending === undefined) return INVALID_MOVE;
 
   if (keep !== 'existing' && keep !== 'new') return INVALID_MOVE;
+
+  clearUndoable(G);
 
   if (keep === 'new') {
     // Drop the existing request (its owner's circle deposits are the

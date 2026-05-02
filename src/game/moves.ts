@@ -19,11 +19,11 @@ import { foreignPlayRedEvent } from './roles/foreign/playRedEvent.ts';
 import { foreignRecruit } from './roles/foreign/recruit.ts';
 import { foreignUpkeep } from './roles/foreign/upkeep.ts';
 import { foreignReleaseUnit } from './roles/foreign/release.ts';
-import { foreignUndoRelease } from './roles/foreign/undoRelease.ts';
 import {
   foreignFlipBattle,
   foreignFlipTrade,
 } from './roles/foreign/flip.ts';
+import { undoLast } from './undo.ts';
 import { foreignAssignDamage } from './roles/foreign/assignDamage.ts';
 import { foreignTradeFulfill } from './roles/foreign/tradeFulfill.ts';
 import { chiefDecideTradeDiscard } from './roles/chief/decideTradeDiscard.ts';
@@ -91,7 +91,12 @@ export {
 // is enforced inside each move against `ctx.activePlayers?.[playerID] ===
 // 'foreignTurn'`, so the bgio-level stage config only has to authorize the
 // foreign seat in that stage.
-export { foreignRecruit, foreignUpkeep, foreignReleaseUnit, foreignUndoRelease };
+export { foreignRecruit, foreignUpkeep, foreignReleaseUnit };
+
+// Generic single-slot undo for the seat's most recent card-play / recruit
+// action. See `./undo.ts` for the contract; the move is stage-agnostic and
+// gates internally on `_lastAction.seat === playerID`.
+export { undoLast };
 
 // Foreign flip-flow moves (07.4) and trade-request placement (07.5).
 // `foreignFlipBattle` puts the seat into `foreignAwaitingDamage`, which

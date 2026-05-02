@@ -40,8 +40,8 @@ export function CardPreviewPage() {
             variant="body2"
             sx={{ color: (t) => t.palette.status.muted }}
           >
-            Six sample cards × four sizes per variation. Tabs below switch
-            visual languages so you can compare side-by-side.
+            Every sample card rendered with the live in-game card shell
+            across each preview size.
           </Typography>
         </Stack>
         <Button variant="outlined" size="small" onClick={onBack}>

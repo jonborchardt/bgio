@@ -1,13 +1,14 @@
 // Inline chip used to surface a referenced card (building / unit) inside
 // another card's body — e.g. the buildings/units lines on a tech card's
-// per-role sections. Clicking the small `?` opens the relationships
-// modal focused on that card. When no provider is mounted (headless test,
-// dev-mode-disabled build) the `?` silently disappears, leaving just the
-// name as text.
+// per-role sections. Hovering the small `?` previews the referenced card;
+// clicking opens the relationships graph focused on it. When no provider
+// is mounted (headless test, dev-mode-disabled build) the `?` silently
+// disappears, leaving just the name as text.
 
-import { Box, IconButton, Typography } from '@mui/material';
+import { Box, IconButton, Tooltip, Typography } from '@mui/material';
 import { useCardInfo } from './cardInfoContextValue.ts';
-import { findBuildingId, findUnitId } from '../../cards/registry.ts';
+import { cardById, findBuildingId, findUnitId } from '../../cards/registry.ts';
+import { AnyCard } from './AnyCard.tsx';
 
 export type CardRefKind = 'building' | 'unit';
 
@@ -28,7 +29,41 @@ const lookupId = (
 export function CardRefChip({ name, kind, fontSize = '0.7rem' }: CardRefChipProps) {
   const ctx = useCardInfo();
   const id = lookupId(kind, name);
+  const entry = id ? cardById(id) : undefined;
   const dim = 14;
+  const button =
+    ctx && id ? (
+      <IconButton
+        aria-label={`Open ${name} card info`}
+        size="small"
+        onClick={(e) => {
+          e.stopPropagation();
+          ctx.open(id);
+        }}
+        sx={{
+          width: dim,
+          height: dim,
+          minWidth: dim,
+          minHeight: dim,
+          p: 0,
+          ml: 0.05,
+          fontSize: '0.55rem',
+          fontWeight: 800,
+          color: (t) => t.palette.status.muted,
+          border: '1px solid',
+          borderColor: (t) => t.palette.status.muted,
+          borderRadius: '50%',
+          opacity: 0.85,
+          '&:hover': {
+            opacity: 1,
+            color: (t) => t.palette.status.active,
+            borderColor: (t) => t.palette.status.active,
+          },
+        }}
+      >
+        ?
+      </IconButton>
+    ) : null;
   return (
     <Box
       component="span"
@@ -51,38 +86,29 @@ export function CardRefChip({ name, kind, fontSize = '0.7rem' }: CardRefChipProp
       >
         {name}
       </Typography>
-      {ctx && id ? (
-        <IconButton
-          aria-label={`Open ${name} card info`}
-          size="small"
-          onClick={(e) => {
-            e.stopPropagation();
-            ctx.open(id);
-          }}
-          sx={{
-            width: dim,
-            height: dim,
-            minWidth: dim,
-            minHeight: dim,
-            p: 0,
-            ml: 0.05,
-            fontSize: '0.55rem',
-            fontWeight: 800,
-            color: (t) => t.palette.status.muted,
-            border: '1px solid',
-            borderColor: (t) => t.palette.status.muted,
-            borderRadius: '50%',
-            opacity: 0.85,
-            '&:hover': {
-              opacity: 1,
-              color: (t) => t.palette.status.active,
-              borderColor: (t) => t.palette.status.active,
+      {button && entry ? (
+        <Tooltip
+          arrow
+          placement="top"
+          enterDelay={150}
+          leaveDelay={50}
+          slotProps={{
+            tooltip: {
+              sx: {
+                bgcolor: 'transparent',
+                p: 0,
+                m: 0,
+                maxWidth: 'none',
+              },
             },
           }}
+          title={<AnyCard entry={entry} size="normal" />}
         >
-          ?
-        </IconButton>
-      ) : null}
+          {button}
+        </Tooltip>
+      ) : (
+        button
+      )}
     </Box>
   );
 }

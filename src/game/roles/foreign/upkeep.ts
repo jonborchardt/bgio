@@ -31,6 +31,7 @@ import { payFromStash } from '../../resources/moves.ts';
 import { canAfford } from '../../resources/bag.ts';
 import { parseBenefit } from '../domestic/parseBenefit.ts';
 import { registerRoundEndHook } from '../../hooks.ts';
+import { clearUndoable } from '../../undo.ts';
 
 // foreign:reset-upkeep — at endOfRound we clear `_upkeepPaid` so the
 // Foreign seat can pay upkeep again next round. Without this, after
@@ -140,7 +141,7 @@ export const foreignUpkeep: Move<SettlementState> = ({ G, ctx, playerID }) => {
   const cost = { gold: totalGold };
   if (!canAfford(mat.stash, cost)) return INVALID_MOVE;
 
+  clearUndoable(G);
   if (totalGold > 0) payFromStash(G, playerID, cost);
   foreign._upkeepPaid = true;
-  foreign._lastRelease = undefined;
 };

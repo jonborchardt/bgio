@@ -28,12 +28,12 @@
 import type { Move } from 'boardgame.io';
 import { INVALID_MOVE } from 'boardgame.io/core';
 import type { SettlementState } from '../../types.ts';
-import { rolesAtSeat } from '../../roles.ts';
 import { canAfford } from '../../resources/bag.ts';
 import { transfer } from '../../resources/bank.ts';
 import { appendBankLog, negateBag } from '../../resources/bankLog.ts';
 import { payFromStash } from '../../resources/moves.ts';
 import { clearTradeRequest } from '../../resources/centerMat.ts';
+import { clearUndoable } from '../../undo.ts';
 
 export const foreignTradeFulfill: Move<SettlementState> = ({
   G,
@@ -48,6 +48,8 @@ export const foreignTradeFulfill: Move<SettlementState> = ({
   if (mat === undefined) return INVALID_MOVE;
 
   if (!canAfford(mat.stash, req.required)) return INVALID_MOVE;
+
+  clearUndoable(G);
 
   // Pay required → bank (logged as a stash payment so the chief tooltip
   // can attribute it to this seat).
@@ -67,14 +69,4 @@ export const foreignTradeFulfill: Move<SettlementState> = ({
   G.settlementsJoined += 1;
 
   clearTradeRequest(G.centerMat);
-
-  // The undo-release window only belongs to the Foreign seat; clear it
-  // only when that seat is the one fulfilling so a non-Foreign fulfill
-  // doesn't kill the Foreign seat's undo opportunity.
-  if (
-    G.foreign !== undefined &&
-    rolesAtSeat(G.roleAssignments, playerID).includes('foreign')
-  ) {
-    G.foreign._lastRelease = undefined;
-  }
 };

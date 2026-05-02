@@ -28,6 +28,7 @@ import type { Resource, ResourceBag } from '../../resources/types.ts';
 import { parseBenefit } from '../domestic/parseBenefit.ts';
 import { pushGraveyard } from '../../graveyard.ts';
 import { idForUnit } from '../../../cards/registry.ts';
+import { markUndoable } from '../../undo.ts';
 
 /**
  * Sum of every `unitCost` BenefitEffect across in-play Domestic buildings.
@@ -155,6 +156,12 @@ export const foreignRecruit: Move<SettlementState> = (
   if (mat === undefined) return INVALID_MOVE;
   if (!canAfford(mat.stash, cost)) return INVALID_MOVE;
 
+  markUndoable(
+    G,
+    `Recruit ${defID}${n > 1 ? ` ×${n}` : ''}`,
+    playerID,
+  );
+
   payFromStash(G, playerID, cost);
 
   // Increment existing entry or append a new one — the invariant is that no
@@ -173,8 +180,6 @@ export const foreignRecruit: Move<SettlementState> = (
   }
   foreign._recruitedThisTurn[defID] =
     (foreign._recruitedThisTurn[defID] ?? 0) + n;
-
-  foreign._lastRelease = undefined;
 
   // Log each recruited copy as its own graveyard entry so the player's
   // history reads "Scout, Scout, Scout" rather than "Scout x3" — matches

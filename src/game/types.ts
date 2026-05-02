@@ -228,6 +228,14 @@ export interface SettlementState {
   // table-visible discard pile, not secret information). Optional so
   // older test fixtures stay source-compatible; helpers lazy-init.
   graveyards?: Record<PlayerID, GraveyardEntry[]>;
+
+  // Generic "1 undo at a time" slot — written by every undoable card-play
+  // / recruit move via `markUndoable`, cleared by every other mutating
+  // move via `clearUndoable`, restored by the `undoLast` move. Carries a
+  // full deep clone of G as it was right before the move's mutations,
+  // plus a UI label and the seat that owns the undo. See `./undo.ts` for
+  // the contract and the parallel-actives reasoning.
+  _lastAction?: import('./undo.ts').UndoSnapshot;
 }
 
 /** A single entry in a seat's graveyard log. `cardId` is the canonical

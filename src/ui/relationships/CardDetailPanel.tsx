@@ -1,5 +1,5 @@
-// Detail / page view for a single focused card. Shows the card at
-// `page` size on top, then "Outgoing" + "Incoming" relationship lists
+// Detail view for a single focused card. Shows the card at `detailed`
+// size on top, then "Outgoing" + "Incoming" relationship lists
 // (with each related card rendered at micro size + clickable to jump
 // focus). Used by the side drawer in variations 1 / 5 and as the modal
 // body when no graph is involved.
@@ -111,7 +111,7 @@ export function CardDetailPanel({
 
   return (
     <Stack spacing={2} sx={{ p: 2, minWidth: 320 }}>
-      <AnyCard entry={entry} size="page" />
+      <AnyCard entry={entry} size="detailed" />
       <Divider />
       {incomingFirst ? (
         <>

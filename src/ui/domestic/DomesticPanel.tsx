@@ -29,6 +29,7 @@ import { BuildingGrid } from './BuildingGrid.tsx';
 import { RolePanel } from '../layout/RolePanel.tsx';
 import { StashBar } from '../resources/StashBar.tsx';
 import { GraveyardButton } from '../layout/GraveyardButton.tsx';
+import { UndoButton } from '../layout/UndoButton.tsx';
 import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
 import { nextSeatAfterDone } from '../layout/nextSeat.ts';
 
@@ -95,6 +96,12 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
           <GraveyardButton
             role="domestic"
             entries={G.graveyards?.[playerID] ?? []}
+          />
+          <UndoButton
+            G={G}
+            playerID={playerID}
+            canAct={canAct && !alreadyDone}
+            onUndo={() => moves.undoLast()}
           />
           <Button
             variant="contained"

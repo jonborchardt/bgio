@@ -38,6 +38,7 @@ import { RESOURCES } from '../../resources/types.ts';
 import type { Resource, ResourceBag } from '../../resources/types.ts';
 import { appendBankLog } from '../../resources/bankLog.ts';
 import { UNITS } from '../../../data/index.ts';
+import { clearUndoable } from '../../undo.ts';
 
 /**
  * Translate a battle card's `units` array (with optional `count`) into the
@@ -112,7 +113,7 @@ export const foreignAssignDamage: Move<SettlementState> = (
   if (out.validationErrors.length > 0) return INVALID_MOVE;
   if (out.outcome === 'mid') return INVALID_MOVE;
 
-  foreign._lastRelease = undefined;
+  clearUndoable(G);
 
   const evts = events as StageEvents | undefined;
 

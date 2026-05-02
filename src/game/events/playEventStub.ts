@@ -33,6 +33,7 @@ import { cycleAdvance, type EventColor } from './state.ts';
 import { dispatch } from './dispatcher.ts';
 import { fromBgio, type BgioRandomLike } from '../random.ts';
 import type { StageEvents, StageName } from '../phases/stages.ts';
+import { markUndoable } from '../undo.ts';
 
 // Type alias for the per-role flag keys on `_eventPlayedThisRound`.
 // Lifted from `SettlementState` so a typo here would be a compile error.
@@ -75,7 +76,12 @@ export const playEventStub = (
     // Resolve the played card so we can hand it to the dispatcher.
     const card = hand.find((c) => c.id === cardID)!;
 
-    // All checks passed — bookkeeping.
+    // All checks passed — snapshot before any mutation so the dispatched
+    // effects (which can ripple through bank, modifiers, hands, …) roll
+    // back as one atomic unit.
+    markUndoable(G, `Play ${card.name}`, playerID);
+
+    // Bookkeeping.
     if (!G._eventPlayedThisRound) G._eventPlayedThisRound = {};
     G._eventPlayedThisRound[flagKey] = true;
 

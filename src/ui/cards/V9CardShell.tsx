@@ -22,6 +22,7 @@ import { KindGlyph } from './kindGlyphs.tsx';
 import type { DisplayCard, DisplayRoleSection } from './cardDisplay.ts';
 import type { Role } from '../../game/types.ts';
 import { ResourceToken } from '../resources/ResourceToken.tsx';
+import { ResourceText } from '../resources/ResourceText.tsx';
 
 const accent = (t: Theme, role: Role): string => t.palette.role[role].main;
 const accentLight = (t: Theme, role: Role): string => t.palette.role[role].light;
@@ -78,22 +79,29 @@ interface RoleLine {
 
 // Render the body of a section line. Buildings / units lines split on
 // commas into `CardRefChip` elements (each with its own `?` button); the
-// resources line renders as plain text.
-const renderLineBody = (line: RoleLine, fontSize: string) => {
+// resources line walks the text for `<n> <resource>` references and
+// substitutes a `ResourceToken` for each match (with the resource name on
+// hover) so the only resource references on a card are icons.
+const renderLineBody = (line: RoleLine, fontSize: string, size: CardSize) => {
   if (line.kind === 'text') {
     return (
-      <Typography
+      <Box
         component="span"
-        variant="caption"
         sx={{
           color: 'text.primary',
           lineHeight: 1.2,
           fontSize,
           fontWeight: 600,
+          display: 'inline-flex',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 0.25,
+          rowGap: 0.2,
+          minWidth: 0,
         }}
       >
-        {line.text}
-      </Typography>
+        <ResourceText text={line.text} size={size} />
+      </Box>
     );
   }
   const refKind: 'building' | 'unit' = line.kind;
@@ -123,8 +131,7 @@ const renderLineBody = (line: RoleLine, fontSize: string) => {
 
 /** Renders one tech role section. At `normal`/`detailed` size every
  *  section is a fixed-height quadrant tile (consumed by the 2×2 grid in
- *  the shell); at `page` size we drop into a more spacious vertical
- *  layout. */
+ *  the shell). */
 function RoleSection({
   section,
   size,
@@ -144,7 +151,7 @@ function RoleSection({
 
   // Empty section. At `normal`/`detailed` we still render the quadrant so
   // the 2×2 grid stays visually balanced and the user can see "this role
-  // gets nothing from this tech." At `page` we omit it.
+  // gets nothing from this tech."
   if (lines.length === 0) {
     if (!compact) return null;
     return (
@@ -260,7 +267,7 @@ function RoleSection({
                 textOverflow: 'ellipsis',
               }}
             >
-              {renderLineBody(l, '0.6rem')}
+              {renderLineBody(l, '0.6rem', size)}
             </Box>
           </Box>
         ))}
@@ -323,7 +330,7 @@ function RoleSection({
                 rowGap: 0.2,
               }}
             >
-              {renderLineBody(l, '0.7rem')}
+              {renderLineBody(l, '0.7rem', size)}
             </Box>
           </Stack>
         ))}
@@ -347,7 +354,7 @@ export function V9CardShell({
 }: V9CardShellProps) {
   const w = CARD_WIDTH[size];
   const h = CARD_HEIGHT[size];
-  const showFull = size === 'normal' || size === 'detailed' || size === 'page';
+  const showFull = size === 'normal' || size === 'detailed';
   const showSomeLines = showFull;
 
   // Micro: single-line chip with kind glyph + title.
@@ -398,13 +405,18 @@ export function V9CardShell({
     );
   }
 
-  const sigilDim =
-    size === 'small' ? 22 : size === 'normal' ? 30 : size === 'detailed' ? 40 : 56;
-  const sectionsToShow = d.roleSections
-    ? showFull
-      ? d.roleSections
-      : d.roleSections.filter((s) => s.role === d.role)
-    : [];
+  const sigilDim = size === 'small' ? 22 : size === 'normal' ? 30 : 40;
+  // At `small` size the card is only ~110×90 — anything past title +
+  // cost spills off the frame. Hide unit stats, role-reward sections,
+  // benefit text, and adjacency callouts; the small card is purely an
+  // identifier (kind glyph + title + cost).
+  const isCompactIdentifier = size === 'small';
+  const sectionsToShow =
+    d.roleSections && !isCompactIdentifier
+      ? showFull
+        ? d.roleSections
+        : d.roleSections.filter((s) => s.role === d.role)
+      : [];
 
   return (
     <Paper
@@ -513,7 +525,7 @@ export function V9CardShell({
         }}
       >
         {/* Top group: stats + cost stay near the title. */}
-        {d.stats ? (
+        {d.stats && !isCompactIdentifier ? (
           <Stack direction="row" spacing={0.5}>
             {d.stats.map((s) => (
               <StatBox key={s.label} label={s.label} value={s.value} />
@@ -557,12 +569,20 @@ export function V9CardShell({
 
         {/* Bottom group: benefit / sections / adjacency / flavor. */}
         {!d.roleSections && d.benefit && showSomeLines ? (
-          <Typography
-            variant="body2"
-            sx={{ color: 'text.primary', lineHeight: 1.35, fontSize: '0.78rem' }}
+          <Box
+            sx={{
+              color: 'text.primary',
+              lineHeight: 1.35,
+              fontSize: '0.78rem',
+              display: 'flex',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 0.3,
+              rowGap: 0.2,
+            }}
           >
-            {d.benefit}
-          </Typography>
+            <ResourceText text={d.benefit} size={size} />
+          </Box>
         ) : null}
 
         {d.adjacencies && d.adjacencies.length > 0 && showSomeLines ? (
@@ -579,34 +599,47 @@ export function V9CardShell({
             >
               Adjacency
             </Typography>
-            {d.adjacencies.map((a, i) => (
-              <Stack
-                key={`${a.neighbor}-${i}`}
-                direction="row"
-                spacing={0.4}
-                sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.3 }}
-              >
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: a.active ? 'text.primary' : 'text.secondary',
-                    fontWeight: a.active ? 700 : 500,
-                    fontSize: '0.65rem',
-                    lineHeight: 1.2,
-                  }}
+            {d.adjacencies.map((a, i) => {
+              const isWildcard = a.neighbor === 'any building';
+              return (
+                <Stack
+                  key={`${a.neighbor}-${i}`}
+                  direction="row"
+                  spacing={0.4}
+                  sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.3 }}
                 >
-                  {a.active ? '✓' : '·'} next to {a.neighbor}
-                </Typography>
-                {a.bonus.map((b) => (
-                  <ResourceToken
-                    key={b.resource}
-                    resource={b.resource}
-                    count={b.count}
-                    size={size}
-                  />
-                ))}
-              </Stack>
-            ))}
+                  <Typography
+                    component="span"
+                    variant="caption"
+                    sx={{
+                      color: a.active ? 'text.primary' : 'text.secondary',
+                      fontWeight: a.active ? 700 : 500,
+                      fontSize: '0.65rem',
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {a.active ? '✓' : '·'} next to{' '}
+                    {isWildcard ? (
+                      a.neighbor
+                    ) : (
+                      <CardRefChip
+                        name={a.neighbor}
+                        kind="building"
+                        fontSize="0.65rem"
+                      />
+                    )}
+                  </Typography>
+                  {a.bonus.map((b) => (
+                    <ResourceToken
+                      key={b.resource}
+                      resource={b.resource}
+                      count={b.count}
+                      size={size}
+                    />
+                  ))}
+                </Stack>
+              );
+            })}
           </Stack>
         ) : null}
 
@@ -622,21 +655,6 @@ export function V9CardShell({
           </Stack>
         ) : null}
 
-        {size === 'page' && d.flavor ? (
-          <Typography
-            variant="caption"
-            sx={{
-              pt: 1,
-              fontStyle: 'italic',
-              color: 'text.secondary',
-              lineHeight: 1.45,
-              fontSize: '0.8rem',
-              borderTop: (t) => `1px solid ${t.palette.status.muted}55`,
-            }}
-          >
-            {d.flavor}
-          </Typography>
-        ) : null}
       </Stack>
     </Paper>
   );

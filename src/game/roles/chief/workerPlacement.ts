@@ -28,6 +28,7 @@ import type { Move } from 'boardgame.io';
 import { INVALID_MOVE } from 'boardgame.io/core';
 import type { SettlementState } from '../../types.ts';
 import { rolesAtSeat } from '../../roles.ts';
+import { clearUndoable } from '../../undo.ts';
 
 export const chiefPlaceWorker: Move<SettlementState> = (
   { G, ctx, playerID },
@@ -66,6 +67,7 @@ export const chiefPlaceWorker: Move<SettlementState> = (
   if (cell.worker !== null) return INVALID_MOVE;
 
   // All checks passed — decrement the reserve and stamp the cell.
+  clearUndoable(G);
   G.chief.workers -= 1;
   cell.worker = { ownerSeat: playerID };
 };

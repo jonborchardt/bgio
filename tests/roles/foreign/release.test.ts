@@ -92,10 +92,9 @@ describe('foreignReleaseUnit (07.2)', () => {
     expect(G.mats['1']?.stash).toEqual(bagOf({ gold: 0 }));
     expect(G.bank).toEqual(bagOf({ gold: 0 }));
     expect(G.foreign!.inPlay).toEqual([]);
-    expect(G.foreign!._lastRelease).toEqual({
-      defID: 'Brute',
-      count: 1,
-      refundTotal: 0,
-    });
+    // Release populates the generic undo slot with a labeled snapshot
+    // owned by the releasing seat.
+    expect(G._lastAction?.seat).toBe('1');
+    expect(G._lastAction?.label).toBe('Release Brute');
   });
 });

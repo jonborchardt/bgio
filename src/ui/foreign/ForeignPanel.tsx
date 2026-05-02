@@ -19,6 +19,7 @@
 // stage `foreignFlipBattle` pushes the seat into).
 
 import { useContext } from 'react';
+import type { ReactNode } from 'react';
 import { Box, Button, Stack, Tooltip, Typography } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
 import type { SettlementState } from '../../game/types.ts';
@@ -37,43 +38,67 @@ import { Decks } from './Decks.tsx';
 import { BattlePanel } from './BattlePanel.tsx';
 import { RolePanel } from '../layout/RolePanel.tsx';
 import { StashBar } from '../resources/StashBar.tsx';
+import { ResourceToken } from '../resources/ResourceToken.tsx';
 import { TechCard } from '../cards/TechCard.tsx';
 import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
 import { nextSeatAfterDone } from '../layout/nextSeat.ts';
 import { UnitCard } from '../cards/UnitCard.tsx';
 import { UNITS } from '../../data/index.ts';
 import { GraveyardButton } from '../layout/GraveyardButton.tsx';
+import { UndoButton } from '../layout/UndoButton.tsx';
 
 // Module-level lookup so the recruit hand can render the canonical
 // UnitCard (which needs the full UnitDef) for a hand entry that only
 // carries the unit's name.
 const unitDefByName = new Map(UNITS.map((u) => [u.name, u]));
 
-// Compact "5g" / "5g 2 steel" formatter for the recruit button label.
-// Gold renders as "Ng" with no space; other resources render as "N <name>".
-const formatCostBag = (bag: Partial<ResourceBag>): string => {
-  const parts: string[] = [];
+// Render a recruit cost bag as a row of `ResourceToken` icons (each with
+// the resource name on hover) so the tooltip never spells out a resource
+// name as text. Returns "0" when the bag is empty (free unit).
+const renderCostIcons = (bag: Partial<ResourceBag>): ReactNode => {
+  const entries: Array<[Resource, number]> = [];
   for (const r of RESOURCES as ReadonlyArray<Resource>) {
     const v = bag[r];
     if (v === undefined || v === 0) continue;
-    parts.push(r === 'gold' ? `${v}g` : `${v} ${r}`);
+    entries.push([r, v]);
   }
-  return parts.length === 0 ? '0g' : parts.join(' ');
+  if (entries.length === 0) return '0';
+  return (
+    <Box
+      component="span"
+      sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4 }}
+    >
+      {entries.map(([r, v]) => (
+        <ResourceToken key={r} resource={r} count={v} size="small" />
+      ))}
+    </Box>
+  );
 };
 
-// "wood, steel" — comma-joined list of resources where stash falls short
-// of the cost bag. Used in the "not enough resources" tooltip so the player
-// can see which input is blocking the recruit.
-const listShortfall = (
+// Render the resources where stash falls short of the cost as a row of
+// icon-only `ResourceToken`s (no count). Used in the "not enough
+// resources" tooltip so the blocking inputs are still icons rather than
+// names.
+const renderShortfallIcons = (
   stash: ResourceBag,
   cost: Partial<ResourceBag>,
-): string => {
-  const short: string[] = [];
+): ReactNode => {
+  const short: Resource[] = [];
   for (const r of RESOURCES as ReadonlyArray<Resource>) {
     const need = cost[r] ?? 0;
     if (need > 0 && stash[r] < need) short.push(r);
   }
-  return short.length === 0 ? '—' : short.join(', ');
+  if (short.length === 0) return '—';
+  return (
+    <Box
+      component="span"
+      sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4 }}
+    >
+      {short.map((r) => (
+        <ResourceToken key={r} resource={r} size="small" />
+      ))}
+    </Box>
+  );
 };
 
 export function ForeignPanel(props: BoardProps<SettlementState>) {
@@ -105,13 +130,8 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
   // units recruited this turn are exempt and don't block ending the turn.
   const hasUpkeepableUnits = upkeepableUnits(G).length > 0;
 
-  // bgio's master rejects UNDO whenever multiple players are simultaneously
-  // active via setActivePlayers, so we drive undo through the dedicated
-  // `foreignUndoRelease` move and gate the button on the server-recorded
-  // `_lastRelease` slot — present right after release, cleared by undo.
-  const canUndo = foreign._lastRelease !== undefined && canActOnTurn;
 
-  const upkeepTooltip = !canActOnTurn
+  const upkeepTooltip: ReactNode = !canActOnTurn
     ? "Wait for the Foreign seat's turn"
     : upkeepPaid
       ? 'Upkeep already paid this round'
@@ -120,7 +140,17 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
           ? 'No upkeep due — units recruited this turn are exempt'
           : 'No upkeep due — recruit a unit first'
         : playerGold < upkeepDue
-          ? `Not enough gold: owe ${upkeepDue}g, have ${playerGold}g (release a unit for a refund)`
+          ? (
+              <Box
+                component="span"
+                sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4, flexWrap: 'wrap' }}
+              >
+                Not enough{' '}
+                <ResourceToken resource="gold" size="small" />: owe{' '}
+                <ResourceToken resource="gold" count={upkeepDue} size="small" />, have{' '}
+                <ResourceToken resource="gold" count={playerGold} size="small" /> (release a unit for a refund)
+              </Box>
+            )
           : '';
 
   const handleRecruit = (defID: string): void => {
@@ -132,7 +162,7 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
   };
 
   const handleUndo = (): void => {
-    moves.foreignUndoRelease();
+    moves.undoLast();
   };
 
   const handleFlipBattle = (): void => {
@@ -165,6 +195,12 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
             role="foreign"
             entries={G.graveyards?.[playerID] ?? []}
           />
+          <UndoButton
+            G={G}
+            playerID={playerID}
+            canAct={canActOnTurn && !alreadyDone}
+            onUndo={handleUndo}
+          />
           <Tooltip
             title={upkeepTooltip}
             placement="top"
@@ -189,11 +225,19 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
                   },
                 }}
               >
-                {upkeepPaid
-                  ? 'Upkeep paid'
-                  : upkeepDue === 0
-                    ? 'No upkeep due'
-                    : `Pay Upkeep (${upkeepDue}g)`}
+                {upkeepPaid ? (
+                  'Upkeep paid'
+                ) : upkeepDue === 0 ? (
+                  'No upkeep due'
+                ) : (
+                  <Box
+                    component="span"
+                    sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4 }}
+                  >
+                    Pay Upkeep
+                    <ResourceToken resource="gold" count={upkeepDue} size="small" />
+                  </Box>
+                )}
               </Button>
             </Box>
           </Tooltip>
@@ -260,14 +304,24 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
                 const stash = G.mats?.[playerID]?.stash;
                 const affordable =
                   stash !== undefined && canAfford(stash, costBag);
-                const costLabel = formatCostBag(costBag);
-                const shortfall = stash
-                  ? listShortfall(stash, costBag)
-                  : 'no stash';
-                const tooltip = !canActOnTurn
+                const tooltip: ReactNode = !canActOnTurn
                   ? "Wait for the Foreign seat's turn"
                   : !affordable
-                    ? `Not enough resources: costs ${costLabel}, short on ${shortfall}`
+                    ? (
+                        <Box
+                          component="span"
+                          sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4, flexWrap: 'wrap' }}
+                        >
+                          Not enough resources: costs {renderCostIcons(costBag)}
+                          {stash ? (
+                            <>
+                              , short on {renderShortfallIcons(stash, costBag)}
+                            </>
+                          ) : (
+                            ', no stash'
+                          )}
+                        </Box>
+                      )
                     : '';
                 return (
                   <Tooltip
@@ -316,14 +370,17 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
                   costEntries.length === 0 ||
                   (stash !== undefined && canAfford(stash, costBag));
                 const enabled = canActOnTurn && !alreadyDone && affordable;
-                const costLabel =
-                  costEntries.length === 0
-                    ? 'free'
-                    : costEntries.map(([r, v]) => `${v} ${r}`).join(', ');
-                const tooltip = !canActOnTurn
+                const tooltip: ReactNode = !canActOnTurn
                   ? "Wait for the Foreign seat's turn"
                   : !affordable
-                    ? `Need ${costLabel}`
+                    ? (
+                        <Box
+                          component="span"
+                          sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4, flexWrap: 'wrap' }}
+                        >
+                          Need {renderCostIcons(costBag)}
+                        </Box>
+                      )
                     : '';
                 return (
                   <Tooltip
@@ -362,8 +419,6 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
           inPlay={foreign.inPlay.map((u) => ({ ...u }))}
           canAct={canActOnTurn}
           onRelease={handleRelease}
-          canUndo={canUndo}
-          onUndo={handleUndo}
         />
 
         <Decks

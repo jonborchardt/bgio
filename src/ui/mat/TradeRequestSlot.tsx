@@ -8,6 +8,7 @@
 // see the click reach the engine.
 
 import { Box, Button, Paper, Stack, Tooltip, Typography } from '@mui/material';
+import type { ReactNode } from 'react';
 import type { TradeRequest } from '../../game/resources/centerMat.ts';
 import type {
   ResourceBag as ResourceBagType,
@@ -17,6 +18,7 @@ import { EMPTY_BAG, RESOURCES } from '../../game/resources/types.ts';
 import { canAfford } from '../../game/resources/bag.ts';
 import type { PlayerID, SettlementState } from '../../game/types.ts';
 import { ResourceBag } from '../resources/ResourceBag.tsx';
+import { ResourceToken } from '../resources/ResourceToken.tsx';
 
 export interface TradeRequestSlotProps {
   tradeRequest: TradeRequest | null;
@@ -30,10 +32,23 @@ const fullBag = (partial: Partial<ResourceBagType>): ResourceBagType => ({
   ...partial,
 });
 
-const summarizeBag = (bag: Partial<ResourceBagType>): string =>
-  RESOURCES.filter((r: Resource) => (bag[r] ?? 0) > 0)
-    .map((r: Resource) => `${bag[r]} ${r}`)
-    .join(', ');
+// Render the non-zero entries of a resource bag as a row of
+// `ResourceToken` icons (each carrying the resource name on hover) so the
+// tooltip never spells out a resource name.
+const renderBagIcons = (bag: Partial<ResourceBagType>): ReactNode => {
+  const entries = RESOURCES.filter((r: Resource) => (bag[r] ?? 0) > 0);
+  if (entries.length === 0) return null;
+  return (
+    <Box
+      component="span"
+      sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4 }}
+    >
+      {entries.map((r) => (
+        <ResourceToken key={r} resource={r} count={bag[r]!} size="small" />
+      ))}
+    </Box>
+  );
+};
 
 export function TradeRequestSlot({
   tradeRequest,
@@ -53,13 +68,20 @@ export function TradeRequestSlot({
 
   const fulfillReady = onFulfill !== undefined && canAffordTrade;
 
-  const tooltip =
+  const tooltip: ReactNode =
     localSeat === undefined
       ? 'Spectators cannot fulfill trade requests'
       : stash === undefined
         ? 'No stash available'
         : !canAffordTrade
-          ? `Not enough in stash: requires ${summarizeBag(tradeRequest.required)}`
+          ? (
+              <Box
+                component="span"
+                sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4, flexWrap: 'wrap' }}
+              >
+                Not enough in stash: requires {renderBagIcons(tradeRequest.required)}
+              </Box>
+            )
           : '';
 
   return (

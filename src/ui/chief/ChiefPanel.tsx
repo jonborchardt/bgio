@@ -23,6 +23,7 @@ import { RolePanel } from '../layout/RolePanel.tsx';
 import { StashBar } from '../resources/StashBar.tsx';
 import { PlayableHand } from '../cards/PlayableHand.tsx';
 import { GraveyardButton } from '../layout/GraveyardButton.tsx';
+import { UndoButton } from '../layout/UndoButton.tsx';
 import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
 import { firstNonChiefSeat } from '../layout/nextSeat.ts';
 
@@ -72,6 +73,12 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
           <GraveyardButton
             role="chief"
             entries={G.graveyards?.[playerID] ?? []}
+          />
+          <UndoButton
+            G={G}
+            playerID={playerID}
+            canAct={isChiefPhase}
+            onUndo={() => moves.undoLast()}
           />
           {isChiefPhase ? (
             <Button

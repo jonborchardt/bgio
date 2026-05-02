@@ -4,16 +4,23 @@
 //   1. Occupied: a small card showing the building's name + benefit summary,
 //      with cost / note / upgrade detail in the hover tooltip. A worker
 //      indicator paints in the corner when a chief worker token is on it.
-//   2. Empty + isPlacing && isLegal: shows a "+ build" affordance.
-//   3. Empty + (!isPlacing || !isLegal): renders a faded outline so the
-//      grid layout still has a slot in this position.
+//      The cell itself is a transparent wrapper — the inner BuildingCard
+//      already paints its own frame + shadow, so the CellSlot adds no
+//      "plot border" around it.
+//   2. Empty + isPlacing && isLegal: shows a "+ build" affordance with a
+//      dashed placement-target outline.
+//   3. Empty + (!isPlacing || !isLegal): an invisible spacer so the grid
+//      still has a slot in this position. Plot outlines exist only while
+//      the player is actively placing a card.
 //
 // All visual choices route through theme tokens.
 
-import { Box, Tooltip, Typography } from '@mui/material';
+import { Box, Stack, Tooltip, Typography } from '@mui/material';
+import type { ReactNode } from 'react';
 import type { DomesticBuilding } from '../../game/roles/domestic/types.ts';
 import { BUILDINGS } from '../../data/index.ts';
 import { BuildingCard } from '../cards/BuildingCard.tsx';
+import { ResourceToken } from '../resources/ResourceToken.tsx';
 
 export interface CellSlotProps {
   x: number;
@@ -39,29 +46,68 @@ export function CellSlot({
 }: CellSlotProps) {
   const occupied = building !== undefined;
   const showBuild = !occupied && isPlacing && isLegal;
-  const clickable = (occupied) || showBuild;
+  // Only placement targets are interactive. Occupied cells have no click
+  // action wired through `onPlace`, so they shouldn't read as buttons.
+  const clickable = showBuild;
 
   const def = building
     ? BUILDINGS.find((b) => b.name === building.defID)
     : undefined;
 
-  const tooltipParts: string[] = [];
+  const tooltipNodes: ReactNode[] = [];
   if (def) {
-    if (def.costBag) {
-      const parts: string[] = [];
-      for (const [r, v] of Object.entries(def.costBag)) {
-        if ((v ?? 0) > 0) parts.push(`${v} ${r}`);
-      }
-      tooltipParts.push(`Cost: ${parts.length > 0 ? parts.join(', ') : 'free'}`);
-    } else {
-      tooltipParts.push(`Cost: ${def.cost}g`);
-    }
-    if (def.note) tooltipParts.push(def.note);
+    const costEntries: Array<[string, number]> = def.costBag
+      ? (Object.entries(def.costBag) as Array<[string, number]>).filter(
+          ([, v]) => (v ?? 0) > 0,
+        )
+      : def.cost > 0
+        ? [['gold', def.cost]]
+        : [];
+    tooltipNodes.push(
+      <Box
+        key="cost"
+        component="span"
+        sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4, flexWrap: 'wrap' }}
+      >
+        Cost:{' '}
+        {costEntries.length === 0 ? (
+          'free'
+        ) : (
+          <Box
+            component="span"
+            sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4 }}
+          >
+            {costEntries.map(([r, v]) => (
+              <ResourceToken key={r} resource={r} count={v} size="small" />
+            ))}
+          </Box>
+        )}
+      </Box>,
+    );
+    if (def.note) tooltipNodes.push(<span key="note">{def.note}</span>);
     if (building && building.upgrades > 0) {
-      tooltipParts.push(`Upgrades: +${building.upgrades}`);
+      tooltipNodes.push(
+        <span key="upgrades">{`Upgrades: +${building.upgrades}`}</span>,
+      );
     }
   }
-  const tooltip = tooltipParts.join(' — ');
+  const tooltip: ReactNode =
+    tooltipNodes.length === 0 ? (
+      ''
+    ) : (
+      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+        {tooltipNodes.map((node, i) => (
+          <Box
+            key={i}
+            component="span"
+            sx={{ display: 'inline-flex', alignItems: 'center' }}
+          >
+            {i > 0 ? <Box component="span" sx={{ mx: 0.5 }}>—</Box> : null}
+            {node}
+          </Box>
+        ))}
+      </Stack>
+    );
 
   const cell = (
     <Box
@@ -84,28 +130,28 @@ export function CellSlot({
         minHeight: occupied ? '240px' : '5.25rem',
         width: '100%',
         borderRadius: 1.5,
-        border: occupied ? '1px solid' : '1px dashed',
+        // Plot outlines (the dashed cell border) appear ONLY while a card
+        // is being placed. Occupied cells are transparent containers — the
+        // inner BuildingCard supplies its own frame + shadow, and adding
+        // another outline at the cell level reads as a redundant "plot
+        // border" that lingers after placement.
+        border: !occupied && isPlacing ? '1px dashed' : 'none',
         borderColor: (t) =>
-          occupied
-            ? t.palette.role.domestic.dark
-            : showBuild
-              ? t.palette.role.domestic.light
-              : t.palette.status.muted,
-        bgcolor: (t) =>
-          occupied ? t.palette.card.surface : 'transparent',
+          showBuild
+            ? t.palette.role.domestic.light
+            : t.palette.status.muted,
+        bgcolor: 'transparent',
         cursor: clickable ? 'pointer' : 'default',
-        opacity: occupied || showBuild ? 1 : 0.5,
+        opacity: occupied || showBuild ? 1 : isPlacing ? 0.5 : 0,
         display: 'flex',
         flexDirection: 'column',
         alignItems: occupied ? 'stretch' : 'center',
         justifyContent: occupied ? 'flex-start' : 'center',
         overflow: 'hidden',
-        boxShadow: occupied ? '0 1px 3px rgba(0,0,0,0.35)' : 'none',
-        transition: 'transform 120ms, box-shadow 120ms, border-color 120ms',
+        transition: 'transform 120ms, border-color 120ms',
         '&:hover': clickable
           ? {
               transform: 'translateY(-1px)',
-              boxShadow: '0 3px 8px rgba(0,0,0,0.4)',
               borderColor: (t) => t.palette.role.domestic.light,
             }
           : undefined,
@@ -158,7 +204,7 @@ export function CellSlot({
     </Box>
   );
 
-  return tooltip ? (
+  return tooltipNodes.length > 0 ? (
     <Tooltip title={tooltip} placement="top">
       {cell}
     </Tooltip>

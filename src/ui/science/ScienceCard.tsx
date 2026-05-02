@@ -23,6 +23,7 @@ import { RESOURCES } from '../../game/resources/types.ts';
 import type { Resource, ResourceBag } from '../../game/resources/types.ts';
 import { CardInfoButton } from '../cards/CardInfoButton.tsx';
 import { ResourceToken } from '../resources/ResourceToken.tsx';
+import { ResourceText } from '../resources/ResourceText.tsx';
 import { idForScience } from '../../cards/registry.ts';
 
 export interface ScienceCardProps {
@@ -227,16 +228,23 @@ export function ScienceCard({
                     </Typography>
                   ) : (
                     details.map((d) => (
-                      <Typography
+                      <Box
                         key={d.label}
-                        variant="caption"
-                        sx={{ display: 'block', lineHeight: 1.3 }}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                          gap: 0.4,
+                          rowGap: 0.2,
+                          lineHeight: 1.3,
+                          fontSize: '0.75rem',
+                        }}
                       >
                         <Box component="span" sx={{ fontWeight: 700 }}>
                           {d.label}:
-                        </Box>{' '}
-                        {d.value}
-                      </Typography>
+                        </Box>
+                        <ResourceText text={d.value} size="small" />
+                      </Box>
                     ))
                   )}
                 </Box>

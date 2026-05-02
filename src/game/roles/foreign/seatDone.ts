@@ -24,6 +24,7 @@ import { INVALID_MOVE } from 'boardgame.io/core';
 import type { SettlementState } from '../../types.ts';
 import { rolesAtSeat } from '../../roles.ts';
 import { upkeepableUnits } from './upkeep.ts';
+import { clearUndoable } from '../../undo.ts';
 
 export const foreignSeatDone: Move<SettlementState> = ({
   G,
@@ -48,7 +49,7 @@ export const foreignSeatDone: Move<SettlementState> = ({
     return INVALID_MOVE;
   }
 
+  clearUndoable(G);
   if (!G.othersDone) G.othersDone = {};
   G.othersDone[playerID] = true;
-  if (foreign !== undefined) foreign._lastRelease = undefined;
 };

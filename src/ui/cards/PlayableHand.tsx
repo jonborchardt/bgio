@@ -15,12 +15,14 @@
 // tooltip.
 
 import { Box, Button, Stack, Tooltip, Typography } from '@mui/material';
+import type { ReactNode } from 'react';
 import type { TechnologyDef } from '../../data/schema.ts';
 import type { Role } from '../../game/types.ts';
 import type { Resource, ResourceBag } from '../../game/resources/types.ts';
 import { RESOURCES } from '../../game/resources/types.ts';
 import { canAfford } from '../../game/resources/bag.ts';
 import { TechCard } from './TechCard.tsx';
+import { ResourceToken } from '../resources/ResourceToken.tsx';
 import { idForTech } from '../../cards/registry.ts';
 
 export interface PlayableHandProps {
@@ -55,12 +57,31 @@ const costEntries = (
   return out;
 };
 
-const formatCost = (
+const renderCost = (
   entries: ReadonlyArray<{ resource: Resource; amount: number }>,
-): string =>
-  entries.length === 0
-    ? 'free'
-    : entries.map((e) => `${e.amount} ${e.resource}`).join(', ');
+): ReactNode =>
+  entries.length === 0 ? (
+    'free'
+  ) : (
+    <Box
+      component="span"
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 0.4,
+        verticalAlign: 'middle',
+      }}
+    >
+      {entries.map((e) => (
+        <ResourceToken
+          key={e.resource}
+          resource={e.resource}
+          count={e.amount}
+          size="small"
+        />
+      ))}
+    </Box>
+  );
 
 export function PlayableHand({
   techs,
@@ -108,10 +129,36 @@ export function PlayableHand({
                 : funds !== undefined && canAfford(funds, cost ?? {});
             const enabled = canAct && affordable;
 
-            const tooltipParts: string[] = [];
-            if (!affordable) tooltipParts.push(`Need ${formatCost(entries)}`);
-            if (!canAct) tooltipParts.push('Not your turn.');
-            const tooltip = tooltipParts.join(' — ');
+            const tooltipNodes: ReactNode[] = [];
+            if (!affordable) {
+              tooltipNodes.push(
+                <Box
+                  key="need"
+                  component="span"
+                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4 }}
+                >
+                  Need {renderCost(entries)}
+                </Box>,
+              );
+            }
+            if (!canAct) tooltipNodes.push(<span key="turn">Not your turn.</span>);
+            const tooltip: ReactNode =
+              tooltipNodes.length === 0 ? (
+                ''
+              ) : (
+                <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                  {tooltipNodes.map((node, i) => (
+                    <Box
+                      key={i}
+                      component="span"
+                      sx={{ display: 'inline-flex', alignItems: 'center' }}
+                    >
+                      {i > 0 ? <Box component="span" sx={{ mx: 0.5 }}>—</Box> : null}
+                      {node}
+                    </Box>
+                  ))}
+                </Stack>
+              );
 
             return (
               <Box
@@ -127,7 +174,7 @@ export function PlayableHand({
                 <Tooltip
                   title={tooltip}
                   placement="bottom"
-                  disableHoverListener={tooltip === ''}
+                  disableHoverListener={tooltipNodes.length === 0}
                 >
                   <Box>
                     <Button

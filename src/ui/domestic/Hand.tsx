@@ -5,7 +5,8 @@
 // Both are rendered with their canonical card (BuildingCard / TechCard)
 // inside the same row so the player sees one playable hand, not two.
 
-import { Button, Stack, Tooltip, Typography } from '@mui/material';
+import { Box, Button, Stack, Tooltip, Typography } from '@mui/material';
+import type { ReactNode } from 'react';
 import type { BuildingDef, TechnologyDef } from '../../data/schema.ts';
 import { buildingCost } from '../../data/index.ts';
 import type { Resource, ResourceBag } from '../../game/resources/types.ts';
@@ -13,6 +14,7 @@ import { RESOURCES } from '../../game/resources/types.ts';
 import { canAfford } from '../../game/resources/bag.ts';
 import { BuildingCard } from '../cards/BuildingCard.tsx';
 import { TechCard } from '../cards/TechCard.tsx';
+import { ResourceToken } from '../resources/ResourceToken.tsx';
 
 export interface HandProps {
   hand: BuildingDef[];
@@ -44,6 +46,35 @@ const costEntries = (
   }
   return out;
 };
+
+// Render a cost as inline icons for use inside a MUI Tooltip body. Falls
+// back to "free" when nothing is owed so the tooltip still has useful
+// content (and avoids a stray empty row).
+const costIcons = (
+  entries: ReadonlyArray<{ resource: Resource; amount: number }>,
+): ReactNode =>
+  entries.length === 0 ? (
+    'free'
+  ) : (
+    <Box
+      component="span"
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 0.4,
+        verticalAlign: 'middle',
+      }}
+    >
+      {entries.map((e) => (
+        <ResourceToken
+          key={e.resource}
+          resource={e.resource}
+          count={e.amount}
+          size="small"
+        />
+      ))}
+    </Box>
+  );
 
 export function Hand({
   hand,
@@ -95,20 +126,42 @@ export function Hand({
           const entries = costEntries(cost);
           const affordable = stash ? canAfford(stash, cost) : false;
           const enabled = affordable;
-          const costLabel =
-            entries.length === 0
-              ? 'free'
-              : entries.map((e) => `${e.amount} ${e.resource}`).join(', ');
-          const tooltipParts: string[] = [];
-          if (card.note) tooltipParts.push(card.note);
-          if (!affordable) tooltipParts.push(`Need ${costLabel}`);
-          const tooltip = tooltipParts.join(' — ');
+          const tooltipNodes: ReactNode[] = [];
+          if (card.note) tooltipNodes.push(<span key="note">{card.note}</span>);
+          if (!affordable) {
+            tooltipNodes.push(
+              <Box
+                key="need"
+                component="span"
+                sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4 }}
+              >
+                Need {costIcons(entries)}
+              </Box>,
+            );
+          }
+          const tooltip: ReactNode =
+            tooltipNodes.length === 0 ? (
+              ''
+            ) : (
+              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                {tooltipNodes.map((node, i) => (
+                  <Box
+                    key={i}
+                    component="span"
+                    sx={{ display: 'inline-flex', alignItems: 'center' }}
+                  >
+                    {i > 0 ? <Box component="span" sx={{ mx: 0.5 }}>—</Box> : null}
+                    {node}
+                  </Box>
+                ))}
+              </Stack>
+            );
           return (
             <Tooltip
               key={card.name}
               title={tooltip}
               placement="top"
-              disableHoverListener={tooltip === ''}
+              disableHoverListener={tooltipNodes.length === 0}
             >
               <Stack
                 spacing={0.5}
@@ -151,20 +204,42 @@ export function Hand({
           const affordable =
             entries.length === 0 || (stash !== undefined && canAfford(stash, cost));
           const enabled = canAct && affordable;
-          const costLabel =
-            entries.length === 0
-              ? 'free'
-              : entries.map((e) => `${e.amount} ${e.resource}`).join(', ');
-          const tooltipParts: string[] = [];
-          if (!affordable) tooltipParts.push(`Need ${costLabel}`);
-          if (!canAct) tooltipParts.push('Not your turn.');
-          const tooltip = tooltipParts.join(' — ');
+          const tooltipNodes: ReactNode[] = [];
+          if (!affordable) {
+            tooltipNodes.push(
+              <Box
+                key="need"
+                component="span"
+                sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4 }}
+              >
+                Need {costIcons(entries)}
+              </Box>,
+            );
+          }
+          if (!canAct) tooltipNodes.push(<span key="turn">Not your turn.</span>);
+          const tooltip: ReactNode =
+            tooltipNodes.length === 0 ? (
+              ''
+            ) : (
+              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                {tooltipNodes.map((node, i) => (
+                  <Box
+                    key={i}
+                    component="span"
+                    sx={{ display: 'inline-flex', alignItems: 'center' }}
+                  >
+                    {i > 0 ? <Box component="span" sx={{ mx: 0.5 }}>—</Box> : null}
+                    {node}
+                  </Box>
+                ))}
+              </Stack>
+            );
           return (
             <Tooltip
               key={`tech-${tech.name}`}
               title={tooltip}
               placement="top"
-              disableHoverListener={tooltip === ''}
+              disableHoverListener={tooltipNodes.length === 0}
             >
               <Stack spacing={0.5} sx={{ alignItems: 'stretch' }}>
                 <TechCard def={tech} holderRole="domestic" size="normal" />

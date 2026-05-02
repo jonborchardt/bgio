@@ -18,6 +18,7 @@ import { canAfford } from '../../resources/bag.ts';
 import { transfer } from '../../resources/bank.ts';
 import { appendBankLog, negateBag } from '../../resources/bankLog.ts';
 import { rolesAtSeat } from '../../roles.ts';
+import { clearUndoable } from '../../undo.ts';
 
 export const chiefDistribute: Move<SettlementState> = (
   { G, ctx, playerID },
@@ -67,6 +68,14 @@ export const chiefDistribute: Move<SettlementState> = (
   // Affordability checks up front so the mutation path can't half-apply.
   if (!canAfford(G.bank, push)) return INVALID_MOVE;
   if (!canAfford(targetMat.in, pull)) return INVALID_MOVE;
+
+  if (Object.keys(push).length === 0 && Object.keys(pull).length === 0) {
+    return;
+  }
+
+  // Distribution mutates the bank + the target seat's `in` bag, so the
+  // pending undo's snapshot can no longer be cleanly restored.
+  clearUndoable(G);
 
   if (Object.keys(push).length > 0) {
     transfer(G.bank, targetMat.in, push);

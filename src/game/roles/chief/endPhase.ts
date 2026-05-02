@@ -14,6 +14,7 @@ import type { Move } from 'boardgame.io';
 import { INVALID_MOVE } from 'boardgame.io/core';
 import type { SettlementState } from '../../types.ts';
 import { rolesAtSeat } from '../../roles.ts';
+import { clearUndoable } from '../../undo.ts';
 
 export const chiefEndPhase: Move<SettlementState> = ({ G, ctx, playerID }) => {
   if (playerID === undefined || playerID === null) return INVALID_MOVE;
@@ -28,5 +29,6 @@ export const chiefEndPhase: Move<SettlementState> = ({ G, ctx, playerID }) => {
   // a flag the next chiefPhase would inherit.
   if (ctx.phase !== 'chiefPhase') return INVALID_MOVE;
 
+  clearUndoable(G);
   G.phaseDone = true;
 };

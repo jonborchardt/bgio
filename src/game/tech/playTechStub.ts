@@ -35,6 +35,7 @@ import { payFromStash } from '../resources/moves.ts';
 import type { ResourceBag } from '../resources/types.ts';
 import { pushGraveyard } from '../graveyard.ts';
 import { idForTech } from '../../cards/registry.ts';
+import { markUndoable } from '../undo.ts';
 
 /**
  * Each role looks up its tech-card hand differently. We pass the
@@ -79,12 +80,25 @@ export const playTechStub = (
     const costNonEmpty = Object.values(cost).some((v) => (v ?? 0) > 0);
     if (costNonEmpty) {
       if (role === 'chief') {
-        // Chief spends from the bank directly (no mat). canAfford requires
-        // a full ResourceBag on the `have` side, so use `G.bank` as-is.
         if (!canAfford(G.bank, cost)) return INVALID_MOVE;
-        // Debit bank into a throwaway sink so we keep the same `transfer`
-        // accounting (`transfer` mutates both sides). We then log the
-        // signed delta so the chief tooltip reflects the spend.
+      } else {
+        const matCheck = G.mats?.[playerID];
+        if (matCheck === undefined || !canAfford(matCheck.stash, cost)) {
+          return INVALID_MOVE;
+        }
+      }
+    }
+
+    // All validation passed — snapshot before the spend / dispatch / hand
+    // splice so `undoLast` can roll the entire play back atomically.
+    markUndoable(G, `Play ${tech.name}`, playerID);
+
+    if (costNonEmpty) {
+      if (role === 'chief') {
+        // Chief spends from the bank directly (no mat). Debit into a
+        // throwaway sink so we keep the same `transfer` accounting
+        // (`transfer` mutates both sides). The signed delta is logged so
+        // the chief tooltip reflects the spend.
         const sink: ResourceBag = {
           gold: 0, wood: 0, stone: 0, steel: 0, horse: 0,
           food: 0, production: 0, science: 0, happiness: 0, worker: 0,
@@ -92,15 +106,7 @@ export const playTechStub = (
         transfer(G.bank, sink, cost);
         appendBankLog(G, 'stashPayment', negateBag(cost), `chief play tech ${tech.name}`);
       } else {
-        const mat = G.mats?.[playerID];
-        if (mat === undefined || !canAfford(mat.stash, cost)) {
-          return INVALID_MOVE;
-        }
-        try {
-          payFromStash(G, playerID, cost);
-        } catch {
-          return INVALID_MOVE;
-        }
+        payFromStash(G, playerID, cost);
       }
     }
 

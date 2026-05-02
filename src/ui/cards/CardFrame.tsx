@@ -5,7 +5,7 @@
 //   - `color`: a thin top stripe colored from `palette.eventColor[color]`.
 //
 // Plus the cross-cutting plumbing all card components opt into:
-//   - `size`: one of the five canonical card sizes (see `sizes.ts`).
+//   - `size`: one of the four canonical card sizes (see `sizes.ts`).
 //     Drives min/max width and inner padding so consumers don't repeat
 //     those numbers per card kind.
 //   - `cardId`: when provided, renders a small `?` overlay that opens
@@ -57,12 +57,6 @@ const SIZE_SX: Record<CardSize, SxProps<Theme>> = {
     py: 1.25,
     minWidth: CARD_WIDTH.detailed - 8,
     minHeight: CARD_HEIGHT.detailed,
-  },
-  page: {
-    px: 3,
-    py: 2.5,
-    minWidth: CARD_WIDTH.page,
-    minHeight: CARD_HEIGHT.page,
   },
 };
 

@@ -2,8 +2,8 @@
 //
 // Each variation is a self-contained module under ./variations/ that
 // exports a `Renderer` component. The page wires variations into a tab
-// strip; deleting a variation file removes that tab. Six sample cards
-// are rendered across four canonical sizes.
+// strip; deleting a variation file removes that tab. Sample cards are
+// rendered across the canonical card sizes.
 
 import type { ComponentType } from 'react';
 import type { BuildingDef, TechnologyDef, UnitDef } from '../../data/schema.ts';
@@ -46,14 +46,13 @@ export interface Variation {
   Renderer: Renderer;
 }
 
-// The 4 sizes we surface in the preview page (the canonical set has 5;
-// `micro` is omitted because it's a one-line chip with no visual room
-// for a design language to express itself).
+// The sizes we surface in the preview page. `micro` is omitted because
+// it's a one-line chip with no visual room for a design language to
+// express itself.
 export const PREVIEW_SIZES: ReadonlyArray<CardSize> = [
   'small',
   'normal',
   'detailed',
-  'page',
 ];
 
 export const PREVIEW_SIZE_LABELS: Record<CardSize, string> = {
@@ -61,7 +60,6 @@ export const PREVIEW_SIZE_LABELS: Record<CardSize, string> = {
   small: 'Small',
   normal: 'Medium',
   detailed: 'Large',
-  page: 'Details',
 };
 
 export const SAMPLE_LABELS: Record<SampleCardKind, string> = {

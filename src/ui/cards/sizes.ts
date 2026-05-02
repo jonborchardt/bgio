@@ -1,6 +1,6 @@
 // Canonical card sizes shared by every card component.
 //
-// Five sizes, all served by the same component per card kind (no parallel
+// Four sizes, all served by the same component per card kind (no parallel
 // "viz" vs "game" forks). Each size targets a use case:
 //
 //   - `micro`   one-line chip with name + kind icon. For lists,
@@ -10,19 +10,17 @@
 //   - `normal`  the canonical "playing card" representation (~11rem).
 //               This is the look every other size riffs off.
 //   - `detailed`  `normal` plus full benefit text + relationship chips.
-//                 For hover tooltips and side-drawer panels.
-//   - `page`    full-width article. Hero card on the left, every
-//               relationship + reverse-relationship + flavor on the
-//               right. Used inside the relationships modal.
+//                 The largest visual size — used inside the relationships
+//                 modal as well as for hover tooltips and side-drawer
+//                 panels.
 
-export type CardSize = 'micro' | 'small' | 'normal' | 'detailed' | 'page';
+export type CardSize = 'micro' | 'small' | 'normal' | 'detailed';
 
 export const CARD_SIZES: ReadonlyArray<CardSize> = [
   'micro',
   'small',
   'normal',
   'detailed',
-  'page',
 ];
 
 export const CARD_SIZE_LABELS: Record<CardSize, string> = {
@@ -30,7 +28,6 @@ export const CARD_SIZE_LABELS: Record<CardSize, string> = {
   small: 'Small',
   normal: 'Normal',
   detailed: 'Detailed',
-  page: 'Page',
 };
 
 // Pixel-width hints used by layout code (graph autosizing, list
@@ -42,7 +39,6 @@ export const CARD_WIDTH: Record<CardSize, number> = {
   small: 110,
   normal: 180,
   detailed: 260,
-  page: 480,
 };
 
 // Heights are FIXED, not min — cards behave like physical playing cards.
@@ -55,5 +51,4 @@ export const CARD_HEIGHT: Record<CardSize, number> = {
   small: 90,
   normal: 240,
   detailed: 340,
-  page: 600,
 };

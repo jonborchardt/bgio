@@ -60,7 +60,7 @@ export function WanderCard({
         >
           {def.effects.length} effect{def.effects.length === 1 ? '' : 's'}
         </Typography>
-        {def.flavor && (size === 'detailed' || size === 'page') ? (
+        {def.flavor && size === 'detailed' ? (
           <Typography
             variant="caption"
             sx={{

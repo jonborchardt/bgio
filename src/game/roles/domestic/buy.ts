@@ -24,6 +24,7 @@ import { buildingCost } from '../../../data/index.ts';
 import { cellKey, isPlacementLegal } from './grid.ts';
 import { pushGraveyard } from '../../graveyard.ts';
 import { idForBuilding } from '../../../cards/registry.ts';
+import { markUndoable } from '../../undo.ts';
 
 export const domesticBuyBuilding: Move<SettlementState> = (
   { G, ctx, playerID },
@@ -72,6 +73,7 @@ export const domesticBuyBuilding: Move<SettlementState> = (
   // record the placed building. `payFromStash` would throw on underflow,
   // but we already checked `canAfford` above, so the throw path is dead
   // code under correct callers.
+  markUndoable(G, `Build ${cardName}`, playerID);
   payFromStash(G, playerID, cost);
   domestic.hand.splice(handIndex, 1);
   domestic.grid[cellKey(x, y)] = {

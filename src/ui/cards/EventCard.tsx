@@ -93,7 +93,7 @@ export function EventCard({
         >
           {def.color}
         </Typography>
-        {(size === 'detailed' || size === 'page') ? (
+        {size === 'detailed' ? (
           <Typography
             variant="caption"
             sx={{ color: (t) => t.palette.status.muted, lineHeight: 1.3 }}

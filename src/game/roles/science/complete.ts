@@ -18,6 +18,7 @@ import { appendBankLog } from '../../resources/bankLog.ts';
 import { rolesAtSeat, seatOfRole } from '../../roles.ts';
 import { applyTechOnAcquire } from '../../tech/effects.ts';
 import { fromBgio, type BgioRandomLike } from '../../random.ts';
+import { clearUndoable } from '../../undo.ts';
 
 export const scienceComplete: Move<SettlementState> = (
   { G, ctx, playerID, random },
@@ -50,6 +51,8 @@ export const scienceComplete: Move<SettlementState> = (
   if (science.perRoundCompletions >= 1) return INVALID_MOVE;
 
   // -- All checks passed; mutate. ---------------------------------------
+
+  clearUndoable(G);
 
   // Mark complete and bump the per-round counter.
   science.completed.push(cardID);

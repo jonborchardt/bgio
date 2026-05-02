@@ -16,6 +16,7 @@ import type { SettlementState } from '../../types.ts';
 import { rolesAtSeat } from '../../roles.ts';
 import { UNITS } from '../../../data/index.ts';
 import { appendBankLog } from '../../resources/bankLog.ts';
+import { markUndoable } from '../../undo.ts';
 
 export const foreignReleaseUnit: Move<SettlementState> = (
   { G, ctx, playerID },
@@ -46,6 +47,12 @@ export const foreignReleaseUnit: Move<SettlementState> = (
   const mat = G.mats?.[playerID];
   if (mat === undefined) return INVALID_MOVE;
 
+  markUndoable(
+    G,
+    `Release ${defID}${n > 1 ? ` ×${n}` : ''}`,
+    playerID,
+  );
+
   // Refund half-cost (rounded down) per released unit. The refund comes
   // from the bank — we credit the stash directly, matching `payFromStash`
   // in reverse: a release is a partial undo of the recruit transaction.
@@ -68,6 +75,4 @@ export const foreignReleaseUnit: Move<SettlementState> = (
 
   entry.count -= n;
   if (entry.count === 0) foreign.inPlay.splice(idx, 1);
-
-  foreign._lastRelease = { defID, count: n, refundTotal };
 };

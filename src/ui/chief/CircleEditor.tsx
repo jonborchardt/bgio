@@ -20,6 +20,7 @@ import {
   type Resource,
   type ResourceBag,
 } from '../../game/resources/types.ts';
+import { ResourceToken } from '../resources/ResourceToken.tsx';
 
 // Mirrors SeatPicker / Circle ROLE_ACCENT_PRIORITY so the editor's
 // title and accent match the mat tile for the same seat.
@@ -114,28 +115,11 @@ export function CircleEditor({
                 sx={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  minWidth: '6rem',
+                  minWidth: '2.5rem',
                 }}
+                aria-label={resource}
               >
-                <Box
-                  aria-hidden
-                  sx={{
-                    width: '0.75rem',
-                    height: '0.75rem',
-                    borderRadius: '50%',
-                    bgcolor: (t) => t.palette.resource[resource].main,
-                    mr: 1,
-                  }}
-                />
-                <Typography
-                  sx={{
-                    color: (t) => t.palette.resource[resource].main,
-                    fontWeight: 600,
-                    textTransform: 'capitalize',
-                  }}
-                >
-                  {resource}
-                </Typography>
+                <ResourceToken resource={resource} size="detailed" />
               </Box>
               <ButtonGroup size="small" variant="outlined">
                 <Button
