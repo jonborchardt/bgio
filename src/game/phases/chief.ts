@@ -1,19 +1,19 @@
 // chiefPhase — the start phase of every round.
 //
-// Only the seat holding the `chief` role is active; they perform the
-// chief-only actions (distributions, etc.) and then call the move that
-// flips `G.phaseDone = true` to advance into `othersPhase`. The real
-// chief-only move that flips that flag lands in 04.2.
+// The seat holding the `chief` role drives the phase's gameplay
+// (distributions, end-phase). Every other seat is also marked active
+// in `Stage.NULL` so they can call the stage-agnostic `requestHelp`
+// move while they wait — each "real" move self-gates by role, so
+// non-chief seats can't actually drive chief actions.
 //
-// `turn.onBegin` runs the **out-sweep**: every non-chief seat's `out`
-// bag (where their production from last round was deposited) is drained
-// into `G.bank` so the chief sees the freshly-produced resources before
-// they decide on distribution.
+// `turn.onBegin` also runs the **out-sweep**: every non-chief seat's
+// `out` bag (where their production from last round was deposited) is
+// drained into `G.bank` so the chief sees the freshly-produced
+// resources before they decide on distribution.
 
 import type { PhaseConfig } from 'boardgame.io';
 import { Stage } from 'boardgame.io/core';
 import type { SettlementState } from '../types.ts';
-import { seatOfRole } from '../roles.ts';
 import { drainBag } from '../resources/playerMat.ts';
 import { appendBankLog } from '../resources/bankLog.ts';
 import { RESOURCES } from '../resources/types.ts';
@@ -65,8 +65,11 @@ export const chiefPhase: PhaseConfig<SettlementState> = {
         }
       }
 
-      const chiefSeat = seatOfRole(G.roleAssignments, 'chief');
-      events.setActivePlayers({ value: { [chiefSeat]: Stage.NULL } });
+      const value: Record<string, typeof Stage.NULL> = {};
+      for (const seat of Object.keys(G.roleAssignments)) {
+        value[seat] = Stage.NULL;
+      }
+      events.setActivePlayers({ value });
     },
   },
 

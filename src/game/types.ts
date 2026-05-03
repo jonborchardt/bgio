@@ -40,6 +40,10 @@ import type { EventEffect } from './events/effects.ts';
 // `registerRoundEndHook` back from this package, so an `import type`
 // here keeps the cycle erased.
 import type { WanderState } from './opponent/wanderDeck.ts';
+// Type-only edge for help-request rows. The runtime module under
+// `./requests/move.ts` imports types from this file, so the `import type`
+// keeps the cycle erased.
+import type { HelpRequest } from './requests/types.ts';
 
 export type Role = 'chief' | 'science' | 'domestic' | 'foreign';
 
@@ -236,6 +240,14 @@ export interface SettlementState {
   // plus a UI label and the seat that owns the undo. See `./undo.ts` for
   // the contract and the parallel-actives reasoning.
   _lastAction?: import('./undo.ts').UndoSnapshot;
+
+  // Per-recipient help requests: "I want to do X, you have what I need."
+  // Toggled via the `requestHelp` move; auto-cleared at the action's
+  // completion site via `clearRequestsForTarget`. Redacted by
+  // `playerView` so each viewer sees only rows where they are the
+  // requester or recipient. Optional so older test fixtures stay
+  // source-compatible.
+  requests?: HelpRequest[];
 }
 
 /** A single entry in a seat's graveyard log. `cardId` is the canonical

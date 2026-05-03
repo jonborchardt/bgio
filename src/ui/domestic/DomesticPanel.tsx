@@ -32,6 +32,11 @@ import { GraveyardButton } from '../layout/GraveyardButton.tsx';
 import { UndoButton } from '../layout/UndoButton.tsx';
 import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
 import { nextSeatAfterDone } from '../layout/nextSeat.ts';
+import { RequestHelpButton } from '../requests/RequestHelpButton.tsx';
+import { RequestsRow } from '../requests/RequestsRow.tsx';
+import { buildResourceSlices } from '../requests/useResourceSlice.ts';
+import { idForBuilding, idForTech } from '../../cards/registry.ts';
+import { buildingCost } from '../../data/index.ts';
 
 export function DomesticPanel(props: BoardProps<SettlementState>) {
   const { G, ctx, moves, playerID } = props;
@@ -123,6 +128,8 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
       }
     >
       <Stack spacing={1.5}>
+        <RequestsRow G={G} playerID={playerID} panelRole="domestic" />
+
         <Hand
           hand={visibleHand}
           techs={domestic.techHand ?? []}
@@ -132,6 +139,40 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
           onSelect={handleSelect}
           stash={G.mats?.[playerID]?.stash}
           emptyHint="No buildings unlocked yet — complete a green science card to gain Civic techs that enable buildings."
+          renderBuildingHelp={(def) => (
+            <RequestHelpButton
+              G={G}
+              playerID={playerID}
+              moves={moves}
+              fromRole="domestic"
+              targetId={idForBuilding(def)}
+              targetLabel={def.name}
+              slices={buildResourceSlices({
+                G,
+                fromSeat: playerID,
+                fromRole: 'domestic',
+                cost: buildingCost(def),
+                have: G.mats?.[playerID]?.stash,
+              })}
+            />
+          )}
+          renderTechHelp={(tech) => (
+            <RequestHelpButton
+              G={G}
+              playerID={playerID}
+              moves={moves}
+              fromRole="domestic"
+              targetId={idForTech(tech)}
+              targetLabel={tech.name}
+              slices={buildResourceSlices({
+                G,
+                fromSeat: playerID,
+                fromRole: 'domestic',
+                cost: tech.costBag ?? {},
+                have: G.mats?.[playerID]?.stash,
+              })}
+            />
+          )}
         />
 
         <SectionHeading role="domestic">Village</SectionHeading>

@@ -35,6 +35,7 @@ import {
   scienceSeatDone,
   domesticSeatDone,
   foreignSeatDone,
+  requestHelp,
   __testSetPhaseDone,
   __testSetOthersDone,
   __devGrantAllRoles,
@@ -91,6 +92,7 @@ const productionMoves = {
   scienceSeatDone,
   domesticSeatDone,
   foreignSeatDone,
+  requestHelp,
 };
 
 /** Test-only move scaffolds. Imported into the engine via

@@ -36,6 +36,10 @@ import { GraveyardButton } from '../layout/GraveyardButton.tsx';
 import { UndoButton } from '../layout/UndoButton.tsx';
 import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
 import { nextSeatAfterDone } from '../layout/nextSeat.ts';
+import { RequestHelpButton } from '../requests/RequestHelpButton.tsx';
+import { RequestsRow } from '../requests/RequestsRow.tsx';
+import { buildResourceSlices } from '../requests/useResourceSlice.ts';
+import { idForScience, idForTech } from '../../cards/registry.ts';
 
 export function SciencePanel(props: BoardProps<SettlementState>) {
   const { G, ctx, moves, playerID } = props;
@@ -128,6 +132,8 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
       }
     >
       <Stack spacing={1.5}>
+        <RequestsRow G={G} playerID={playerID} panelRole="science" />
+
         <PlayableHand
           techs={science.hand}
           holderRole="science"
@@ -135,6 +141,23 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
           canAct={canAct && !alreadyDone}
           onPlay={(name) => moves.sciencePlayTech(name)}
           emptyHint="No blue tech cards yet — complete a blue science card to add one."
+          renderHelpButton={(tech) => (
+            <RequestHelpButton
+              G={G}
+              playerID={playerID}
+              moves={moves}
+              fromRole="science"
+              targetId={idForTech(tech)}
+              targetLabel={tech.name}
+              slices={buildResourceSlices({
+                G,
+                fromSeat: playerID,
+                fromRole: 'science',
+                cost: tech.costBag ?? {},
+                have: stash,
+              })}
+            />
+          )}
         />
 
         <SectionHeading role="science">Research Areas</SectionHeading>
@@ -200,6 +223,27 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
                 }
 
                 const underTechs = science.underCards[card.id] ?? [];
+                // Compute "what does science need the chief to send?" =
+                // (cost - paid - stash), clamped non-negative. Anything
+                // already paid is on the card, anything in stash the
+                // seat can contribute themselves; only the residual
+                // belongs in the ask.
+                const remaining: Partial<ResourceBag> = {};
+                for (const r of Object.keys(card.cost) as Array<keyof typeof card.cost>) {
+                  const need =
+                    (card.cost[r] ?? 0) - (paid[r] ?? 0) - (stash[r] ?? 0);
+                  if (need > 0) remaining[r as Resource] = need;
+                }
+                const helpSlices =
+                  isCompleted || !isLowest
+                    ? []
+                    : buildResourceSlices({
+                        G,
+                        fromSeat: playerID,
+                        fromRole: 'science',
+                        cost: remaining,
+                        have: { ...EMPTY_BAG },
+                      });
                 return (
                   <ScienceCard
                     key={card.id}
@@ -215,6 +259,17 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
                       handleContribute(card.id, resource, amount)
                     }
                     onComplete={() => handleComplete(card.id)}
+                    helpButton={
+                      <RequestHelpButton
+                        G={G}
+                        playerID={playerID}
+                        moves={moves}
+                        fromRole="science"
+                        targetId={idForScience(card)}
+                        targetLabel={`${card.color} L${card.level}`}
+                        slices={helpSlices}
+                      />
+                    }
                   />
                 );
               })}

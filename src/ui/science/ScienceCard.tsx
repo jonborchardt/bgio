@@ -16,6 +16,7 @@
 // dim it visually and disable every interaction (the contribute / complete
 // moves enforce the lowest-first rule too — this is just a UX hint).
 
+import type { ReactNode } from 'react';
 import { Box, Button, Stack, Tooltip, Typography } from '@mui/material';
 import type { ScienceCardDef, ScienceColor } from '../../data/scienceCards.ts';
 import type { TechnologyDef } from '../../data/schema.ts';
@@ -44,6 +45,9 @@ export interface ScienceCardProps {
   underTechs: TechnologyDef[];
   onContribute: (resource: Resource, amount: number) => void;
   onComplete: () => void;
+  /** Optional helper-request button rendered on the same line as the
+   *  Complete button. Returns null when nothing is asking-able. */
+  helpButton?: ReactNode;
 }
 
 // Stable, deterministic order over the cost entries actually present on the
@@ -114,6 +118,7 @@ export function ScienceCard({
   underTechs,
   onContribute,
   onComplete,
+  helpButton,
 }: ScienceCardProps) {
   const resources = costResources(card.cost);
   const dimmed = !isLowest;
@@ -373,35 +378,38 @@ export function ScienceCard({
       </Stack>
 
       <Box sx={{ px: 1, pb: 1 }}>
-        <Tooltip
-          title={completionDisabledReason ?? ''}
-          placement="top"
-          disableHoverListener={
-            !completionDisabledReason || canComplete
-          }
-        >
-          {/* Wrap the disabled Button in a span so the Tooltip still
-              receives pointer events — disabled buttons swallow them. */}
-          <Box component="span" sx={{ display: 'block' }}>
-            <Button
-              fullWidth
-              size="small"
-              variant="contained"
-              disabled={!canComplete || !isLowest}
-              onClick={onComplete}
-              aria-label={`Complete science card ${card.id}`}
-              sx={{
-                bgcolor: (t) => t.palette.eventColor[card.color].main,
-                color: (t) => t.palette.eventColor[card.color].contrastText,
-                '&:hover': {
-                  bgcolor: (t) => t.palette.eventColor[card.color].dark,
-                },
-              }}
-            >
-              Complete
-            </Button>
-          </Box>
-        </Tooltip>
+        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+          <Tooltip
+            title={completionDisabledReason ?? ''}
+            placement="top"
+            disableHoverListener={
+              !completionDisabledReason || canComplete
+            }
+          >
+            {/* Wrap the disabled Button in a span so the Tooltip still
+                receives pointer events — disabled buttons swallow them. */}
+            <Box component="span" sx={{ display: 'block', flex: 1 }}>
+              <Button
+                fullWidth
+                size="small"
+                variant="contained"
+                disabled={!canComplete || !isLowest}
+                onClick={onComplete}
+                aria-label={`Complete science card ${card.id}`}
+                sx={{
+                  bgcolor: (t) => t.palette.eventColor[card.color].main,
+                  color: (t) => t.palette.eventColor[card.color].contrastText,
+                  '&:hover': {
+                    bgcolor: (t) => t.palette.eventColor[card.color].dark,
+                  },
+                }}
+              >
+                Complete
+              </Button>
+            </Box>
+          </Tooltip>
+          {helpButton}
+        </Stack>
       </Box>
     </Box>
   );

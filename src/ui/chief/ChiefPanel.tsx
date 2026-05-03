@@ -26,6 +26,7 @@ import { GraveyardButton } from '../layout/GraveyardButton.tsx';
 import { UndoButton } from '../layout/UndoButton.tsx';
 import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
 import { firstNonChiefSeat } from '../layout/nextSeat.ts';
+import { RequestsRow } from '../requests/RequestsRow.tsx';
 
 export function ChiefPanel(props: BoardProps<SettlementState>) {
   const { G, ctx, moves, playerID } = props;
@@ -96,6 +97,8 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
       }
     >
       <Stack spacing={1.5}>
+        <RequestsRow G={G} playerID={playerID} panelRole="chief" />
+
         <PlayableHand
           techs={G.chief?.hand ?? []}
           holderRole="chief"

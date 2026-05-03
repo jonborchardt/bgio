@@ -25,6 +25,7 @@ import { cellKey, isPlacementLegal } from './grid.ts';
 import { pushGraveyard } from '../../graveyard.ts';
 import { idForBuilding } from '../../../cards/registry.ts';
 import { markUndoable } from '../../undo.ts';
+import { clearRequestsForTarget } from '../../requests/clear.ts';
 
 export const domesticBuyBuilding: Move<SettlementState> = (
   { G, ctx, playerID },
@@ -86,4 +87,5 @@ export const domesticBuyBuilding: Move<SettlementState> = (
     kind: 'building',
     name: cardName,
   });
+  clearRequestsForTarget(G, idForBuilding(def));
 };

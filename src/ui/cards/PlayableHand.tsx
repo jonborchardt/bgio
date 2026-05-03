@@ -44,6 +44,10 @@ export interface PlayableHandProps {
   emptyHint?: string;
   /** Header label. Defaults to "Technologies in hand". */
   title?: string;
+  /** Render a per-card help-request button next to the disabled Play
+   *  button. Returns null when the card isn't blocked by something
+   *  another player controls. */
+  renderHelpButton?: (tech: TechnologyDef) => ReactNode;
 }
 
 const costEntries = (
@@ -92,6 +96,7 @@ export function PlayableHand({
   onPlay,
   emptyHint,
   title = 'Cards',
+  renderHelpButton,
 }: PlayableHandProps) {
   return (
     <Stack spacing={0.75} sx={{ alignItems: 'flex-start' }}>
@@ -185,31 +190,34 @@ export function PlayableHand({
                 }}
               >
                 <TechCard def={tech} holderRole={holderRole} size="normal" />
-                <Tooltip
-                  title={tooltip}
-                  placement="bottom"
-                  disableHoverListener={tooltipNodes.length === 0}
-                >
-                  <Box>
-                    <Button
-                      size="small"
-                      variant="contained"
-                      disabled={!enabled}
-                      onClick={() => onPlay(tech.name)}
-                      aria-label={`Play ${tech.name}`}
-                      sx={{
-                        width: '100%',
-                        bgcolor: (t) => t.palette.role[holderRole].main,
-                        color: (t) => t.palette.role[holderRole].contrastText,
-                        '&:hover': {
-                          bgcolor: (t) => t.palette.role[holderRole].dark,
-                        },
-                      }}
-                    >
-                      Play
-                    </Button>
-                  </Box>
-                </Tooltip>
+                <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                  <Tooltip
+                    title={tooltip}
+                    placement="bottom"
+                    disableHoverListener={tooltipNodes.length === 0}
+                  >
+                    <Box sx={{ flex: 1 }}>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        disabled={!enabled}
+                        onClick={() => onPlay(tech.name)}
+                        aria-label={`Play ${tech.name}`}
+                        sx={{
+                          width: '100%',
+                          bgcolor: (t) => t.palette.role[holderRole].main,
+                          color: (t) => t.palette.role[holderRole].contrastText,
+                          '&:hover': {
+                            bgcolor: (t) => t.palette.role[holderRole].dark,
+                          },
+                        }}
+                      >
+                        Play
+                      </Button>
+                    </Box>
+                  </Tooltip>
+                  {renderHelpButton?.(tech) ?? null}
+                </Stack>
               </Box>
             );
           })}

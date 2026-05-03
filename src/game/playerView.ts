@@ -297,6 +297,22 @@ export const playerViewFor = (
     centerMat = { ...centerMat, tradeRequest: null };
   }
 
+  // Help requests: each row is visible only to the requester and the
+  // recipient. Spectators see none. The list is small (a handful of
+  // active rows at most), so a simple filter is fine.
+  let requests = G.requests;
+  if (requests !== undefined) {
+    const viewerSeat =
+      playerID === null || playerID === undefined ? null : playerID;
+    if (viewerSeat === null) {
+      requests = [];
+    } else {
+      requests = requests.filter(
+        (r) => r.fromSeat === viewerSeat || r.toSeat === viewerSeat,
+      );
+    }
+  }
+
   // Only allocate a new top-level object if anything actually changed.
   if (
     hands === G.hands &&
@@ -307,7 +323,8 @@ export const playerViewFor = (
     events === G.events &&
     awaitingInput === G._awaitingInput &&
     opponent === G.opponent &&
-    centerMat === G.centerMat
+    centerMat === G.centerMat &&
+    requests === G.requests
   ) {
     return { ...G };
   }
@@ -322,6 +339,7 @@ export const playerViewFor = (
     _awaitingInput: awaitingInput,
     opponent,
     centerMat,
+    requests,
   };
 };
 

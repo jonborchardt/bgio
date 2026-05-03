@@ -1,14 +1,13 @@
 // Board — top-level board component.
 //
-// Two-column grid: the play area on the left, the persistent
-// `<ChatDock>` on the right (which collapses into a FAB+drawer on
-// mobile). The left column reads as a linear stack:
+// Linear stack:
 //   1. Header — "Settlement" title plus a single-line turn/round line
 //      ("It's your turn — Round 3" or "Waiting on Chief — Round 3").
 //   2. CenterMat — the row of per-seat tiles. In hot-seat mode each
 //      tile is a clickable seat tab (replacing the older SeatPicker
 //      Tabs strip); in networked mode tiles are read-only.
-//   3. Role panel(s) the local seat owns — the player's action surface.
+//   3. RequestsRow — per-peer help-request boxes for the local seat.
+//   4. Role panel(s) the local seat owns — the player's action surface.
 //
 // Phase / player / round / mode debug info is no longer surfaced to
 // players; it lives inside `<DevSidebar>` (dev-only fly-out) so the
@@ -26,7 +25,6 @@ import { GameOverBanner } from './ui/layout/GameOverBanner.tsx';
 import { pickActiveSeat } from './ui/layout/activeSeat.ts';
 import type { GameOutcome } from './game/endConditions.ts';
 import { SeatTiles } from './ui/mat/CenterMat.tsx';
-import { ChatDock } from './ui/chat/ChatDock.tsx';
 import { RelationshipsModalHost } from './ui/relationships/RelationshipsModalHost.tsx';
 import { DevSidebar } from './ui/layout/DevSidebar.tsx';
 
@@ -76,10 +74,6 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
     : active.isLocal
       ? `It's your turn — Round ${G.round}`
       : `Waiting on ${activeRoleLabel || `Player ${Number(active.seat) + 1}`} — Round ${G.round}`;
-
-  const chatVisible =
-    props.sendChatMessage !== undefined ||
-    (props.chatMessages?.length ?? 0) > 0;
 
   const playArea = (
     <Stack spacing={3} sx={{ minWidth: 0 }}>
@@ -154,14 +148,6 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
       }}
     >
       {playArea}
-      {chatVisible ? (
-        <ChatDock
-          chatMessages={props.chatMessages ?? []}
-          sendChatMessage={props.sendChatMessage}
-          localSender={playerID ?? null}
-          roleAssignments={G.roleAssignments}
-        />
-      ) : null}
     </Box>
   );
 }

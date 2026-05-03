@@ -36,6 +36,7 @@ import type { ResourceBag } from '../resources/types.ts';
 import { pushGraveyard } from '../graveyard.ts';
 import { idForTech } from '../../cards/registry.ts';
 import { markUndoable } from '../undo.ts';
+import { clearRequestsForTarget } from '../requests/clear.ts';
 
 /**
  * Each role looks up its tech-card hand differently. We pass the
@@ -140,5 +141,7 @@ export const playTechStub = (
       kind: 'tech',
       name: tech.name,
     });
+
+    clearRequestsForTarget(G, idForTech(tech));
   };
 };

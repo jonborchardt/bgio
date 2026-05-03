@@ -32,6 +32,8 @@ import { appendBankLog, negateBag } from '../../resources/bankLog.ts';
 import { clearTradeRequest } from '../../resources/centerMat.ts';
 import { rolesAtSeat } from '../../roles.ts';
 import { clearUndoable } from '../../undo.ts';
+import { clearRequestsForTarget } from '../../requests/clear.ts';
+import { TRADE_REQUEST_TARGET_ID } from '../../requests/targetIds.ts';
 
 export const foreignTradeFulfill: Move<SettlementState> = ({
   G,
@@ -70,4 +72,5 @@ export const foreignTradeFulfill: Move<SettlementState> = ({
   G.settlementsJoined += 1;
 
   clearTradeRequest(G.centerMat);
+  clearRequestsForTarget(G, TRADE_REQUEST_TARGET_ID);
 };

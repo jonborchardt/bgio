@@ -19,6 +19,8 @@ import { rolesAtSeat, seatOfRole } from '../../roles.ts';
 import { applyTechOnAcquire } from '../../tech/effects.ts';
 import { fromBgio, type BgioRandomLike } from '../../random.ts';
 import { clearUndoable } from '../../undo.ts';
+import { clearRequestsForTarget } from '../../requests/clear.ts';
+import { idForScience } from '../../../cards/registry.ts';
 
 export const scienceComplete: Move<SettlementState> = (
   { G, ctx, playerID, random },
@@ -57,6 +59,9 @@ export const scienceComplete: Move<SettlementState> = (
   // Mark complete and bump the per-round counter.
   science.completed.push(cardID);
   science.perRoundCompletions += 1;
+
+  // Drop any pending help requests tied to this science card.
+  clearRequestsForTarget(G, idForScience(card));
 
   // Move every non-zero resource in the paid ledger to the bank. We sweep
   // the entire paid bag rather than just `card.cost` — the contribute move

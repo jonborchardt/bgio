@@ -35,6 +35,11 @@ export interface HandProps {
   /** Optional message to render when the (already-filtered) hand is
    *  empty — e.g. "complete a science card to unlock buildings". */
   emptyHint?: string;
+  /** Render a per-building help-request button next to the Place
+   *  button. Returns null when the building is fully affordable. */
+  renderBuildingHelp?: (def: BuildingDef) => ReactNode;
+  /** Render a per-tech help-request button next to the Play button. */
+  renderTechHelp?: (def: TechnologyDef) => ReactNode;
 }
 
 const costEntries = (
@@ -86,6 +91,8 @@ export function Hand({
   onSelect,
   stash,
   emptyHint,
+  renderBuildingHelp,
+  renderTechHelp,
 }: HandProps) {
   // Show every buildable in the hand. The previous AFFORD_SLACK filter
   // hid anything more than 20 gold above the seat's current balance,
@@ -187,27 +194,37 @@ export function Hand({
                 }}
               >
                 <BuildingCard def={card} size="normal" />
-                <Button
-                  size="small"
-                  variant="contained"
-                  disabled={!enabled}
-                  onClick={() => onSelect(card.name)}
-                  aria-pressed={isSelected}
-                  aria-label={
-                    isSelected
-                      ? `Cancel selection of ${card.name}`
-                      : `Select ${card.name} to place`
-                  }
-                  sx={{
-                    bgcolor: (t) => t.palette.role.domestic.main,
-                    color: (t) => t.palette.role.domestic.contrastText,
-                    '&:hover': {
-                      bgcolor: (t) => t.palette.role.domestic.dark,
-                    },
-                  }}
+                <Stack
+                  direction="row"
+                  spacing={0.5}
+                  sx={{ alignItems: 'center' }}
                 >
-                  {isSelected ? 'Cancel' : 'Place'}
-                </Button>
+                  <Box sx={{ flex: 1 }}>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      fullWidth
+                      disabled={!enabled}
+                      onClick={() => onSelect(card.name)}
+                      aria-pressed={isSelected}
+                      aria-label={
+                        isSelected
+                          ? `Cancel selection of ${card.name}`
+                          : `Select ${card.name} to place`
+                      }
+                      sx={{
+                        bgcolor: (t) => t.palette.role.domestic.main,
+                        color: (t) => t.palette.role.domestic.contrastText,
+                        '&:hover': {
+                          bgcolor: (t) => t.palette.role.domestic.dark,
+                        },
+                      }}
+                    >
+                      {isSelected ? 'Cancel' : 'Place'}
+                    </Button>
+                  </Box>
+                  {renderBuildingHelp?.(card) ?? null}
+                </Stack>
               </Stack>
             </Tooltip>
           );
@@ -257,22 +274,32 @@ export function Hand({
             >
               <Stack spacing={0.5} sx={{ alignItems: 'stretch' }}>
                 <TechCard def={tech} holderRole="domestic" size="normal" />
-                <Button
-                  size="small"
-                  variant="contained"
-                  disabled={!enabled}
-                  onClick={() => onPlayTech?.(tech.name)}
-                  aria-label={`Play ${tech.name}`}
-                  sx={{
-                    bgcolor: (t) => t.palette.role.domestic.main,
-                    color: (t) => t.palette.role.domestic.contrastText,
-                    '&:hover': {
-                      bgcolor: (t) => t.palette.role.domestic.dark,
-                    },
-                  }}
+                <Stack
+                  direction="row"
+                  spacing={0.5}
+                  sx={{ alignItems: 'center' }}
                 >
-                  Play
-                </Button>
+                  <Box sx={{ flex: 1 }}>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      fullWidth
+                      disabled={!enabled}
+                      onClick={() => onPlayTech?.(tech.name)}
+                      aria-label={`Play ${tech.name}`}
+                      sx={{
+                        bgcolor: (t) => t.palette.role.domestic.main,
+                        color: (t) => t.palette.role.domestic.contrastText,
+                        '&:hover': {
+                          bgcolor: (t) => t.palette.role.domestic.dark,
+                        },
+                      }}
+                    >
+                      Play
+                    </Button>
+                  </Box>
+                  {renderTechHelp?.(tech) ?? null}
+                </Stack>
               </Stack>
             </Tooltip>
           );

@@ -29,6 +29,7 @@ import { parseBenefit } from '../domestic/parseBenefit.ts';
 import { pushGraveyard } from '../../graveyard.ts';
 import { idForUnit } from '../../../cards/registry.ts';
 import { markUndoable } from '../../undo.ts';
+import { clearRequestsForTarget } from '../../requests/clear.ts';
 
 /**
  * Sum of every `unitCost` BenefitEffect across in-play Domestic buildings.
@@ -191,4 +192,5 @@ export const foreignRecruit: Move<SettlementState> = (
       name: defID,
     });
   }
+  clearRequestsForTarget(G, idForUnit(def));
 };

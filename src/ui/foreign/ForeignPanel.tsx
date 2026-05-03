@@ -47,6 +47,10 @@ import { UNITS } from '../../data/index.ts';
 import { GraveyardButton } from '../layout/GraveyardButton.tsx';
 import { UndoButton } from '../layout/UndoButton.tsx';
 import { EmbossedFrame } from '../layout/EmbossedFrame.tsx';
+import { RequestHelpButton } from '../requests/RequestHelpButton.tsx';
+import { RequestsRow } from '../requests/RequestsRow.tsx';
+import { buildResourceSlices } from '../requests/useResourceSlice.ts';
+import { idForUnit, idForTech } from '../../cards/registry.ts';
 
 // Module-level lookup so the recruit hand can render the canonical
 // UnitCard (which needs the full UnitDef) for a hand entry that only
@@ -280,6 +284,8 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
       }
     >
       <Stack spacing={1.5}>
+        <RequestsRow G={G} playerID={playerID} panelRole="foreign" />
+
         <SectionHeading role="foreign">Cards</SectionHeading>
         <Stack
           direction="row"
@@ -352,22 +358,44 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
                           {unit.name}
                         </Typography>
                       )}
-                      <Button
-                        size="small"
-                        variant="contained"
-                        disabled={!canActOnTurn || !affordable}
-                        onClick={() => handleRecruit(unit.name)}
-                        aria-label={`Recruit one ${unit.name}`}
-                        sx={{
-                          bgcolor: (t) => t.palette.role.foreign.main,
-                          color: (t) => t.palette.role.foreign.contrastText,
-                          '&:hover': {
-                            bgcolor: (t) => t.palette.role.foreign.dark,
-                          },
-                        }}
-                      >
-                        Recruit
-                      </Button>
+                      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                        <Box sx={{ flex: 1 }}>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            fullWidth
+                            disabled={!canActOnTurn || !affordable}
+                            onClick={() => handleRecruit(unit.name)}
+                            aria-label={`Recruit one ${unit.name}`}
+                            sx={{
+                              bgcolor: (t) => t.palette.role.foreign.main,
+                              color: (t) => t.palette.role.foreign.contrastText,
+                              '&:hover': {
+                                bgcolor: (t) => t.palette.role.foreign.dark,
+                              },
+                            }}
+                          >
+                            Recruit
+                          </Button>
+                        </Box>
+                        {def ? (
+                          <RequestHelpButton
+                            G={G}
+                            playerID={playerID}
+                            moves={moves}
+                            fromRole="foreign"
+                            targetId={idForUnit(def)}
+                            targetLabel={def.name}
+                            slices={buildResourceSlices({
+                              G,
+                              fromSeat: playerID,
+                              fromRole: 'foreign',
+                              cost: costBag,
+                              have: stash,
+                            })}
+                          />
+                        ) : null}
+                      </Stack>
                     </Stack>
                   </Tooltip>
                 );
@@ -402,22 +430,42 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
                   >
                     <Stack spacing={0.5} sx={{ alignItems: 'stretch' }}>
                       <TechCard def={tech} holderRole="foreign" size="normal" />
-                      <Button
-                        size="small"
-                        variant="contained"
-                        disabled={!enabled}
-                        onClick={() => moves.foreignPlayTech(tech.name)}
-                        aria-label={`Play ${tech.name}`}
-                        sx={{
-                          bgcolor: (t) => t.palette.role.foreign.main,
-                          color: (t) => t.palette.role.foreign.contrastText,
-                          '&:hover': {
-                            bgcolor: (t) => t.palette.role.foreign.dark,
-                          },
-                        }}
-                      >
-                        Play
-                      </Button>
+                      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                        <Box sx={{ flex: 1 }}>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            fullWidth
+                            disabled={!enabled}
+                            onClick={() => moves.foreignPlayTech(tech.name)}
+                            aria-label={`Play ${tech.name}`}
+                            sx={{
+                              bgcolor: (t) => t.palette.role.foreign.main,
+                              color: (t) => t.palette.role.foreign.contrastText,
+                              '&:hover': {
+                                bgcolor: (t) => t.palette.role.foreign.dark,
+                              },
+                            }}
+                          >
+                            Play
+                          </Button>
+                        </Box>
+                        <RequestHelpButton
+                          G={G}
+                          playerID={playerID}
+                          moves={moves}
+                          fromRole="foreign"
+                          targetId={idForTech(tech)}
+                          targetLabel={tech.name}
+                          slices={buildResourceSlices({
+                            G,
+                            fromSeat: playerID,
+                            fromRole: 'foreign',
+                            cost: costBag,
+                            have: stash,
+                          })}
+                        />
+                      </Stack>
                     </Stack>
                   </Tooltip>
                 );

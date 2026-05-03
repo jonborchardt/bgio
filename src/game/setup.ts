@@ -194,5 +194,8 @@ export const setup = (
     // `opponent:wander-step` round-end hook flips one card per round end
     // and dispatches its effects.
     opponent: { wander: setupWanderDeck(r) },
+    // Help requests start empty; populated as players click the helper
+    // button next to disabled actions. See `./requests/`.
+    requests: [],
   };
 };

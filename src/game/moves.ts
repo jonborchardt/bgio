@@ -37,6 +37,7 @@ import { foreignPlayTech } from './roles/foreign/playTech.ts';
 import { scienceSeatDone } from './roles/science/seatDone.ts';
 import { domesticSeatDone } from './roles/domestic/seatDone.ts';
 import { foreignSeatDone } from './roles/foreign/seatDone.ts';
+import { requestHelp } from './requests/move.ts';
 
 export const pass: Move<SettlementState> = () => {
   // intentional no-op — bgio advances the turn after the move resolves.
@@ -129,6 +130,12 @@ export { domesticBuyBuilding, domesticUpgradeBuilding, domesticProduce };
 // for the analogous transition out of `chiefPhase`. Replaces the
 // review-fix-#1-gated `__testSetOthersDone` for production play.
 export { scienceSeatDone, domesticSeatDone, foreignSeatDone };
+
+// Help-request toggle. Stage-agnostic — any seat can ask another for
+// help with a currently-disabled action at any time. The recipient
+// auto-loses the row when the requester completes the action (see
+// `clearRequestsForTarget` calls in the completion sites).
+export { requestHelp };
 
 // ---------------------------------------------------------------------------
 // Test-only scaffolding.
