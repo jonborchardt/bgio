@@ -10,7 +10,7 @@
 // `activeCard` is present — otherwise nothing on the grid is meant to be
 // placed onto.
 
-import { Box, Stack, Typography } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import {
   cellKey,
   isPlacementLegal,
@@ -18,6 +18,7 @@ import {
 import type { DomesticBuilding } from '../../game/roles/domestic/types.ts';
 import type { BuildingDef } from '../../data/schema.ts';
 import { CellSlot } from './CellSlot.tsx';
+import { EmbossedFrame } from '../layout/EmbossedFrame.tsx';
 
 export interface BuildingGridProps {
   grid: Record<string, DomesticBuilding>;
@@ -93,102 +94,87 @@ export function BuildingGrid({
   for (let x = xMin; x <= xMax; x += 1) colXs.push(x);
 
   return (
-    <Stack
-      spacing={0.75}
+    <EmbossedFrame
+      role="domestic"
       sx={{
         width: '100%',
         minWidth: 0,
         maxWidth: '100%',
-        alignItems: 'center',
+        overflowX: 'auto',
+        display: 'flex',
+        justifyContent: 'center',
       }}
     >
-      <Typography
-        variant="overline"
-        sx={{
-          color: (t) => t.palette.role.domestic.main,
-          fontWeight: 700,
-          letterSpacing: '0.08em',
-          lineHeight: 1,
-        }}
-      >
-        Village
-      </Typography>
       {isEmpty && !isPlacing ? (
         <Typography
           variant="caption"
-          sx={{ color: (t) => t.palette.status.muted, fontStyle: 'italic' }}
+          sx={{
+            color: (t) => t.palette.status.muted,
+            fontStyle: 'italic',
+            py: 2,
+          }}
         >
           Empty village — select a building to place.
         </Typography>
       ) : (
         <Box
+          aria-label="Domestic building grid"
           sx={{
-            width: '100%',
-            minWidth: 0,
-            overflowX: 'auto',
-            display: 'flex',
-            justifyContent: 'center',
+            display: 'grid',
+            // Column width matches the `normal` card (180px) plus a
+            // small gutter; cells are fixed-aspect to match the
+            // physical-card height. Village cards render at the
+            // medium / `normal` size so the village board reads as a
+            // tile grid rather than a detailed deck.
+            gridTemplateColumns: `repeat(${cols}, 190px)`,
+            gap: 0.75,
           }}
         >
-          <Box
-            aria-label="Domestic building grid"
-            sx={{
-              display: 'grid',
-              // Column width matches the `normal` card (180px) plus a
-              // small gutter; cells are fixed-aspect to match the
-              // physical-card height. Village cards render at the
-              // medium / `normal` size so the village board reads as a
-              // tile grid rather than a detailed deck.
-              gridTemplateColumns: `repeat(${cols}, 190px)`,
-              gap: 0.75,
-            }}
-          >
-            {rowYs.map((y) =>
-              colXs.map((x) => {
-                const key = cellKey(x, y);
-                const building = grid[key];
-                const isLegal = isPlacing
-                  ? isPlacementLegal(grid, x, y)
-                  : false;
-                // Compute the (up to four) orthogonal-neighbour defIDs so
-                // the placed BuildingCard can paint each adjacency rule
-                // as currently-firing or latent.
-                let activeNeighbors: ReadonlySet<string> | undefined;
-                if (building !== undefined) {
-                  const ns = new Set<string>();
-                  for (const [dx, dy] of [
-                    [1, 0],
-                    [-1, 0],
-                    [0, 1],
-                    [0, -1],
-                  ] as const) {
-                    const n = grid[cellKey(x + dx, y + dy)];
-                    if (n !== undefined) ns.add(n.defID);
-                  }
-                  activeNeighbors = ns;
+          {rowYs.map((y) =>
+            colXs.map((x) => {
+              const key = cellKey(x, y);
+              const building = grid[key];
+              const isLegal = isPlacing
+                ? isPlacementLegal(grid, x, y)
+                : false;
+              // Compute the (up to four) orthogonal-neighbour defIDs so
+              // the placed BuildingCard can paint each adjacency rule
+              // as currently-firing or latent.
+              let activeNeighbors: ReadonlySet<string> | undefined;
+              if (building !== undefined) {
+                const ns = new Set<string>();
+                for (const [dx, dy] of [
+                  [1, 0],
+                  [-1, 0],
+                  [0, 1],
+                  [0, -1],
+                ] as const) {
+                  const n = grid[cellKey(x + dx, y + dy)];
+                  if (n !== undefined) ns.add(n.defID);
                 }
-                return (
-                  <CellSlot
-                    key={key}
-                    x={x}
-                    y={y}
-                    building={building}
-                    isLegal={isLegal}
-                    isPlacing={isPlacing}
-                    activeNeighbors={activeNeighbors}
-                    onClick={() => {
-                      if (building !== undefined) return;
-                      if (!isPlacing || !isLegal) return;
-                      onPlace(x, y);
-                    }}
-                  />
-                );
-              }),
-            )}
-          </Box>
+                activeNeighbors = ns;
+              }
+              return (
+                <CellSlot
+                  key={key}
+                  x={x}
+                  y={y}
+                  building={building}
+                  isLegal={isLegal}
+                  isPlacing={isPlacing}
+                  activeNeighbors={activeNeighbors}
+                  onClick={() => {
+                    if (building !== undefined) return;
+                    if (!isPlacing || !isLegal) return;
+                    onPlace(x, y);
+                  }}
+                />
+              );
+            }),
+          )}
         </Box>
       )}
-    </Stack>
+    </EmbossedFrame>
   );
 }
 

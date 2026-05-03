@@ -148,6 +148,36 @@ describe('playerView', () => {
     );
   });
 
+  it('redacts centerMat.tradeRequest for non-chief viewers', () => {
+    const G = buildState();
+    G.centerMat.tradeRequest = {
+      id: 'tra-1',
+      ownerSeat: '1',
+      required: { gold: 0, wood: 1, stone: 0, steel: 0, horse: 0,
+        food: 0, production: 0, science: 0, happiness: 0, worker: 0 },
+      reward: { gold: 3, wood: 0, stone: 0, steel: 0, horse: 0,
+        food: 0, production: 0, science: 0, happiness: 0, worker: 0 },
+    };
+
+    // Seat 0 holds chief in 2p assignments — sees the request.
+    const chiefView = playerView(G, fakeCtx, '0');
+    expect(chiefView.centerMat.tradeRequest).not.toBeNull();
+    expect(chiefView.centerMat.tradeRequest!.id).toBe('tra-1');
+
+    // Seat 1 holds domestic+foreign — no chief role, so the slot reads
+    // as empty.
+    const nonChiefView = playerView(G, fakeCtx, '1');
+    expect(nonChiefView.centerMat.tradeRequest).toBeNull();
+
+    // Spectator sees the slot as empty too.
+    const spectatorView = playerView(G, fakeCtx, null);
+    expect(spectatorView.centerMat.tradeRequest).toBeNull();
+
+    // Source untouched.
+    expect(G.centerMat.tradeRequest).not.toBeNull();
+    expect(G.centerMat.tradeRequest!.id).toBe('tra-1');
+  });
+
   it('no-ops gracefully when hands are the placeholder empty objects', () => {
     // The current `setup()` produces `hands[seat] = {}` for every seat.
     // The redactor must not throw and must not invent fields.

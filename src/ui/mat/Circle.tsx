@@ -18,7 +18,7 @@
 // An active-turn outline replaces the normal role-tinted border when
 // it's this seat's turn.
 
-import { Box, Paper, Stack, Typography } from '@mui/material';
+import { Box, ButtonBase, Paper, Stack, Typography } from '@mui/material';
 import type { Theme } from '@mui/material/styles';
 import type { ReactNode } from 'react';
 import type { PlayerID, Role, PlayerMat } from '../../game/types.ts';
@@ -67,6 +67,16 @@ export interface CircleProps {
   waitingFor?: string;
   /** Chief-only: bank breakdown to render in place of mat lanes. */
   bankView?: BankView;
+  /** When provided, the tile becomes a button — clicking it fires the
+   *  callback with this seat's id. Used by Board to make the row of
+   *  Circle tiles act as the hot-seat seat picker (replacing the older
+   *  SeatPicker tab strip). */
+  onSelect?: (seat: PlayerID) => void;
+  /** When `onSelect` is set, marks this tile as the selected tab. The
+   *  selected tile gets a thicker outline + raised elevation so the
+   *  row reads as a tab strip. Independent of `active` (which tracks
+   *  whose turn it is in the engine). */
+  selected?: boolean;
 }
 
 type FlowKind = 'income' | 'produced' | 'idle';
@@ -182,10 +192,10 @@ function EmbossGlyph({ children }: { children: ReactNode }) {
         inset: 0,
         pointerEvents: 'none',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-end',
         justifyContent: 'flex-end',
         opacity: 0.2,
-        px: 0.5,
+        p: 0.25,
       }}
     >
       <Box
@@ -275,53 +285,122 @@ export function Circle({
   active,
   waitingFor,
   bankView,
+  onSelect,
+  selected,
 }: CircleProps) {
   const accent = accentRoleFor(roles);
   const label = roles.length > 0 ? roles.map(titleCase).join(' · ') : '—';
   const ariaLabel = `${label} mat (Player ${Number(seat) + 1})`;
   const lanes = resolveLanes(mat, bankView);
+  const isTab = onSelect !== undefined;
 
-  return (
-    <Paper
-      elevation={0}
-      aria-label={ariaLabel}
-      sx={{
-        px: 1.5,
-        py: 1,
-        width: '100%',
-        minWidth: 0,
-        bgcolor: (t) => t.palette.card.surface,
-        border: '1px solid',
-        borderColor: (t) =>
-          active
-            ? t.palette.status.active
-            : accent
-              ? t.palette.role[accent].main
-              : t.palette.card.surface,
-        borderRadius: 1,
-        boxShadow: (t) =>
-          active ? `0 0 0 1px ${t.palette.status.active}` : 'none',
-        transition: 'box-shadow 120ms ease, border-color 120ms ease',
-        position: 'relative',
-      }}
-    >
-      <Stack spacing={0.75} sx={{ width: '100%' }}>
+  // Tab visuals — selected tile uses the ROLE accent color so it
+  // matches the role panel's border underneath (they fuse into one
+  // shape). The active-turn inset glow is suppressed on the selected
+  // tile so the role color stays clean (no competing blue rim
+  // inside the gold border).
+  const borderColor = (t: Theme): string =>
+    accent
+      ? t.palette.role[accent].main
+      : selected && isTab
+        ? t.palette.status.active
+        : t.palette.card.surface;
+  const borderWidth = selected && isTab ? 2 : 1;
+  // No shadow — active-turn indication is the pulsing dot next to the
+  // role title, and the selected tab/panel fusion is conveyed by the
+  // shared role-accent border alone. A floating shadow under the
+  // selected tile read as visual noise once the rail-and-tab seam
+  // was clean.
+  const tileShadow = (): string => 'none';
+
+  // All tiles drop their bottom border so they read as tabs sitting
+  // on the role panel's top "rail". The selected tile additionally
+  // squares its bottom corners and overlaps the panel by 1px so its
+  // bg punches out the rail's accent color directly under itself —
+  // i.e. the rail color shows under unselected tiles but is hidden
+  // under the selected tile, giving the classic tabbed-UI gap.
+  const isSelectedTab = (selected ?? false) && isTab;
+  const surfaceSx = {
+    px: 1.5,
+    py: 1,
+    width: '100%',
+    minWidth: 0,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    textAlign: 'left' as const,
+    bgcolor: (t: Theme) => t.palette.card.surface,
+    borderTop: `${borderWidth}px solid`,
+    borderLeft: `${borderWidth}px solid`,
+    borderRight: `${borderWidth}px solid`,
+    borderBottom: 'none',
+    borderColor,
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: 4,
+    borderBottomLeftRadius: isSelectedTab ? 0 : 4,
+    borderBottomRightRadius: isSelectedTab ? 0 : 4,
+    // Keep inner content vertical position stable across selected/
+    // unselected since neither branch carries a bottom border.
+    pb: 1,
+    // Selected tile pulls down by the panel's full border width (2px)
+    // so its background fully covers the rail directly beneath it —
+    // pulling only 1px would leave a hairline of role color showing.
+    mb: isSelectedTab ? '-2px' : 0,
+    zIndex: isSelectedTab ? 1 : 0,
+    boxShadow: tileShadow,
+    transition: 'box-shadow 120ms ease, border-color 120ms ease',
+    position: 'relative' as const,
+    cursor: isTab ? 'pointer' : 'default',
+    '&:hover': isTab
+      ? {
+          borderColor: (t: Theme) =>
+            accent
+              ? t.palette.role[accent].light
+              : t.palette.status.active,
+        }
+      : undefined,
+  };
+
+  const inner = (
+      <Stack spacing={0.75} sx={{ width: '100%', flex: 1 }}>
         <Stack
           direction="row"
           spacing={1}
           sx={{ alignItems: 'baseline', justifyContent: 'space-between' }}
         >
-          <Typography
-            sx={{
-              fontWeight: 700,
-              lineHeight: 1.2,
-              letterSpacing: '0.02em',
-              color: (t) =>
-                accent ? t.palette.role[accent].main : t.palette.card.text,
-            }}
+          <Stack
+            direction="row"
+            spacing={0.75}
+            sx={{ alignItems: 'center', minWidth: 0 }}
           >
-            {label}
-          </Typography>
+            <Typography
+              sx={{
+                fontWeight: 700,
+                lineHeight: 1.2,
+                letterSpacing: '0.02em',
+                color: (t) =>
+                  accent ? t.palette.role[accent].main : t.palette.card.text,
+              }}
+            >
+              {label}
+            </Typography>
+            {active ? (
+              <Box
+                aria-label="Acting now"
+                sx={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  bgcolor: (t) => t.palette.status.active,
+                  boxShadow: (t) => `0 0 6px ${t.palette.status.active}`,
+                  animation: 'circleActingPulse 1.4s ease-in-out infinite',
+                  '@keyframes circleActingPulse': {
+                    '0%, 100%': { opacity: 1, transform: 'scale(1)' },
+                    '50%': { opacity: 0.55, transform: 'scale(0.85)' },
+                  },
+                }}
+              />
+            ) : null}
+          </Stack>
           {!active && waitingFor !== undefined ? (
             <Stack
               spacing={0}
@@ -354,7 +433,7 @@ export function Circle({
           ) : null}
         </Stack>
 
-        <Box sx={{ display: 'flex', gap: 0.5 }}>
+        <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
           {lanes.flow !== null ? (
             <Slot role={accent} glyph={flowGlyph(lanes.flow.kind)} flex={1}>
               <MatTokens bag={lanes.flow.bag} />
@@ -369,6 +448,25 @@ export function Circle({
           </Slot>
         </Box>
       </Stack>
+  );
+
+  if (isTab) {
+    return (
+      <ButtonBase
+        onClick={() => onSelect!(seat)}
+        focusRipple
+        aria-label={ariaLabel}
+        aria-pressed={selected ?? false}
+        sx={surfaceSx}
+      >
+        {inner}
+      </ButtonBase>
+    );
+  }
+
+  return (
+    <Paper elevation={0} aria-label={ariaLabel} sx={surfaceSx}>
+      {inner}
     </Paper>
   );
 }

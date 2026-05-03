@@ -28,9 +28,10 @@ import { bagOf } from '../../resources/bag.ts';
 /**
  * Build a `TradeRequest` from a freshly-drawn `TradeCardDef`. The owner
  * seat is the Foreign seat that flipped the card (kept for audit / UI
- * labeling — fulfillment is open to any seat). `required` and `reward`
- * get widened from `Partial<ResourceBag>` to a fully-shaped `ResourceBag`
- * (zero-filled) via `bagOf` so downstream `transfer` calls don't have to
+ * labeling — fulfillment is chief-only and uses the bank, so
+ * `ownerSeat` does not gate it). `required` and `reward` get widened
+ * from `Partial<ResourceBag>` to a fully-shaped `ResourceBag`
+ * (zero-filled) via `bagOf` so downstream bank mutations don't have to
  * do their own widening.
  */
 const tradeRequestFromCard = (

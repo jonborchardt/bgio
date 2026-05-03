@@ -15,6 +15,7 @@ import { canAfford } from '../../game/resources/bag.ts';
 import { BuildingCard } from '../cards/BuildingCard.tsx';
 import { TechCard } from '../cards/TechCard.tsx';
 import { ResourceToken } from '../resources/ResourceToken.tsx';
+import { EmbossedFrame } from '../layout/EmbossedFrame.tsx';
 
 export interface HandProps {
   hand: BuildingDef[];
@@ -104,15 +105,28 @@ export function Hand({
           lineHeight: 1,
         }}
       >
-        Cards in hand
+        Cards
       </Typography>
       {visible.length === 0 && techs.length === 0 && emptyHint ? (
-        <Typography
-          variant="caption"
-          sx={{ color: (t) => t.palette.status.muted, fontStyle: 'italic' }}
+        <EmbossedFrame
+          role="domestic"
+          sx={{
+            alignSelf: 'stretch',
+            display: 'flex',
+            justifyContent: 'center',
+          }}
         >
-          {emptyHint}
-        </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              color: (t) => t.palette.status.muted,
+              fontStyle: 'italic',
+              py: 2,
+            }}
+          >
+            {emptyHint}
+          </Typography>
+        </EmbossedFrame>
       ) : null}
       <Stack
         direction="row"

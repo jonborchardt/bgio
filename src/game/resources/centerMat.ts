@@ -3,8 +3,11 @@
 // The per-seat resource circles previously held by `circles[seat]` were
 // folded into `G.mats[seat].in` / `out` in the player-mat redesign.
 // What remains on the center mat is the single trade-request slot: a
-// flipped Trade card that acts as a public "offer" the seat owning it
-// can fulfill (or that the chief can discard via the interrupt flow).
+// flipped Trade card holding a `required`/`reward` offer that the
+// **chief** can fulfill from the bank (or discard via the interrupt
+// flow when a second flip collides with this slot). The `ownerSeat`
+// field is retained for audit / UI labeling — it does not gate
+// fulfillment.
 
 import type { PlayerID } from '../types.ts';
 import type { ResourceBag } from './types.ts';

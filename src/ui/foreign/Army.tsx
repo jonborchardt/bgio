@@ -10,6 +10,7 @@ import { Box, Button, Stack, Typography } from '@mui/material';
 import type { UnitInstance } from '../../game/roles/foreign/types.ts';
 import { UNITS } from '../../data/index.ts';
 import { UnitCard } from '../cards/UnitCard.tsx';
+import { EmbossedFrame } from '../layout/EmbossedFrame.tsx';
 
 export interface ArmyProps {
   inPlay: UnitInstance[];
@@ -20,22 +21,30 @@ export interface ArmyProps {
 const unitDefByName = new Map(UNITS.map((u) => [u.name, u]));
 
 export function Army({ inPlay, canAct, onRelease }: ArmyProps) {
+  const isEmpty = inPlay.length === 0;
   return (
-    <Stack spacing={0.5} aria-label="Foreign army">
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-        <Typography
-          variant="body2"
-          sx={{ color: (t) => t.palette.status.muted, fontWeight: 600 }}
-        >
-          Army
-        </Typography>
-      </Stack>
-      {inPlay.length === 0 ? (
+    <EmbossedFrame
+      role="foreign"
+      aria-label="Foreign army"
+      sx={{
+        width: '100%',
+        minWidth: 0,
+        maxWidth: '100%',
+        overflowX: 'auto',
+        display: 'flex',
+        justifyContent: isEmpty ? 'center' : 'flex-start',
+      }}
+    >
+      {isEmpty ? (
         <Typography
           variant="caption"
-          sx={{ color: (t) => t.palette.status.muted }}
+          sx={{
+            color: (t) => t.palette.status.muted,
+            fontStyle: 'italic',
+            py: 2,
+          }}
         >
-          No units recruited.
+          Empty army — recruit a unit to muster troops.
         </Typography>
       ) : (
         <Stack
@@ -80,7 +89,7 @@ export function Army({ inPlay, canAct, onRelease }: ArmyProps) {
           })}
         </Stack>
       )}
-    </Stack>
+    </EmbossedFrame>
   );
 }
 

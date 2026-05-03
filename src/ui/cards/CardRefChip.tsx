@@ -7,10 +7,15 @@
 
 import { Box, IconButton, Tooltip, Typography } from '@mui/material';
 import { useCardInfo } from './cardInfoContextValue.ts';
-import { cardById, findBuildingId, findUnitId } from '../../cards/registry.ts';
+import {
+  cardById,
+  findBuildingId,
+  findTechId,
+  findUnitId,
+} from '../../cards/registry.ts';
 import { AnyCard } from './AnyCard.tsx';
 
-export type CardRefKind = 'building' | 'unit';
+export type CardRefKind = 'building' | 'unit' | 'tech';
 
 export interface CardRefChipProps {
   name: string;
@@ -23,8 +28,16 @@ export interface CardRefChipProps {
 const lookupId = (
   kind: CardRefKind,
   name: string,
-): string | undefined =>
-  kind === 'building' ? findBuildingId(name) : findUnitId(name);
+): string | undefined => {
+  switch (kind) {
+    case 'building':
+      return findBuildingId(name);
+    case 'unit':
+      return findUnitId(name);
+    case 'tech':
+      return findTechId(name);
+  }
+};
 
 export function CardRefChip({ name, kind, fontSize = '0.7rem' }: CardRefChipProps) {
   const ctx = useCardInfo();

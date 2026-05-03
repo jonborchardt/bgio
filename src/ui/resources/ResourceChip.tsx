@@ -10,7 +10,7 @@
 // `"<resource>: <count>"` text (e.g. ScienceCard wants "wood 1/3").
 
 import { Chip } from '@mui/material';
-import type { Resource } from '../../game/resources/types.ts';
+import { RESOURCE_DISPLAY, type Resource } from '../../game/resources/types.ts';
 
 export type ChipSize = 'sm' | 'md' | 'lg';
 
@@ -37,17 +37,17 @@ export function ResourceChip({
   label,
 }: ResourceChipProps) {
   const cfg = sizeProps[size];
-  const display = label ?? `${resource}: ${count}`;
+  const name = RESOURCE_DISPLAY[resource].name;
+  const display = label ?? `${name}: ${count}`;
   return (
     <Chip
       size={cfg.muiSize}
       label={display}
-      aria-label={`${resource} ${count}`}
+      aria-label={`${name} ${count}`}
       sx={{
         height: cfg.height,
         fontSize: cfg.fontSize,
         fontWeight: 600,
-        textTransform: 'capitalize',
         bgcolor: (t) => t.palette.resource[resource].main,
         color: (t) => t.palette.resource[resource].contrastText,
         '& .MuiChip-label': {

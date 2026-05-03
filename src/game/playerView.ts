@@ -286,6 +286,17 @@ export const playerViewFor = (
     };
   }
 
+  // The trade-request slot is chief-private: only the chief sees a flipped
+  // trade card (and only the chief can fulfill it via `foreignTradeFulfill`).
+  // Non-chief viewers see the slot as empty (`null`) so they can't read off
+  // the required/reward bags. The slot's *presence* still leaks via UI
+  // affordances elsewhere (e.g., the chief sees "trade in flight"), which is
+  // fine — the secret is the contents, not whether one exists.
+  let centerMat = G.centerMat;
+  if (!has('chief') && centerMat.tradeRequest !== null) {
+    centerMat = { ...centerMat, tradeRequest: null };
+  }
+
   // Only allocate a new top-level object if anything actually changed.
   if (
     hands === G.hands &&
@@ -295,7 +306,8 @@ export const playerViewFor = (
     science === G.science &&
     events === G.events &&
     awaitingInput === G._awaitingInput &&
-    opponent === G.opponent
+    opponent === G.opponent &&
+    centerMat === G.centerMat
   ) {
     return { ...G };
   }
@@ -309,6 +321,7 @@ export const playerViewFor = (
     events,
     _awaitingInput: awaitingInput,
     opponent,
+    centerMat,
   };
 };
 

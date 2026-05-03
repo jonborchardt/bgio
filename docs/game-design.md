@@ -197,9 +197,11 @@ The four roles are wired together by:
   unit upkeep. Implemented in `roles/foreign/recruit.ts` and
   `roles/foreign/upkeep.ts` via `parseBenefit` over Domestic buildings.
 - **Win condition is a Foreign output but not Foreign-only.** Both
-  battle wins and trade fulfillments tick `settlementsJoined`. Trade
-  fulfillment is open to *any* seat — so domestic-rich seats can drive
-  win progress without ever fielding an army.
+  battle wins and trade fulfillments tick `settlementsJoined`. Foreign
+  flips the trade card; the **chief** then chooses whether to fulfill
+  it from the bank during the chief phase. So progress through trades
+  is gated by the chief's bank-management decisions, not by which seat
+  happens to be cash-rich on a given turn.
 
 The "web of techs" that ties the roles together (the Sniper recipe, the
 Education branch as the unlocking root, etc.) is described narratively in

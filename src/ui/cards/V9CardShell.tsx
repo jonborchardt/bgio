@@ -581,8 +581,63 @@ export function V9CardShell({
               rowGap: 0.2,
             }}
           >
+            {d.benefitLabel ? (
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'text.secondary',
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.8,
+                  fontWeight: 800,
+                  fontSize: '0.55rem',
+                  mr: 0.25,
+                }}
+              >
+                {d.benefitLabel}
+              </Typography>
+            ) : null}
             <ResourceText text={d.benefit} size={size} />
           </Box>
+        ) : null}
+
+        {d.requires && d.requires.length > 0 && showSomeLines ? (
+          <Stack
+            direction="row"
+            spacing={0.3}
+            sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.2 }}
+          >
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.secondary',
+                textTransform: 'uppercase',
+                letterSpacing: 0.8,
+                fontWeight: 800,
+                fontSize: '0.55rem',
+                mr: 0.25,
+              }}
+            >
+              Requires
+            </Typography>
+            {d.requires.map((r, i) => (
+              <Fragment key={`${r.name}-${i}`}>
+                {i > 0 ? (
+                  <Typography
+                    component="span"
+                    variant="caption"
+                    sx={{
+                      color: 'text.secondary',
+                      fontSize: '0.7rem',
+                      mx: 0.1,
+                    }}
+                  >
+                    +
+                  </Typography>
+                ) : null}
+                <CardRefChip name={r.name} kind={r.kind} fontSize="0.7rem" />
+              </Fragment>
+            ))}
+          </Stack>
         ) : null}
 
         {d.adjacencies && d.adjacencies.length > 0 && showSomeLines ? (

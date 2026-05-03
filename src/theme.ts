@@ -77,11 +77,14 @@ export const ramps = {
     500: '#10b981',
     700: '#047857',
   },
-  ochre: {
-    50: '#fdf6e3',
-    300: '#e7c97a',
-    500: '#b8860b',
-    700: '#7c5b08',
+  // Saddle brown — distinct from `brown` (wood) so the two browns can sit
+  // next to each other on the player mat without blurring. CSS saddlebrown
+  // (#8b4513) is redder/warmer than wood's yellow-brown.
+  saddleBrown: {
+    50: '#fbe9d9',
+    300: '#cd9362',
+    500: '#8b4513',
+    700: '#5a2d0c',
   },
   blueScience: {
     50: '#eff6ff',
@@ -89,11 +92,22 @@ export const ramps = {
     500: '#3b82f6',
     700: '#1d4ed8',
   },
-  pink: {
-    50: '#fdf2f8',
-    300: '#f9a8d4',
-    500: '#ec4899',
-    700: '#be185d',
+  // Steel-blue — distinct from `grey` (stone) and `slate` (UI surfaces).
+  // Anchored on CSS `steelblue` (#4682b4) so the steel resource reads
+  // unmistakably blue next to stone's neutral gray.
+  steelBlue: {
+    50: '#eaf2fb',
+    300: '#85a9d3',
+    500: '#4682b4',
+    700: '#2e5784',
+  },
+  // Purple — used by the Approval (formerly Happiness) resource. Reads as
+  // an abstract / social hue, distinct from the warm production orange.
+  purple: {
+    50: '#faf5ff',
+    300: '#d8b4fe',
+    500: '#a855f7',
+    700: '#6b21a8',
   },
   teal: {
     50: '#f0fdfa',
@@ -187,16 +201,20 @@ export const colors = {
 // `t.palette.resource.<key>.main` etc. — no raw hex literals at the
 // call site.
 
+// Resource → ramp mapping. Single-letter symbol overrides for collisions
+// (stone/steel, science, wood/worker, horse/happiness) live in
+// `RESOURCE_DISPLAY` next to the type definition; the colors here pair
+// with those symbols.
 const resource: Record<Resource, PaletteColor> = {
   gold: pc(ramps.yellow),
   wood: pc(ramps.brown),
   stone: pc(ramps.grey),
-  steel: pc(ramps.slate as Ramp4),
-  horse: pc(ramps.orange),
+  steel: pc(ramps.steelBlue),
+  horse: pc(ramps.saddleBrown),
   food: pc(ramps.greenFood),
-  production: pc(ramps.ochre),
+  production: pc(ramps.orange),
   science: pc(ramps.blueScience),
-  happiness: pc(ramps.pink),
+  happiness: pc(ramps.purple),
   worker: pc(ramps.teal),
 };
 

@@ -6,20 +6,23 @@ networked play.
 
 > **Status: V1 engine + UI complete; hot-seat single-tab end-to-end playable.**
 > 490+ tests, typecheck + lint clean, Playwright smoke green. The hot-seat board ships
-> a seat-picker tab strip, per-role "End my turn" buttons, a `ctx.activePlayers`-driven
-> "Player N: role's turn" header, a phase hint, a game-over banner, a favicon, and a
-> per-event damage absorber UI for Foreign battles. Per-seat resources live on a player
-> mat (`in` / `out` / `stash`); the chief sweeps `out` into the bank at every chief
-> turn, drops resources into seats' `in`, and `in` empties into `stash` automatically
-> when a seat begins its turn. Domestic produce auto-fires at othersPhase entry. The
-> networked stack assembles end-to-end (lobby + accounts + chat + idle bot takeover)
-> but the live two-tab playtest hasn't been driven through yet.
+> clickable seat tiles on the center mat (the local viewer drives any seat from there),
+> per-role "End my turn" buttons, an `activePlayers`-driven "It's your turn — Round N"
+> header, a game-over banner, a favicon, and a per-event damage absorber UI for Foreign
+> battles. Per-seat resources live on a player mat (`in` / `out` / `stash`); the chief
+> sweeps `out` into the bank at every chief turn, drops resources into seats' `in`, and
+> `in` empties into `stash` automatically when a seat begins its turn. Domestic produce
+> auto-fires at othersPhase entry. Trade fulfillment is chief-only — the chief pays
+> `required` from the bank to an off-table trader and receives `reward` back, ticking
+> `settlementsJoined`. The networked stack assembles end-to-end (lobby + accounts + chat
+> + idle bot takeover) but the live two-tab playtest hasn't been driven through yet.
 
 ## Two ways to play
 
-- **Demo at the GitHub Pages URL** — hot-seat, single-tab, no save, no login. Pick a seat
-  from the tab strip and play all four roles from one browser; the bgio debug panel is
-  also mounted in dev (production build hides it). Round-loop reachable end-to-end.
+- **Demo at the GitHub Pages URL** — hot-seat, single-tab, no save, no login. Click a
+  seat tile on the center mat and play all four roles from one browser; the bgio debug
+  panel is also mounted in dev (production build hides it). Round-loop reachable
+  end-to-end.
 - **Full experience with accounts and run history** runs against the networked Render
   deploy. See [`server/README.md`](server/README.md) for env vars + Render setup.
 
@@ -77,7 +80,7 @@ Python 3 / make / a C++ toolchain. The Dockerfile installs them automatically.
 │   │   └── roles/{chief,science,domestic,foreign}/  # per-role moves
 │   ├── data/                  # JSON + typed loaders (BUILDINGS / UNITS / TECHNOLOGIES / EVENT_CARDS / WANDER_CARDS / ADJACENCY_RULES / SCIENCE_CARDS / battle / trade decks)
 │   ├── ui/                    # MUI panels + cards + chat + chrome
-│   │   ├── layout/            # StatusBar, SeatPicker, RolePanel, GameOverBanner, PhaseHint
+│   │   ├── layout/            # RolePanel, GameOverBanner, PhaseHint, DevSidebar, EmbossedFrame, SectionHeading
 │   │   ├── chief/ science/ domestic/ foreign/   # per-role panels
 │   │   ├── cards/ resources/ mat/ deck/ hand/ chat/
 │   │   └── ...

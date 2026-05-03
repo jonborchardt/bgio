@@ -51,6 +51,13 @@ implementing.
 - **"Settlement" is a codename.** A real name is deferred until the user picks one. Until
   then, `Settlement` is the symbol exported from `src/game/`, but don't sprinkle the name
   through unrelated copy — a future rename pass will be easier with fewer references.
+- **Tabletop-playable.** Every choice the game offers must be possible to perform with
+  real cards and tokens at a real table — physical decks, face-down piles, public mats,
+  per-seat hands, resource cubes, etc. Don't introduce a move or UI affordance that has
+  no physical analogue (e.g. an action that depends on hidden simultaneous arithmetic
+  the engine alone can do, or that reveals other seats' private hands "just for the UI").
+  When a feature requires the engine to reach across what would be private at the table,
+  treat that as a red flag and redesign rather than ship.
 
 ## Layout you should know
 
@@ -86,10 +93,13 @@ Tests under `tests/` mirror the `src/` shape, with shared factories in `tests/he
   implementations and any role-local helpers. Cross-role coordination goes through
   `hooks.ts`, not direct imports. Notable shared moves: `chief/distribute.ts` accepts
   signed amounts (push bank→`mats[target].in` and pull-back `in`→bank during the chief
-  phase); `foreign/tradeFulfill.ts` is open to **any** active seat with the goods (any
-  seat can fulfill the public trade slot and tick `settlementsJoined`); `foreign/
-  undoRelease.ts` reverses the most recent `foreignReleaseUnit` (a real move because
-  bgio's UNDO action is blocked under `setActivePlayers`).
+  phase); `foreign/tradeFulfill.ts` is **chief-only** — the chief pays `required` from
+  `G.bank` to the off-table trader and receives `reward` back into the bank, ticking
+  `settlementsJoined`. The trade slot is private to the chief (see `playerView`'s
+  `centerMat.tradeRequest` redaction); the `ownerSeat` field on the request is audit /
+  UI labeling only and does not gate fulfillment. `foreign/undoRelease.ts` reverses the
+  most recent `foreignReleaseUnit` (a real move because bgio's UNDO action is blocked
+  under `setActivePlayers`).
 - `src/game/resources/{types,bag,bank,centerMat,playerMat,bankLog,moves}.ts` — resource
   primitives. `playerMat.ts` defines the per-non-chief-seat `{ in, out, stash }` shape
   populated by `setup` (chief acts on `G.bank` directly and owns no mat). `bankLog.ts`

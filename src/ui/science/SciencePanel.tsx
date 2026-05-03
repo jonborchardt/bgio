@@ -30,7 +30,7 @@ import { rolesAtSeat } from '../../game/roles.ts';
 import type { ScienceCardDef } from '../../data/scienceCards.ts';
 import { ScienceCard } from './ScienceCard.tsx';
 import { RolePanel } from '../layout/RolePanel.tsx';
-import { StashBar } from '../resources/StashBar.tsx';
+import { SectionHeading } from '../layout/SectionHeading.tsx';
 import { PlayableHand } from '../cards/PlayableHand.tsx';
 import { GraveyardButton } from '../layout/GraveyardButton.tsx';
 import { UndoButton } from '../layout/UndoButton.tsx';
@@ -96,6 +96,7 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
   return (
     <RolePanel
       role="science"
+      connectedAbove
       actions={
         <>
           <GraveyardButton
@@ -127,8 +128,6 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
       }
     >
       <Stack spacing={1.5}>
-        <StashBar stash={stash} ariaLabel="Science stash" />
-
         <PlayableHand
           techs={science.hand}
           holderRole="science"
@@ -138,8 +137,9 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
           emptyHint="No blue tech cards yet — complete a blue science card to add one."
         />
 
+        <SectionHeading role="science">Research Areas</SectionHeading>
         <Box
-          aria-label="Science grid"
+          aria-label="Research areas"
           sx={{
             display: 'grid',
             gridTemplateColumns: `repeat(${science.grid.length}, minmax(8rem, 1fr))`,

@@ -15,7 +15,11 @@ createRoot(rootEl).render(
         sx={{
           minHeight: '100vh',
           display: 'flex',
-          alignItems: 'center',
+          // `flex-start` (not `center`) so tall content stays anchored
+          // at the top — `align-items: center` clips the top of any
+          // content taller than the viewport because flex centering
+          // pushes the overflow above scroll position 0.
+          alignItems: 'flex-start',
           justifyContent: 'center',
           px: 2,
           py: 4,

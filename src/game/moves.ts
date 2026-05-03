@@ -104,9 +104,9 @@ export { undoLast };
 // drawn card straight into the mat slot or stashes it for the chief to
 // resolve via `chiefDecideTradeDiscard` (registered above with the other
 // chief moves). `foreignTradeFulfill` completes the active trade
-// request — public to all seats: any active seat with enough in their
-// own stash can pay `required` → bank, gain `reward`, +1
-// settlementsJoined.
+// request — chief-only: the chief pays `required` from the bank to the
+// off-table trader, receives `reward` back into the bank, and bumps
+// `settlementsJoined` by 1.
 export {
   foreignFlipBattle,
   foreignAssignDamage,

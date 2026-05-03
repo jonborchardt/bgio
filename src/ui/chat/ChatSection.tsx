@@ -53,6 +53,12 @@ export interface ChatSectionProps {
   /** Seat -> role mapping so the pane can label senders as
    * `Chief (P1)` etc. Falls back to `P{n}` when missing. */
   roleAssignments?: Record<PlayerID, Role[]>;
+  /** Fires whenever the merged (bgio + optimistic outbox) message
+   *  count changes. ChatDock uses this for the FAB unread badge —
+   *  in hot-seat, bgio's Local transport can swallow echoes, so
+   *  `chatMessages.length` alone undercounts what the player has
+   *  actually sent. Including the outbox keeps the badge accurate. */
+  onMergedCountChange?: (n: number) => void;
 }
 
 export function ChatSection({
@@ -60,6 +66,7 @@ export function ChatSection({
   sendChatMessage,
   localSender,
   roleAssignments,
+  onMergedCountChange,
 }: ChatSectionProps) {
   const formatSender = useMemo(() => {
     return (sender: string): string => {
@@ -119,6 +126,11 @@ export function ChatSection({
     seen.add(k);
     merged.push(m);
   }
+
+  const mergedCount = merged.length;
+  useEffect(() => {
+    onMergedCountChange?.(mergedCount);
+  }, [mergedCount, onMergedCountChange]);
 
   return (
     <Stack component="section" aria-label="Chat" spacing={1}>

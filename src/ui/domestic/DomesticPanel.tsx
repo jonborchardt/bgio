@@ -27,7 +27,7 @@ import { rolesAtSeat } from '../../game/roles.ts';
 import { Hand } from './Hand.tsx';
 import { BuildingGrid } from './BuildingGrid.tsx';
 import { RolePanel } from '../layout/RolePanel.tsx';
-import { StashBar } from '../resources/StashBar.tsx';
+import { SectionHeading } from '../layout/SectionHeading.tsx';
 import { GraveyardButton } from '../layout/GraveyardButton.tsx';
 import { UndoButton } from '../layout/UndoButton.tsx';
 import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
@@ -91,6 +91,7 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
   return (
     <RolePanel
       role="domestic"
+      connectedAbove
       actions={
         <>
           <GraveyardButton
@@ -122,11 +123,6 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
       }
     >
       <Stack spacing={1.5}>
-        <StashBar
-          stash={G.mats?.[playerID]?.stash}
-          ariaLabel="Domestic stash"
-        />
-
         <Hand
           hand={visibleHand}
           techs={domestic.techHand ?? []}
@@ -138,6 +134,7 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
           emptyHint="No buildings unlocked yet — complete a green science card to gain Civic techs that enable buildings."
         />
 
+        <SectionHeading role="domestic">Village</SectionHeading>
         <BuildingGrid
           grid={domestic.grid}
           activeCard={activeCard}

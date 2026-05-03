@@ -6,10 +6,12 @@
 import type { BuildingDef, TechnologyDef, UnitDef } from '../../data/schema.ts';
 import type { CanonicalScienceCardDef } from '../../data/scienceCards.ts';
 import { ADJACENCY_RULES } from '../../data/adjacency.ts';
+import { findBuildingId, findTechId } from '../../cards/registry.ts';
 import type { Role } from '../../game/types.ts';
 import type { ResourceBag } from '../../game/resources/types.ts';
 import { RESOURCES } from '../../game/resources/types.ts';
 import type { CardKind } from './kindGlyphs.tsx';
+import type { CardRefKind } from './CardRefChip.tsx';
 
 export type EventColor = 'blue' | 'green' | 'red' | 'gold';
 
@@ -32,6 +34,18 @@ export interface DisplayRoleSection {
   buildings?: string;
   units?: string;
   resources?: string;
+}
+
+/** One token from a unit's `requires` field, paired with the resolved
+ *  card kind so the renderer can plug it straight into a `CardRefChip`
+ *  (and the `?` button hops to the right canonical card). Tech wins
+ *  over building when both exist — that's how the relationships graph
+ *  resolves the same tokens (`resolveUnitRequire` in
+ *  `src/cards/relationships.ts`). Tokens that match neither still get
+ *  rendered, just as plain text without a `?`. */
+export interface DisplayRequiresItem {
+  name: string;
+  kind: CardRefKind;
 }
 
 /** One row in the building card's "Adjacency" reward block. `active` is
@@ -63,6 +77,16 @@ export interface DisplayCard {
   stats?: DisplayStat[];
   /** Plain benefit text for non-tech cards (Building / Unit / Science). */
   benefit?: string;
+  /** Optional small-caps label rendered before `benefit` (e.g. "Gives"
+   *  on building cards so the production line reads as a labelled
+   *  reward). */
+  benefitLabel?: string;
+  /** Tech / building prerequisites for this card (currently units only).
+   *  Rendered as a separate "Requires" line whose names are clickable
+   *  `CardRefChip`s — so seeing "Requires: Bombs + Chemistry" on a unit
+   *  lets the reader `?`-hop straight to the Bombs / Chemistry tech
+   *  cards instead of having to know what those names refer to. */
+  requires?: DisplayRequiresItem[];
   /** Per-role sections (techs only). */
   roleSections?: DisplayRoleSection[];
   /** Adjacency rules for this building, with `active` flags when context
@@ -101,6 +125,27 @@ const compactBag = (bag: Partial<ResourceBag> | undefined): string => {
   const list = bagToList(bag);
   if (list.length === 0) return 'free';
   return list.map((b) => `${b.count}${b.resource[0]}`).join(' ');
+};
+
+// Split a `requires` field on `+` / `,`, drop trailing parentheticals
+// like "Forge (building)", and resolve each token to a tech (preferred)
+// or building card. Mirrors `resolveUnitRequire` in
+// `src/cards/relationships.ts` so the card UI and the relationships
+// graph agree on how to interpret the same text.
+const parseRequires = (raw: string): DisplayRequiresItem[] => {
+  if (!raw) return [];
+  return raw
+    .split(/[,+]/)
+    .map((s) => s.replace(/\s*\([^)]*\)\s*$/, '').trim())
+    .filter((s) => s.length > 0)
+    .map((name): DisplayRequiresItem => {
+      if (findTechId(name)) return { name, kind: 'tech' };
+      if (findBuildingId(name)) return { name, kind: 'building' };
+      // Unmatched tokens still render as text — the chip's `?` falls
+      // through silently when the registry has no entry. Tagging
+      // them `tech` mirrors how unit prereqs are most commonly used.
+      return { name, kind: 'tech' };
+    });
 };
 
 const isComplexBuilding = (def: BuildingDef): boolean => {
@@ -156,6 +201,7 @@ export function buildingDisplay(
     subtitle: placed ? `Placed × ${count}` : 'Building',
     cost: { bag: bagToList(bag), short: `${def.cost}g` },
     benefit: def.benefit,
+    benefitLabel: 'Gives',
     adjacencies: adjacencyRowsFor(def, activeNeighbors),
     flavor: def.note,
   };
@@ -182,7 +228,10 @@ export function unitDisplay(def: UnitDef, count?: number): DisplayCard {
     flavor: def.note,
   };
   if (isArmy) result.count = count;
-  if (def.requires) result.benefit = `Requires: ${def.requires}`;
+  if (def.requires) {
+    const items = parseRequires(def.requires);
+    if (items.length > 0) result.requires = items;
+  }
   return result;
 }
 

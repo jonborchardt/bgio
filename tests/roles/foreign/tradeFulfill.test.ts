@@ -1,9 +1,10 @@
-// Tests for foreignTradeFulfill — any seat with enough in their own
-// stash can fulfill the active trade request: pays `required` from
-// their stash, gets `reward` into their stash, increments
-// `settlementsJoined`, and clears the slot. The `ownerSeat` field on
-// the request still records which Foreign seat flipped the card but
-// does NOT restrict who can fulfill.
+// Tests for foreignTradeFulfill — chief-only fulfillment.
+//
+// The chief seat pays `required` from `G.bank` to "the trader" and
+// receives `reward` back into `G.bank`, ticking `settlementsJoined`
+// and clearing the slot. Non-chief seats can't fulfill — the move
+// rejects with INVALID_MOVE. The `ownerSeat` field on the request
+// records which Foreign seat flipped the card (audit only).
 
 import { describe, expect, it } from 'vitest';
 import type { Ctx } from 'boardgame.io';
@@ -28,7 +29,6 @@ const emptyForeign = (): ForeignState => ({
 
 const buildState = (
   bank: Partial<ResourceBag> = {},
-  stashBySeat: Record<string, Partial<ResourceBag>> = {},
   tradeRequest: SettlementState['centerMat']['tradeRequest'] = null,
   numPlayers: 1 | 2 | 3 | 4 = 2,
 ): SettlementState => {
@@ -36,10 +36,6 @@ const buildState = (
   const hands: Record<string, unknown> = {};
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
   const mats = initialMats(roleAssignments);
-  for (const [seat, stash] of Object.entries(stashBySeat)) {
-    if (mats[seat] === undefined) continue;
-    mats[seat]!.stash = bagOf(stash);
-  }
   return {
     bank: bagOf(bank),
     centerMat: { tradeRequest },
@@ -68,19 +64,15 @@ const callFulfill = (
   return mv({ G, ctx, playerID });
 };
 
+// In assignRoles(2) the chief seat is seat '0' (chief+science) and seat '1'
+// holds domestic+foreign. In assignRoles(4) the chief seat is seat '0'.
+const CHIEF_SEAT_2P = '0';
+const NON_CHIEF_SEAT_2P = '1';
+const CHIEF_SEAT_4P = '0';
+
 describe('foreignTradeFulfill', () => {
-  it('happy path: pays required, gains reward, +1 settlementsJoined, clears slot', () => {
-    const G = buildState(
-      { gold: 0 },
-      { '1': { wood: 2 } },
-      {
-        id: 'tra-1',
-        ownerSeat: '1',
-        required: bagOf({ wood: 1 }),
-        reward: bagOf({ gold: 0 }),
-      },
-    );
-    G.bank = bagOf({ gold: 5 });
+  it('happy path: chief pays required from bank, gains reward in bank, +1 settlementsJoined, clears slot', () => {
+    const G = buildState({ wood: 2, gold: 0 });
     G.centerMat.tradeRequest = {
       id: 'tra-1',
       ownerSeat: '1',
@@ -88,50 +80,29 @@ describe('foreignTradeFulfill', () => {
       reward: bagOf({ gold: 3 }),
     };
 
-    const result = callFulfill(G, '1', ctxAt('foreignTurn', '1'));
+    const result = callFulfill(G, CHIEF_SEAT_2P, ctxAt('chiefPhase', CHIEF_SEAT_2P));
 
     expect(result).toBeUndefined();
     expect(G.centerMat.tradeRequest).toBeNull();
     expect(G.settlementsJoined).toBe(1);
-    // Required moved from stash → bank
-    expect(G.mats['1']!.stash.wood).toBe(1);
+    // Bank lost required, gained reward.
     expect(G.bank.wood).toBe(1);
-    // Reward moved from bank → stash
-    expect(G.mats['1']!.stash.gold).toBe(3);
-    expect(G.bank.gold).toBe(2);
+    expect(G.bank.gold).toBe(3);
   });
 
   it('rejects when no active trade request', () => {
-    const G = buildState({ gold: 5 }, { '1': { wood: 1 } }, null);
+    const G = buildState({ wood: 1 }, null);
     const before = JSON.parse(JSON.stringify(G));
-    const result = callFulfill(G, '1', ctxAt('foreignTurn', '1'));
+    const result = callFulfill(G, CHIEF_SEAT_2P, ctxAt('chiefPhase', CHIEF_SEAT_2P));
     expect(result).toBe(INVALID_MOVE);
     expect(G).toEqual(before);
   });
 
-  it('non-owner can fulfill: ownerSeat is informational, not restrictive', () => {
-    // Slot was flipped by seat '0' (foreign). Seat '1' (a different seat
-    // entirely) can fulfill from their own stash.
-    const G = buildState({ gold: 5 }, { '1': { wood: 2 } });
-    G.bank = bagOf({ gold: 5 });
-    G.centerMat.tradeRequest = {
-      id: 'tra-1',
-      ownerSeat: '0',
-      required: bagOf({ wood: 1 }),
-      reward: bagOf({ gold: 3 }),
-    };
-
-    const result = callFulfill(G, '1', ctxAt('scienceTurn', '1'));
-
-    expect(result).toBeUndefined();
-    expect(G.centerMat.tradeRequest).toBeNull();
-    expect(G.settlementsJoined).toBe(1);
-    expect(G.mats['1']!.stash.wood).toBe(1);
-    expect(G.mats['1']!.stash.gold).toBe(3);
-  });
-
-  it('rejects when stash cannot afford required', () => {
-    const G = buildState({ gold: 5 }, { '1': { wood: 0 } });
+  it('rejects when caller is not the chief seat', () => {
+    // Seat '1' holds domestic+foreign in 2p — not chief. Even with the
+    // request parked and resources available somewhere, the non-chief
+    // seat can't fulfill.
+    const G = buildState({ wood: 5, gold: 5 });
     G.centerMat.tradeRequest = {
       id: 'tra-1',
       ownerSeat: '1',
@@ -139,60 +110,57 @@ describe('foreignTradeFulfill', () => {
       reward: bagOf({ gold: 3 }),
     };
     const before = JSON.parse(JSON.stringify(G));
-    const result = callFulfill(G, '1', ctxAt('foreignTurn', '1'));
+    const result = callFulfill(G, NON_CHIEF_SEAT_2P, ctxAt('foreignTurn', NON_CHIEF_SEAT_2P));
     expect(result).toBe(INVALID_MOVE);
     expect(G).toEqual(before);
   });
 
-  it('any stage works: stage gating no longer applies', () => {
-    // Calling from `domesticTurn` stage still goes through — the move
-    // itself doesn't gate on stage; bgio's `activePlayers` map enforces
-    // who-can-call from the engine side.
-    const G = buildState({ gold: 5 }, { '1': { wood: 1 } });
+  it('rejects when bank cannot afford required', () => {
+    const G = buildState({ wood: 0, gold: 5 });
     G.centerMat.tradeRequest = {
       id: 'tra-1',
       ownerSeat: '1',
       required: bagOf({ wood: 1 }),
       reward: bagOf({ gold: 3 }),
     };
-    const result = callFulfill(G, '1', ctxAt('domesticTurn', '1'));
-    expect(result).toBeUndefined();
-    expect(G.centerMat.tradeRequest).toBeNull();
-  });
-
-  it('seat without foreign role can still fulfill from their own stash', () => {
-    // 4p: seat '1' is the science seat (has its own mat / stash). The
-    // request was flipped by seat '3' (foreign), but seat '1' pays from
-    // its own stash and receives the reward into its own stash.
-    const G = buildState({ gold: 5 }, { '1': { wood: 1 } }, null, 4);
-    G.bank = bagOf({ gold: 5 });
-    G.centerMat.tradeRequest = {
-      id: 'tra-1',
-      ownerSeat: '3',
-      required: bagOf({ wood: 1 }),
-      reward: bagOf({ gold: 3 }),
-    };
-    const result = callFulfill(G, '1', ctxAt('scienceTurn', '1'));
-    expect(result).toBeUndefined();
-    expect(G.centerMat.tradeRequest).toBeNull();
-    expect(G.mats['1']!.stash.wood).toBe(0);
-    expect(G.mats['1']!.stash.gold).toBe(3);
-    expect(G.settlementsJoined).toBe(1);
-  });
-
-  it('rejects when caller has no mat (e.g., chief seat)', () => {
-    // 4p: seat '0' is the chief; the chief acts on `G.bank` directly and
-    // owns no player mat. Without a stash to pay from, the move rejects.
-    const G = buildState({ gold: 5 }, {}, null, 4);
-    G.centerMat.tradeRequest = {
-      id: 'tra-1',
-      ownerSeat: '3',
-      required: bagOf({ wood: 1 }),
-      reward: bagOf({ gold: 3 }),
-    };
     const before = JSON.parse(JSON.stringify(G));
-    const result = callFulfill(G, '0', ctxAt('scienceTurn', '0'));
+    const result = callFulfill(G, CHIEF_SEAT_2P, ctxAt('chiefPhase', CHIEF_SEAT_2P));
     expect(result).toBe(INVALID_MOVE);
     expect(G).toEqual(before);
+  });
+
+  it('rejects when caller has no playerID', () => {
+    const G = buildState({ wood: 1 });
+    G.centerMat.tradeRequest = {
+      id: 'tra-1',
+      ownerSeat: '1',
+      required: bagOf({ wood: 1 }),
+      reward: bagOf({ gold: 3 }),
+    };
+    const result = callFulfill(G, undefined, ctxAt('chiefPhase', CHIEF_SEAT_2P));
+    expect(result).toBe(INVALID_MOVE);
+  });
+
+  it('4-player: chief at seat 0 can fulfill; other seats cannot', () => {
+    const G = buildState({ wood: 1, gold: 0 }, null, 4);
+    G.centerMat.tradeRequest = {
+      id: 'tra-1',
+      ownerSeat: '3',
+      required: bagOf({ wood: 1 }),
+      reward: bagOf({ gold: 3 }),
+    };
+
+    // Seat '1' (science) — rejected.
+    const reject = callFulfill(G, '1', ctxAt('scienceTurn', '1'));
+    expect(reject).toBe(INVALID_MOVE);
+    expect(G.centerMat.tradeRequest).not.toBeNull();
+
+    // Seat '0' (chief) — succeeds.
+    const ok = callFulfill(G, CHIEF_SEAT_4P, ctxAt('chiefPhase', CHIEF_SEAT_4P));
+    expect(ok).toBeUndefined();
+    expect(G.centerMat.tradeRequest).toBeNull();
+    expect(G.settlementsJoined).toBe(1);
+    expect(G.bank.wood).toBe(0);
+    expect(G.bank.gold).toBe(3);
   });
 });

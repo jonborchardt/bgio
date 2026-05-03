@@ -4,8 +4,9 @@
 // is inlined by Vite so the bundle dead-code-eliminates the whole file.
 //
 // Collapsed: a 28px tab labeled "Dev". Expanded: a small drawer with
-// dev links (currently just "Card relationships"; future tools append
-// here without touching Board.tsx).
+// the live game-state read-out (phase / current player / round / mode —
+// previously a player-facing StatusBar at the top of the board) plus
+// dev links (Card relationships, role grants, preview pages).
 
 import { useState } from 'react';
 import { Box, Button, IconButton, Stack, Tooltip, Typography } from '@mui/material';
@@ -18,9 +19,18 @@ export interface DevSidebarProps {
   /** Optional bgio moves bag. When provided, dev shortcuts that need to
    *  dispatch moves (e.g. bank top-up) are enabled. */
   moves?: Record<string, (...args: unknown[]) => void>;
+  /** Live game-state read-out — listed at the top of the dev drawer. */
+  phase?: string | null;
+  currentPlayer?: string;
+  round?: number;
 }
 
-export function DevSidebar({ moves }: DevSidebarProps = {}) {
+export function DevSidebar({
+  moves,
+  phase,
+  currentPlayer,
+  round,
+}: DevSidebarProps = {}) {
   const [open, setOpen] = useState(false);
   const cardInfo = useCardInfo();
   const onOpenRelationships = () => cardInfo?.openWithoutFocus();
@@ -83,7 +93,7 @@ export function DevSidebar({ moves }: DevSidebarProps = {}) {
         top: 60,
         right: 0,
         zIndex: 1200,
-        width: 240,
+        width: 320,
         bgcolor: (t) => t.palette.card.surface,
         border: '1px dashed',
         borderColor: (t) => t.palette.status.muted,
@@ -116,6 +126,55 @@ export function DevSidebar({ moves }: DevSidebarProps = {}) {
         </IconButton>
       </Stack>
       <Stack spacing={1}>
+        {phase !== undefined && currentPlayer !== undefined && round !== undefined ? (
+          <Stack
+            spacing={0.25}
+            sx={{
+              px: 1,
+              py: 0.75,
+              border: '1px solid',
+              borderColor: (t) => t.palette.status.muted,
+              borderRadius: 1,
+            }}
+          >
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
+              <Typography
+                variant="caption"
+                sx={{ color: (t) => t.palette.status.muted, fontWeight: 600, minWidth: 56 }}
+              >
+                Phase
+              </Typography>
+              <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                {phase ?? '—'}
+              </Typography>
+            </Stack>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
+              <Typography
+                variant="caption"
+                sx={{ color: (t) => t.palette.status.muted, fontWeight: 600, minWidth: 56 }}
+              >
+                Player
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{ color: (t) => t.palette.status.active, fontWeight: 700 }}
+              >
+                {Number(currentPlayer) + 1}
+              </Typography>
+            </Stack>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
+              <Typography
+                variant="caption"
+                sx={{ color: (t) => t.palette.status.muted, fontWeight: 600, minWidth: 56 }}
+              >
+                Round
+              </Typography>
+              <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                {round}
+              </Typography>
+            </Stack>
+          </Stack>
+        ) : null}
         <Button
           variant="outlined"
           size="small"

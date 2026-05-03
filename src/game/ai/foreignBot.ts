@@ -229,16 +229,10 @@ const playForeignTurn = (state: BotState): BotAction | null => {
   const stash = G.mats?.[playerID]?.stash;
   if (stash === undefined) return null;
 
-  // Step 0: if a trade request is parked on the mat, fulfill it when this
-  // seat can afford it. Trade fulfillment converts stash → reward and
-  // ticks `settlementsJoined`, which is the V1 path toward the win
-  // condition; we prioritize it over recruit/upkeep so the bot can chain
-  // wins → flip → fulfill across rounds. Any seat can fulfill regardless
-  // of ownerSeat (see tradeFulfill.ts).
-  const tradeReq = G.centerMat.tradeRequest;
-  if (tradeReq !== null && canAfford(stash, tradeReq.required)) {
-    return { move: 'foreignTradeFulfill', args: [] };
-  }
+  // Trade fulfillment is now chief-only (see tradeFulfill.ts) — the
+  // foreign bot doesn't try to fulfill anymore. Foreign just keeps
+  // flipping trade cards after wins to produce more requests for the
+  // chief to resolve.
 
   // Step 1: upkeep, if not yet paid this stage.
   if (foreign._upkeepPaid !== true && !foreign.inFlight.battle) {

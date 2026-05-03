@@ -117,12 +117,9 @@ const enumerateChief = (
     out.push({ move: 'chiefDecideTradeDiscard', args: ['new'] });
   }
 
-  // foreignTradeFulfill: chief seat can also fulfill the public trade
-  // request when one is parked (see tradeFulfill.ts). Move re-validates
-  // affordability against the chief's stash — but the chief seat has no
-  // stash in the V1 layout, so this typically rejects in `chiefPhase`.
-  // Listed here for completeness in case a future tech grants the chief
-  // a stash.
+  // foreignTradeFulfill: chief-only (see tradeFulfill.ts) — the chief
+  // pays `required` from `G.bank` and receives `reward` back, ticking
+  // `settlementsJoined` toward the win condition.
   if (G.centerMat.tradeRequest !== null) {
     out.push({ move: 'foreignTradeFulfill', args: [] });
   }
@@ -178,12 +175,6 @@ const enumerateScience = (
     if (covers) {
       out.push({ move: 'scienceComplete', args: [card.id] });
     }
-  }
-
-  // foreignTradeFulfill: any seat can fulfill the public trade request
-  // when one is parked. Move re-validates affordability.
-  if (G.centerMat.tradeRequest !== null) {
-    out.push({ move: 'foreignTradeFulfill', args: [] });
   }
 
   // sciencePlayBlueEvent: one candidate per card in the science seat's blue
@@ -253,12 +244,6 @@ const enumerateDomestic = (
   // the move itself — a second call returns INVALID_MOVE.
   out.push({ move: 'domesticProduce', args: [] });
 
-  // foreignTradeFulfill: any seat can fulfill the public trade request
-  // when one is parked. Move re-validates affordability.
-  if (G.centerMat.tradeRequest !== null) {
-    out.push({ move: 'foreignTradeFulfill', args: [] });
-  }
-
   // domesticPlayGreenEvent: one candidate per card in the domestic green
   // hand.
   if (
@@ -310,12 +295,6 @@ const enumerateForeign = (
   // foreignFlipTrade: only legal after a winning battle, but listing it
   // costs nothing — the move rejects when not.
   out.push({ move: 'foreignFlipTrade', args: [] });
-
-  // foreignTradeFulfill: any seat can fulfill a parked trade request
-  // (see tradeFulfill.ts). The move re-validates affordability.
-  if (G.centerMat.tradeRequest !== null) {
-    out.push({ move: 'foreignTradeFulfill', args: [] });
-  }
 
   // foreignPlayRedEvent.
   if (

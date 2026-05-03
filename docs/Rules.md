@@ -217,14 +217,19 @@ upkeep-eligible units remain unpaid.
 
 #### 5.2.4 Trade-request decisions
 
-The trade slot is **shared and public**. The seat that flipped it owns
-it for audit/UI labeling, but **any active seat with the goods** can
-**fulfill** it on their own turn:
+The trade slot is **chief-private**. The Foreign seat that flipped the
+card knows it placed *something* there, but the card's `required` /
+`reward` is held face-down for the chief to read. Only the chief can
+**fulfill** it, on the chief phase:
 
-- Pay `required` from stash to the bank.
-- Receive `reward` from the bank into stash.
+- Pay `required` from the **bank** to the off-table trader.
+- Receive `reward` from the off-table trader into the **bank**.
 - The village joins **+1 settlement**.
 - The slot clears.
+
+(Resources flow bank ↔ off-table here, not bank ↔ stash. The trader is
+fictional, like the chief stipend's source — no seat's stash gains or
+loses anything from a fulfillment.)
 
 When two trade flips collide, the chief — on their next chief phase —
 must call `chiefDecideTradeDiscard` and pick whether to keep the

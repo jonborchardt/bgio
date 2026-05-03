@@ -37,7 +37,7 @@ import { Army } from './Army.tsx';
 import { Decks } from './Decks.tsx';
 import { BattlePanel } from './BattlePanel.tsx';
 import { RolePanel } from '../layout/RolePanel.tsx';
-import { StashBar } from '../resources/StashBar.tsx';
+import { SectionHeading } from '../layout/SectionHeading.tsx';
 import { ResourceToken } from '../resources/ResourceToken.tsx';
 import { TechCard } from '../cards/TechCard.tsx';
 import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
@@ -46,6 +46,7 @@ import { UnitCard } from '../cards/UnitCard.tsx';
 import { UNITS } from '../../data/index.ts';
 import { GraveyardButton } from '../layout/GraveyardButton.tsx';
 import { UndoButton } from '../layout/UndoButton.tsx';
+import { EmbossedFrame } from '../layout/EmbossedFrame.tsx';
 
 // Module-level lookup so the recruit hand can render the canonical
 // UnitCard (which needs the full UnitDef) for a hand entry that only
@@ -189,6 +190,7 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
   return (
     <RolePanel
       role="foreign"
+      connectedAbove
       actions={
         <>
           <GraveyardButton
@@ -278,11 +280,7 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
       }
     >
       <Stack spacing={1.5}>
-        <StashBar
-          stash={G.mats?.[playerID]?.stash}
-          ariaLabel="Foreign stash"
-        />
-
+        <SectionHeading role="foreign">Cards</SectionHeading>
         <Stack
           direction="row"
           spacing={1}
@@ -290,12 +288,25 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
           sx={{ flexWrap: 'wrap', rowGap: 1, alignItems: 'flex-start' }}
         >
           {foreign.hand.length === 0 && (foreign.techHand ?? []).length === 0 ? (
-            <Typography
-              variant="caption"
-              sx={{ color: (t) => t.palette.status.muted }}
+            <EmbossedFrame
+              role="foreign"
+              sx={{
+                width: '100%',
+                display: 'flex',
+                justifyContent: 'center',
+              }}
             >
-              No cards in hand.
-            </Typography>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: (t) => t.palette.status.muted,
+                  fontStyle: 'italic',
+                  py: 2,
+                }}
+              >
+                No cards in hand.
+              </Typography>
+            </EmbossedFrame>
           ) : (
             <>
               {foreign.hand.map((unit) => {
@@ -415,12 +426,14 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
           )}
         </Stack>
 
+        <SectionHeading role="foreign">Army</SectionHeading>
         <Army
           inPlay={foreign.inPlay.map((u) => ({ ...u }))}
           canAct={canActOnTurn}
           onRelease={handleRelease}
         />
 
+        <SectionHeading role="foreign">Excursions</SectionHeading>
         <Decks
           battleDeckCount={foreign.battleDeck.length}
           tradeDeckCount={foreign.tradeDeck.length}

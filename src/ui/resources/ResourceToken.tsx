@@ -1,24 +1,32 @@
 // Shared coloured resource token: a small square showing the count, with
-// the resource's initial as a subscript and the full "<count> <resource>"
+// the resource's symbol as a subscript and the full "<count> <name>"
 // string surfaced on hover (native title — no MUI Tooltip needed for the
 // dense bar use case). Used both inside cards (cost rows, adjacency
 // bonuses) and on the player mat / stash bar.
 //
+// The rendered symbol and tooltip name come from `RESOURCE_DISPLAY` —
+// not `resource.charAt(0)` — so first-letter collisions resolve cleanly
+// (steel=T, science=C, worker/Labor=L, happiness/Approval=A).
+//
 // Pass `count` to render a counted token (the cost / stash use). Omit it
-// to render an icon-only swatch — the resource's initial fills the square
-// and the hover title shows just the resource name. The icon-only variant
-// is the canonical "this is a wood slot" / "this row controls gold"
+// to render an icon-only swatch — the symbol fills the square and the
+// hover title shows just the resource name. The icon-only variant is
+// the canonical "this is a wood slot" / "this row controls gold"
 // affordance — anywhere we'd otherwise spell the resource's name in text.
 
 import { Box } from '@mui/material';
+import {
+  RESOURCE_DISPLAY,
+  type Resource,
+} from '../../game/resources/types.ts';
 import type { CardSize } from '../cards/sizes.ts';
 
 export interface ResourceTokenProps {
   resource: string;
-  /** When omitted, renders an icon-only swatch (the initial fills the
+  /** When omitted, renders an icon-only swatch (the symbol fills the
    *  square) for type-only references. */
   count?: number;
-  /** Sign prefix for the count, e.g. '+' for "+1 happiness". Ignored when
+  /** Sign prefix for the count, e.g. '+' for "+1 Approval". Ignored when
    *  `count` is omitted. */
   sign?: '+' | '-' | '';
   /** Card-relative size keyword. Defaults to `'normal'`. The stash bar
@@ -41,10 +49,12 @@ export function ResourceToken({
   size = 'normal',
 }: ResourceTokenProps) {
   const dim = DIM_BY_SIZE[size];
-  const initial = resource.charAt(0).toUpperCase();
+  const display = RESOURCE_DISPLAY[resource as Resource];
+  const symbol = display?.symbol ?? resource.charAt(0).toUpperCase();
+  const name = display?.name ?? resource;
   const counted = count !== undefined;
-  const display = counted ? `${sign}${count}` : initial;
-  const title = counted ? `${sign}${count} ${resource}` : resource;
+  const text = counted ? `${sign}${count}` : symbol;
+  const title = counted ? `${sign}${count} ${name}` : name;
   return (
     <Box
       sx={(t) => ({
@@ -65,7 +75,7 @@ export function ResourceToken({
       })}
       title={title}
     >
-      {display}
+      {text}
       {counted ? (
         <Box
           component="span"
@@ -78,7 +88,7 @@ export function ResourceToken({
             opacity: 0.85,
           }}
         >
-          {initial}
+          {symbol}
         </Box>
       ) : null}
     </Box>

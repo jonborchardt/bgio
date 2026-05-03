@@ -176,7 +176,7 @@ export function CellSlot({
           )}
           {building.worker !== null ? (
             <Box
-              aria-label="Worker"
+              aria-label="Labor"
               sx={{
                 position: 'absolute',
                 bottom: 4,

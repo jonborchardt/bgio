@@ -19,7 +19,7 @@
 import { Box, Button, Stack, Tooltip, Typography } from '@mui/material';
 import type { ScienceCardDef, ScienceColor } from '../../data/scienceCards.ts';
 import type { TechnologyDef } from '../../data/schema.ts';
-import { RESOURCES } from '../../game/resources/types.ts';
+import { RESOURCES, RESOURCE_DISPLAY } from '../../game/resources/types.ts';
 import type { Resource, ResourceBag } from '../../game/resources/types.ts';
 import { CardInfoButton } from '../cards/CardInfoButton.tsx';
 import { ResourceToken } from '../resources/ResourceToken.tsx';
@@ -64,22 +64,33 @@ const costResources = (cost: Partial<ResourceBag>): Resource[] => {
 const techDetailEntries = (
   tech: TechnologyDef,
 ): Array<{ label: string; value: string }> => {
-  const fields: Array<{ label: string; key: keyof TechnologyDef }> = [
+  const costFields: Array<{ label: string; key: keyof TechnologyDef }> = [
     { label: 'Cost', key: 'cost' },
-    { label: 'Order', key: 'order' },
+  ];
+  const givesFields: Array<{ label: string; key: keyof TechnologyDef }> = [
     { label: 'Buildings', key: 'buildings' },
     { label: 'Units', key: 'units' },
-    { label: 'Blue event', key: 'blueEvent' },
-    { label: 'Green event', key: 'greenEvent' },
-    { label: 'Red event', key: 'redEvent' },
-    { label: 'Gold event', key: 'goldEvent' },
+    { label: 'Blue gets', key: 'blueEvent' },
+    { label: 'Green gets', key: 'greenEvent' },
+    { label: 'Red gets', key: 'redEvent' },
+    { label: 'Gold gets', key: 'goldEvent' },
   ];
   const out: Array<{ label: string; value: string }> = [];
-  for (const f of fields) {
-    const v = tech[f.key];
-    if (typeof v === 'string' && v.trim().length > 0) {
-      out.push({ label: f.label, value: v });
+  const pushIfPresent = (
+    fields: Array<{ label: string; key: keyof TechnologyDef }>,
+  ) => {
+    for (const f of fields) {
+      const v = tech[f.key];
+      if (typeof v === 'string' && v.trim().length > 0) {
+        out.push({ label: f.label, value: v });
+      }
     }
+  };
+  pushIfPresent(costFields);
+  const givesStart = out.length;
+  pushIfPresent(givesFields);
+  if (out.length > givesStart) {
+    out.splice(givesStart, 0, { label: 'Gives', value: '' });
   }
   return out;
 };
@@ -243,7 +254,9 @@ export function ScienceCard({
                         <Box component="span" sx={{ fontWeight: 700 }}>
                           {d.label}:
                         </Box>
-                        <ResourceText text={d.value} size="small" />
+                        {d.value ? (
+                          <ResourceText text={d.value} size="small" />
+                        ) : null}
                       </Box>
                     ))
                   )}
@@ -304,6 +317,7 @@ export function ScienceCard({
             const need = card.cost[resource] ?? 0;
             const have = paid[resource] ?? 0;
             const fulfilled = have >= need;
+            const displayName = RESOURCE_DISPLAY[resource].name;
             return (
               <Stack
                 key={resource}
@@ -316,7 +330,7 @@ export function ScienceCard({
                   count={need}
                   size="normal"
                 />
-                <Tooltip title={`${resource}: ${have}/${need}`} placement="top">
+                <Tooltip title={`${displayName}: ${have}/${need}`} placement="top">
                   <Typography
                     variant="caption"
                     sx={{
@@ -347,7 +361,7 @@ export function ScienceCard({
                     (stash[resource] ?? 0) < 1
                   }
                   onClick={() => onContribute(resource, 1)}
-                  aria-label={`Contribute +1 ${resource} to ${card.id}`}
+                  aria-label={`Contribute +1 ${displayName} to ${card.id}`}
                   sx={{ flexShrink: 0, minWidth: '2rem', px: 0.5 }}
                 >
                   +1

@@ -16,12 +16,12 @@ import { Button, Stack, Typography } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
 import type { PlayerID, SettlementState } from '../../game/types.ts';
 import type { Resource, ResourceBag } from '../../game/resources/types.ts';
-import { computeBankView } from '../../game/resources/bankLog.ts';
 import { rolesAtSeat } from '../../game/roles.ts';
 import { CircleEditor } from './CircleEditor.tsx';
 import { RolePanel } from '../layout/RolePanel.tsx';
-import { StashBar } from '../resources/StashBar.tsx';
+import { SectionHeading } from '../layout/SectionHeading.tsx';
 import { PlayableHand } from '../cards/PlayableHand.tsx';
+import { TradeRequestSlot } from '../mat/TradeRequestSlot.tsx';
 import { GraveyardButton } from '../layout/GraveyardButton.tsx';
 import { UndoButton } from '../layout/UndoButton.tsx';
 import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
@@ -39,11 +39,6 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
 
   const isChiefPhase = ctx.phase === 'chiefPhase';
   const canPush = isChiefPhase;
-  // Off-turn: show what the chief is collecting this round (income).
-  // On-turn: show the full bank — everything available to distribute,
-  // which is income + carryover combined.
-  const barBag = isChiefPhase ? G.bank : computeBankView(G).income;
-  const barLabel = isChiefPhase ? 'Stash' : 'Income';
 
   // Sort seats deterministically; render every non-chief seat (the chief's
   // own seat owns no circle on the mat, so there's nothing to distribute to).
@@ -68,6 +63,7 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
   return (
     <RolePanel
       role="chief"
+      connectedAbove
       actions={
         <>
           <GraveyardButton
@@ -100,12 +96,6 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
       }
     >
       <Stack spacing={1.5}>
-        <StashBar
-          stash={barBag}
-          label={barLabel}
-          ariaLabel={`Chief ${barLabel.toLowerCase()}`}
-        />
-
         <PlayableHand
           techs={G.chief?.hand ?? []}
           holderRole="chief"
@@ -115,8 +105,16 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
           emptyHint="No gold tech cards yet — complete a gold science card to add one."
         />
 
+        <TradeRequestSlot
+          tradeRequest={G.centerMat.tradeRequest}
+          bank={G.bank}
+          canAct={isChiefPhase}
+          onFulfill={() => moves.foreignTradeFulfill()}
+        />
+
         {isChiefPhase ? (
-          <Stack spacing={1} aria-label="Non-chief seats">
+          <Stack spacing={1} aria-label="Send resources">
+            <SectionHeading role="chief">Send Resources</SectionHeading>
             {nonChiefSeats.length === 0 ? (
               <Typography
                 variant="body2"

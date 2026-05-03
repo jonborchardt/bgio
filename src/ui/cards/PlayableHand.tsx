@@ -24,6 +24,7 @@ import { canAfford } from '../../game/resources/bag.ts';
 import { TechCard } from './TechCard.tsx';
 import { ResourceToken } from '../resources/ResourceToken.tsx';
 import { idForTech } from '../../cards/registry.ts';
+import { EmbossedFrame } from '../layout/EmbossedFrame.tsx';
 
 export interface PlayableHandProps {
   techs: ReadonlyArray<TechnologyDef>;
@@ -90,7 +91,7 @@ export function PlayableHand({
   canAct,
   onPlay,
   emptyHint,
-  title = 'Technologies in hand',
+  title = 'Cards',
 }: PlayableHandProps) {
   return (
     <Stack spacing={0.75} sx={{ alignItems: 'flex-start' }}>
@@ -106,12 +107,25 @@ export function PlayableHand({
         {title}
       </Typography>
       {techs.length === 0 ? (
-        <Typography
-          variant="caption"
-          sx={{ color: (t) => t.palette.status.muted, fontStyle: 'italic' }}
+        <EmbossedFrame
+          role={holderRole}
+          sx={{
+            alignSelf: 'stretch',
+            display: 'flex',
+            justifyContent: 'center',
+          }}
         >
-          {emptyHint ?? 'No technologies yet.'}
-        </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              color: (t) => t.palette.status.muted,
+              fontStyle: 'italic',
+              py: 2,
+            }}
+          >
+            {emptyHint ?? 'No technologies yet.'}
+          </Typography>
+        </EmbossedFrame>
       ) : (
         <Stack
           direction="row"

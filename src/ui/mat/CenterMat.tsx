@@ -1,33 +1,39 @@
-// CenterMat — central play area: per-seat player-mat tiles plus the
-// single trade-request slot. The per-seat tiles double as the player
-// roster so we only show one list of seats on the board.
+// CenterMat — central play area: row of per-seat player-mat tiles. The
+// tiles double as the player roster AND as the seat-picker tab strip —
+// the older `<SeatPicker>` Tabs row was retired in favor of these
+// clickable tiles, so the row of Circles IS now the way the local
+// viewer switches seats in hot-seat play.
+//
+// `CenterMat` returns the tile row alone now; the trade-request slot
+// previously rendered here moved into ChiefPanel as a chief-private
+// "Trade Requests" section (Foreign-flipped trade cards are visible to
+// the chief only — see `playerView` redaction).
 //
 //   - Reads roles from `G.roleAssignments`,
 //   - reads each seat's player mat from `G.mats[seat]` (in / out / stash);
 //     chief seats have no mat — instead the chief tile renders the bank
 //     split into Income (this round) and Stash (carryover) using the
-//     bankLog audit trail,
-//   - reads tradeRequest from `G.centerMat.tradeRequest` (visible to
-//     every seat — any active seat with enough in their own stash can
-//     fulfill).
+//     bankLog audit trail.
 //
 // There's no longer a "pull from circle" interaction: the in→stash transfer
 // runs automatically at `othersPhase.turn.onBegin`, so this component is
 // pure presentation.
 
+import { useContext } from 'react';
 import { Box } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
-import type { SettlementState } from '../../game/types.ts';
+import type { PlayerID, SettlementState } from '../../game/types.ts';
 import { computeBankView } from '../../game/resources/bankLog.ts';
 import { rolesAtSeat } from '../../game/roles.ts';
+import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
 import { Circle } from './Circle.tsx';
-import { TradeRequestSlot } from './TradeRequestSlot.tsx';
 
 const titleCase = (s: string): string =>
   s.length === 0 ? s : s[0]!.toUpperCase() + s.slice(1);
 
-export function CenterMat(props: BoardProps<SettlementState>) {
-  const { G, ctx, playerID, moves } = props;
+export function SeatTiles(props: BoardProps<SettlementState>) {
+  const { G, ctx, playerID } = props;
+  const seatCtx = useContext(SeatPickerContext);
   const seats = Object.keys(G.roleAssignments).sort();
   const gameOver = ctx.gameover !== undefined;
   // During chiefPhase, this round's income is merged into what the chief
@@ -93,50 +99,59 @@ export function CenterMat(props: BoardProps<SettlementState>) {
 
   return (
     <Box
-      aria-label="Center mat"
-      sx={{ display: 'grid', gap: 1.5 }}
+      aria-label="Seat tiles"
+      sx={{
+        display: 'grid',
+        gap: 1.5,
+        gridTemplateColumns: {
+          xs: 'repeat(2, minmax(0, 1fr))',
+          md: 'repeat(4, minmax(0, 1fr))',
+        },
+        alignItems: 'stretch',
+      }}
     >
-      <Box
-        sx={{
-          display: 'grid',
-          gap: 1.5,
-          gridTemplateColumns: {
-            xs: 'repeat(2, minmax(0, 1fr))',
-            md: 'repeat(4, minmax(0, 1fr))',
-          },
-          alignItems: 'stretch',
-        }}
-      >
-        {seats.map((seat) => {
-          const seatRoles = rolesAtSeat(G.roleAssignments, seat);
-          const mat = G.mats?.[seat] ?? null;
-          const acting = isSeatActing(seat);
-          const waitingFor = waitingForLabelFor(seat);
-          const isChiefSeat = seatRoles.includes('chief');
+      {seats.map((seat) => {
+        const seatRoles = rolesAtSeat(G.roleAssignments, seat);
+        const mat = G.mats?.[seat] ?? null;
+        const acting = isSeatActing(seat);
+        const waitingFor = waitingForLabelFor(seat);
+        const isChiefSeat = seatRoles.includes('chief');
+        const isLocalSeat =
+          playerID !== undefined &&
+          playerID !== null &&
+          playerID === seat;
 
-          return (
-            <Box
-              key={seat}
-              sx={{ minWidth: 0, display: 'flex' }}
-            >
-              <Circle
-                seat={seat}
-                mat={mat}
-                roles={seatRoles}
-                active={acting}
-                waitingFor={waitingFor}
-                bankView={isChiefSeat ? bankView : undefined}
-              />
-            </Box>
-          );
-        })}
-      </Box>
-      <TradeRequestSlot
-        tradeRequest={G.centerMat.tradeRequest}
-        G={G}
-        playerID={playerID}
-        onFulfill={() => moves.foreignTradeFulfill()}
-      />
+        // Tab behavior is hot-seat-only: the seat-picker context is
+        // only mounted by `<HotSeatShell>` in App.tsx (10.3 networked
+        // mode binds the local seat through the lobby and the row
+        // stays read-only).
+        const tabSelect = seatCtx
+          ? (s: PlayerID) => seatCtx.setSeat(s)
+          : undefined;
+
+        return (
+          <Box key={seat} sx={{ minWidth: 0, display: 'flex' }}>
+            <Circle
+              seat={seat}
+              mat={mat}
+              roles={seatRoles}
+              active={acting}
+              waitingFor={waitingFor}
+              bankView={isChiefSeat ? bankView : undefined}
+              onSelect={tabSelect}
+              selected={isLocalSeat}
+            />
+          </Box>
+        );
+      })}
+    </Box>
+  );
+}
+
+export function CenterMat(props: BoardProps<SettlementState>) {
+  return (
+    <Box aria-label="Center mat" sx={{ display: 'grid', gap: 1.5 }}>
+      <SeatTiles {...props} />
     </Box>
   );
 }

@@ -26,6 +26,7 @@
 import type { Ctx } from 'boardgame.io';
 import type { PlayerID, SettlementState } from '../types.ts';
 import { rolesAtSeat, seatOfRole } from '../roles.ts';
+import { canAfford } from '../resources/bag.ts';
 import { UNITS } from '../../data/index.ts';
 import type { MoveCandidate } from './enumerate.ts';
 
@@ -123,6 +124,14 @@ const play = (state: BotState): BotAction | null => {
   // Pending chief decision: resolve trade-discard interrupt first.
   if (G._awaitingChiefTradeDiscard === true) {
     return { move: 'chiefDecideTradeDiscard', args: ['new'] };
+  }
+
+  // Fulfill the parked trade request when the bank can cover `required`.
+  // Trade fulfillment ticks `settlementsJoined`, which is the V1 path to
+  // the win condition — prioritize it over distribution.
+  const tradeReq = G.centerMat.tradeRequest;
+  if (tradeReq !== null && canAfford(G.bank, tradeReq.required)) {
+    return { move: 'foreignTradeFulfill', args: [] };
   }
 
   // Empty bank → nothing to distribute, end phase.

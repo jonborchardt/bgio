@@ -1,9 +1,11 @@
 // RolePanel — shared shell for the four role panels (chief / science /
-// domestic / foreign). Owns the Paper container, role-themed border, the
-// title, and an optional right-aligned action row, so each panel only has
-// to provide its body content.
+// domestic / foreign). Owns the Paper container, role-themed border,
+// and an optional right-aligned action row, so each panel only has to
+// provide its body content. The role name is no longer rendered here:
+// the panel sits beneath its seat tile (which already labels the role
+// in the tab header), so a duplicate `<h2>Chief</h2>` was redundant.
 
-import { Box, Paper, Stack, Typography } from '@mui/material';
+import { Box, Paper, Stack } from '@mui/material';
 import type { ReactNode } from 'react';
 
 export type RoleName = 'chief' | 'science' | 'domestic' | 'foreign';
@@ -19,9 +21,20 @@ export interface RolePanelProps {
   role: RoleName;
   actions?: ReactNode;
   children: ReactNode;
+  /** When true, the panel renders as the active tab's content — its top
+   *  border + top corners square off so the selected Circle tile above
+   *  it can fuse into a single bordered shape. Board sets this when the
+   *  local seat holds this role (i.e. this panel sits under the
+   *  highlighted seat tile). */
+  connectedAbove?: boolean;
 }
 
-export function RolePanel({ role, actions, children }: RolePanelProps) {
+export function RolePanel({
+  role,
+  actions,
+  children,
+  connectedAbove,
+}: RolePanelProps) {
   return (
     <Paper
       elevation={0}
@@ -29,23 +42,19 @@ export function RolePanel({ role, actions, children }: RolePanelProps) {
         px: 2,
         py: 2,
         bgcolor: (t) => t.palette.card.surface,
-        border: '1px solid',
+        // Top rail is always drawn — when fused with a seat tile above,
+        // the tile sits on top with `mb:-1px` and its own bg, hiding
+        // the rail under itself so the seam reads as a tabbed UI
+        // (rail visible under unselected tabs, gap under the selected
+        // tab where its bg punches through).
+        border: '2px solid',
         borderColor: (t) => t.palette.role[role].main,
+        borderTopLeftRadius: connectedAbove ? 0 : undefined,
+        borderTopRightRadius: connectedAbove ? 0 : undefined,
       }}
       aria-label={`${ROLE_TITLES[role]} panel`}
     >
       <Stack spacing={1.5}>
-        <Typography
-          variant="h5"
-          component="h2"
-          sx={{
-            color: (t) => t.palette.role[role].main,
-            fontWeight: 700,
-            letterSpacing: '0.02em',
-          }}
-        >
-          {ROLE_TITLES[role]}
-        </Typography>
         {actions !== undefined ? (
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
             {actions}
