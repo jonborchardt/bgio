@@ -1,12 +1,9 @@
-// Live shell — renders the in-game V9CardShell directly.
-//
-// This is the design actually used in the running game (and the only one
-// that has to stay in sync with real card data). Other historical
-// variations have been removed; this file exists so the preview page can
-// still show every sample card across every preview size against the
-// shipping shell.
+// Live shell renderer — the React component used by the `liveShell`
+// variation. Kept in its own file so `liveShell.ts` (the variation
+// registry entry) doesn't mix component + non-component exports, which
+// breaks Vite's React Fast Refresh.
 
-import type { Renderer, RendererProps, Variation } from '../types.ts';
+import type { Renderer, RendererProps } from '../types.ts';
 import {
   buildingDisplay,
   scienceDisplay,
@@ -15,7 +12,7 @@ import {
 } from '../../cards/cardDisplay.ts';
 import { V9CardShell } from '../../cards/V9CardShell.tsx';
 
-const LiveShellRenderer: Renderer = ({ card, size }: RendererProps) => {
+export const LiveShellRenderer: Renderer = ({ card, size }: RendererProps) => {
   switch (card.kind) {
     case 'domesticBuilding':
     case 'domesticBuildingComplex':
@@ -40,12 +37,4 @@ const LiveShellRenderer: Renderer = ({ card, size }: RendererProps) => {
     case 'chiefTechGrant':
       return <V9CardShell display={techDisplay(card.def)} size={size} />;
   }
-};
-
-export const liveShell: Variation = {
-  id: 'live-shell',
-  name: 'Live shell',
-  blurb:
-    'The in-game V9CardShell rendered directly. This is the design the running game ships — every other variation has been retired.',
-  Renderer: LiveShellRenderer,
 };

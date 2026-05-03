@@ -24,7 +24,7 @@ import { Box } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
 import type { PlayerID, SettlementState } from '../../game/types.ts';
 import { computeBankView } from '../../game/resources/bankLog.ts';
-import { rolesAtSeat } from '../../game/roles.ts';
+import { rolesAtSeat, seatOfRole } from '../../game/roles.ts';
 import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
 import { Circle } from './Circle.tsx';
 
@@ -52,10 +52,17 @@ export function SeatTiles(props: BoardProps<SettlementState>) {
   // changing the stage map, so both checks are required. In
   // `chiefPhase`, every seat is parked in `Stage.NULL` purely so
   // non-chief seats can fire the side-channel `requestHelp` move —
-  // only `currentPlayer` (the chief) is actually driving the phase.
+  // only the seat holding the chief role drives the phase.
+  // (`ctx.currentPlayer` would seem like the natural pick, but bgio's
+  // default turn.order rotates it across phase transitions, so after a
+  // full round it can land on any seat — not the chief.)
+  const chiefRoleSeat = (() => {
+    try { return seatOfRole(G.roleAssignments, 'chief'); }
+    catch { return undefined; }
+  })();
   const isSeatActing = (seat: string): boolean => {
     if (gameOver) return false;
-    if (ctx.phase === 'chiefPhase') return ctx.currentPlayer === seat;
+    if (ctx.phase === 'chiefPhase') return chiefRoleSeat === seat;
     const ap = ctx.activePlayers;
     if (ap) {
       const stage = ap[seat];

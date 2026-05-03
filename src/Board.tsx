@@ -27,6 +27,7 @@ import type { GameOutcome } from './game/endConditions.ts';
 import { SeatTiles } from './ui/mat/CenterMat.tsx';
 import { RelationshipsModalHost } from './ui/relationships/RelationshipsModalHost.tsx';
 import { DevSidebar } from './ui/layout/DevSidebar.tsx';
+import { EventLogDrawer } from './ui/log/EventLogDrawer.tsx';
 
 const ROLE_TITLE: Record<'chief' | 'science' | 'domestic' | 'foreign', string> = {
   chief: 'Chief',
@@ -60,6 +61,7 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
   const active = pickActiveSeat({
     activePlayers: ctx.activePlayers,
     currentPlayer: ctx.currentPlayer,
+    phase: ctx.phase,
     roleAssignments: G.roleAssignments,
     othersDone: G.othersDone,
     localSeat: playerID,
@@ -135,6 +137,7 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
         currentPlayer={ctx.currentPlayer}
         round={G.round}
       />
+      <EventLogDrawer log={props.log ?? []} G={G} />
     </Stack>
   );
 

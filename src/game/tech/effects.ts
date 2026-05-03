@@ -64,14 +64,14 @@ export const grantTechUnlocks = (
   G: SettlementState,
   tech: TechnologyDef,
 ): boolean => {
-  let granted = false;
+  let granted = 0;
   for (const name of splitNames(tech.buildings)) {
     const def = buildingByName.get(name.toLowerCase());
     if (def === undefined) continue;
     if (G.domestic === undefined) continue;
     if (G.domestic.hand.some((b) => b.name === def.name)) continue;
     G.domestic.hand.push(def);
-    granted = true;
+    granted += 1;
   }
   for (const name of splitNames(tech.units)) {
     const def = unitByName.get(name.toLowerCase());
@@ -79,9 +79,9 @@ export const grantTechUnlocks = (
     if (G.foreign === undefined) continue;
     if (G.foreign.hand.some((u) => u.name === def.name)) continue;
     G.foreign.hand.push(def);
-    granted = true;
+    granted += 1;
   }
-  return granted;
+  return granted > 0;
 };
 
 /**

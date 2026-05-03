@@ -34,6 +34,7 @@ import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
 import { nextSeatAfterDone } from '../layout/nextSeat.ts';
 import { RequestHelpButton } from '../requests/RequestHelpButton.tsx';
 import { RequestsRow } from '../requests/RequestsRow.tsx';
+import { WanderEffectRow } from '../opponent/WanderEffectRow.tsx';
 import { buildResourceSlices } from '../requests/useResourceSlice.ts';
 import { idForBuilding, idForTech } from '../../cards/registry.ts';
 import { buildingCost } from '../../data/index.ts';
@@ -97,6 +98,7 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
     <RolePanel
       role="domestic"
       connectedAbove
+      topRow={<WanderEffectRow opponent={G.opponent} />}
       actions={
         <>
           <GraveyardButton

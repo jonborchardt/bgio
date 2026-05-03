@@ -4,6 +4,6 @@
 // directly — same pattern as `cardPreview/variations/liveShell`.
 
 import type { MatVariation } from '../types.ts';
-import { liveTile } from './liveTile.tsx';
+import { liveTile } from './liveTile.ts';
 
 export const VARIATIONS: ReadonlyArray<MatVariation> = [liveTile];

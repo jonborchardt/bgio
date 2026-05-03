@@ -49,6 +49,7 @@ import { UndoButton } from '../layout/UndoButton.tsx';
 import { EmbossedFrame } from '../layout/EmbossedFrame.tsx';
 import { RequestHelpButton } from '../requests/RequestHelpButton.tsx';
 import { RequestsRow } from '../requests/RequestsRow.tsx';
+import { WanderEffectRow } from '../opponent/WanderEffectRow.tsx';
 import { buildResourceSlices } from '../requests/useResourceSlice.ts';
 import { idForUnit, idForTech } from '../../cards/registry.ts';
 
@@ -195,6 +196,7 @@ export function ForeignPanel(props: BoardProps<SettlementState>) {
     <RolePanel
       role="foreign"
       connectedAbove
+      topRow={<WanderEffectRow opponent={G.opponent} />}
       actions={
         <>
           <GraveyardButton

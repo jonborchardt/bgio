@@ -20,6 +20,10 @@ const ROLE_TITLES: Record<RoleName, string> = {
 export interface RolePanelProps {
   role: RoleName;
   actions?: ReactNode;
+  /** Optional content rendered inside the panel above the actions row.
+   *  Used for cross-cutting status that should sit higher than the role's
+   *  own action affordances (e.g. the wander effect row). */
+  topRow?: ReactNode;
   children: ReactNode;
   /** When true, the panel renders as the active tab's content — its top
    *  border + top corners square off so the selected Circle tile above
@@ -32,6 +36,7 @@ export interface RolePanelProps {
 export function RolePanel({
   role,
   actions,
+  topRow,
   children,
   connectedAbove,
 }: RolePanelProps) {
@@ -55,9 +60,32 @@ export function RolePanel({
       aria-label={`${ROLE_TITLES[role]} panel`}
     >
       <Stack spacing={1.5}>
-        {actions !== undefined ? (
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-            {actions}
+        {topRow !== undefined || actions !== undefined ? (
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: 1,
+              flexWrap: 'wrap',
+            }}
+          >
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 1,
+                alignItems: 'center',
+                minWidth: 0,
+                flex: '1 1 auto',
+              }}
+            >
+              {topRow}
+            </Box>
+            {actions !== undefined ? (
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                {actions}
+              </Box>
+            ) : null}
           </Box>
         ) : null}
         {children}

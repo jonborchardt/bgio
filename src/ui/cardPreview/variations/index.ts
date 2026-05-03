@@ -5,7 +5,7 @@
 // here. To add one: drop a file beside this one and append it.
 
 import type { Variation } from '../types.ts';
-import { liveShell } from './liveShell.tsx';
+import { liveShell } from './liveShell.ts';
 
 export const VARIATIONS: ReadonlyArray<Variation> = [
   liveShell,

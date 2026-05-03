@@ -4,19 +4,8 @@
 // as a tuning surface for the live design (sample states are still
 // useful when iterating on tokens, glyphs, or layout in `Circle.tsx`).
 
-import { Circle } from '../../mat/Circle.tsx';
-import type { MatRendererProps, MatVariation } from '../types.ts';
-
-const LiveTileRenderer = ({ sample }: MatRendererProps) => (
-  <Circle
-    seat={sample.seat}
-    mat={sample.mat}
-    roles={sample.roles}
-    active={sample.active}
-    waitingFor={sample.waitingFor}
-    bankView={sample.bankView}
-  />
-);
+import type { MatVariation } from '../types.ts';
+import { LiveTileRenderer } from './LiveTileRenderer.tsx';
 
 export const liveTile: MatVariation = {
   id: 'live-tile',
