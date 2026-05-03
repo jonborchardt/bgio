@@ -137,25 +137,9 @@ export function TradeRequestSlot({
         <Stack spacing={0.5} sx={{ alignItems: 'stretch' }}>
           <CardFrame size="normal">
             <Stack spacing={0.75}>
-              <Stack
-                direction="row"
-                spacing={1}
-                sx={{ alignItems: 'baseline', justifyContent: 'space-between' }}
-              >
-                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                  Trade Request
-                </Typography>
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: (t) => t.palette.status.muted,
-                    textTransform: 'uppercase',
-                    letterSpacing: 0.4,
-                  }}
-                >
-                  From seat {tradeRequest.ownerSeat}
-                </Typography>
-              </Stack>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                Trade Request
+              </Typography>
               <Box>
                 <Typography
                   variant="caption"
