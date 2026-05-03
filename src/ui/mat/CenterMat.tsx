@@ -46,13 +46,16 @@ export function SeatTiles(props: BoardProps<SettlementState>) {
     : { ...rawBankView, hideIncome: false };
 
   // Per-tile "Waiting for X" / active-border logic. A seat is acting
-  // when bgio would accept a move from it: in `othersPhase`,
-  // `activePlayers` lists every non-chief seat with their stage, and
-  // 14.2's `othersDone` flips a seat off without changing the stage
-  // map, so both checks are required. In `chiefPhase`, `activePlayers`
-  // is null and only `currentPlayer` is acting.
+  // when bgio would accept a *phase-driving* move from it: in
+  // `othersPhase`, `activePlayers` lists every non-chief seat with
+  // their role-stage, and 14.2's `othersDone` flips a seat off without
+  // changing the stage map, so both checks are required. In
+  // `chiefPhase`, every seat is parked in `Stage.NULL` purely so
+  // non-chief seats can fire the side-channel `requestHelp` move —
+  // only `currentPlayer` (the chief) is actually driving the phase.
   const isSeatActing = (seat: string): boolean => {
     if (gameOver) return false;
+    if (ctx.phase === 'chiefPhase') return ctx.currentPlayer === seat;
     const ap = ctx.activePlayers;
     if (ap) {
       const stage = ap[seat];
