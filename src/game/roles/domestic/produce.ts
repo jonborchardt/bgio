@@ -55,6 +55,11 @@ export const runProduceForSeat = (
   let runningYield: ResourceBag = { ...EMPTY_BAG };
 
   for (const placed of Object.values(domestic.grid)) {
+    // Defense redesign D2 — skip the synthetic center tile. It is a
+    // coordinate anchor, not a producing building; it has no `BuildingDef`
+    // entry and contributes zero yield. The check is explicit rather than
+    // relying on the `BUILDINGS.find` miss below so the intent is local.
+    if (placed.isCenter === true) continue;
     const def = BUILDINGS.find((b) => b.name === placed.defID);
     if (def === undefined) continue;
 

@@ -76,9 +76,16 @@ export const yieldAdjacencyBonus = (
   for (const [key, cell] of Object.entries(grid)) {
     const coords = parseCellKey(key);
     if (coords === null) continue;
+    // Defense redesign D2 — the synthetic center tile is a coordinate
+    // anchor, not a producing building. It carries no def, no rules, and
+    // shouldn't satisfy `whenAdjacentTo: '*'` neighbor checks for nearby
+    // buildings either. We skip it as a rule-source here, and filter it
+    // out of the neighbor pool below.
+    if (cell.isCenter === true) continue;
     const [x, y] = coords;
 
-    // Collect the (up to four) orthogonal neighbors that exist.
+    // Collect the (up to four) orthogonal neighbors that exist. The center
+    // tile is excluded — see the note at the top of the loop.
     const neighbors: DomesticBuilding[] = [];
     const neighborKeys = [
       cellKey(x + 1, y),
@@ -88,7 +95,7 @@ export const yieldAdjacencyBonus = (
     ];
     for (const nk of neighborKeys) {
       const nb = grid[nk];
-      if (nb !== undefined) neighbors.push(nb);
+      if (nb !== undefined && nb.isCenter !== true) neighbors.push(nb);
     }
     if (neighbors.length === 0) continue;
 

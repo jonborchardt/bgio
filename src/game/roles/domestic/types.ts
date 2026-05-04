@@ -34,6 +34,14 @@ export interface DomesticBuilding {
   // `ownerSeat` is the seat that placed the worker (always the chief seat
   // today, but kept explicit so multi-chief variants stay representable).
   worker: { ownerSeat: PlayerID } | null;
+  // Defense redesign D2 — the seeded `(0, 0)` village-vault tile is flagged
+  // here. Set on exactly one cell, and only on that cell — every other
+  // grid entry omits the field. Code paths that care (production / repair
+  // / upgrade / worker placement / future combat resolver) check this
+  // flag rather than the `defID` so the synthetic tile stays out of the
+  // BUILDINGS data path. The center tile is **not** repairable,
+  // producible, upgradeable, or worker-targetable.
+  isCenter?: true;
 }
 
 /** Aggregated Domestic role state. Lives at `G.domestic`. */

@@ -94,9 +94,11 @@ describe('domesticBot (11.5)', () => {
     expect(action!.move).toBe('domesticBuyBuilding');
     const [name, x, y] = action!.args as [string, number, number];
     expect(name).toBe('Cellar');
-    // Empty grid → first placement at origin.
-    expect(x).toBe(0);
-    expect(y).toBe(0);
+    // Defense redesign D2 — the village-vault center sits at (0, 0) from
+    // setup, so the bot's first real placement must be orthogonally
+    // adjacent to it (Manhattan distance 1).
+    const dist = Math.abs(x - 0) + Math.abs(y - 0);
+    expect(dist).toBe(1);
   });
 
   it('prefers a placement cell that triggers an adjacency bonus', () => {

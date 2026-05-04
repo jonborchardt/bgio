@@ -16,6 +16,20 @@ import type { DomesticBuilding, DomesticState } from './types.ts';
 export const cellKey = (x: number, y: number): string => `${x},${y}`;
 
 /**
+ * Synthetic `defID` worn by the village-vault center tile planted by
+ * `setupDomestic` at `(0, 0)`. Per the spec recommendation (defense-redesign-
+ * spec §2 + sub-phase 1.2 "Open question (b)"), Center is **not** a real
+ * `BuildingDef` — there is no entry in `BUILDINGS` for it. Code paths that
+ * walk the grid identify it via the `isCenter: true` tag on the placed
+ * cell; the `defID` is informational so logs / telemetry / UI fallbacks
+ * can label the tile without conditional branches everywhere.
+ */
+export const CENTER_DEF_ID = 'Center';
+
+/** Canonical key for the center tile (always `(0, 0)`). */
+export const CENTER_CELL_KEY = cellKey(0, 0);
+
+/**
  * `true` iff the two grid keys describe orthogonally-adjacent cells —
  * i.e. their Manhattan distance is exactly 1 (diagonals do not count).
  *
@@ -104,8 +118,24 @@ export const setupDomestic = (
   // TypeScript doesn't flag it as unused once the hand union widens.
   void techsAlreadyUsedBy;
 
+  // Defense redesign D2 — plant the village-vault center tile at (0, 0).
+  // It is the always-present anchor for placement adjacency (the first
+  // real building must be orthogonally adjacent to it), and in Phase 2
+  // it becomes the terminal target for any threat path. The synthetic
+  // defID `'Center'` does NOT correspond to a `BuildingDef`; consumers
+  // identify it via `isCenter: true`. The HP fields are ignored — the
+  // center is never destroyed (D3) — but kept on the shape so the field
+  // stays present alongside the building HP that lands in 1.3.
+  const grid: Record<string, DomesticBuilding> = {};
+  grid[CENTER_CELL_KEY] = {
+    defID: CENTER_DEF_ID,
+    upgrades: 0,
+    worker: null,
+    isCenter: true,
+  };
+
   return {
     hand,
-    grid: {},
+    grid,
   };
 };
