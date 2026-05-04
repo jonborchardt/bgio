@@ -29,6 +29,10 @@ import { RelationshipsModalHost } from './ui/relationships/RelationshipsModalHos
 import { DevSidebar } from './ui/layout/DevSidebar.tsx';
 import { EventLogDrawer } from './ui/log/EventLogDrawer.tsx';
 import { TrackStrip } from './ui/track/TrackStrip.tsx';
+import {
+  countCompletedScience,
+  sumUnitStrength,
+} from './game/track/boss.ts';
 
 const ROLE_TITLE: Record<'chief' | 'science' | 'domestic' | 'defense', string> = {
   chief: 'Chief',
@@ -146,6 +150,20 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
             nextCard !== undefined
               ? Math.max(0, G.track.upcoming.length - 1)
               : 0;
+          // Defense redesign 3.5 — village totals for the boss
+          // readout. We compute them unconditionally (cheap pure
+          // derivations from `G`) and only the strip's boss-readout
+          // path actually consumes them. Reusing the boss-resolver
+          // helpers (`countCompletedScience`, `sumUnitStrength`)
+          // keeps the readout's met / unmet logic identical to
+          // `resolveBoss`'s threshold check at flip time, so the
+          // table can trust "what the readout says" exactly equals
+          // "what the boss will count when it flips."
+          const villageTotals = {
+            science: countCompletedScience(G),
+            economy: G.bank.gold ?? 0,
+            military: sumUnitStrength(G),
+          };
           return (
             <TrackStrip
               history={pastCards}
@@ -153,6 +171,7 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
               next={nextCard}
               upcomingCount={afterNext}
               phase={G.track.currentPhase}
+              villageTotals={villageTotals}
             />
           );
         })()

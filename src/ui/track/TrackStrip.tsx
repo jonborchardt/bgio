@@ -27,6 +27,7 @@ import { Box, Stack, Typography } from '@mui/material';
 import type { TrackCardDef } from '../../data/index.ts';
 import { TrackCardView } from './TrackCardView.tsx';
 import { PhaseMarker } from './PhaseMarker.tsx';
+import { BossReadout } from './BossReadout.tsx';
 
 export interface TrackStripProps {
   /** Already-flipped cards, oldest first. */
@@ -44,6 +45,16 @@ export interface TrackStripProps {
   /** Cached `G.track.currentPhase`. Used to highlight the active
    *  phase marker above the strip. */
   phase: number;
+  /** Live village totals against the boss thresholds (3.5). Optional —
+   *  only consulted when `next` is the boss card, in which case the
+   *  strip renders a `<BossReadout>` adjacent to the next-card preview.
+   *  Computed by the parent (Board.tsx) from `G` so the readout
+   *  updates as science completes / units gain strength / bank changes. */
+  villageTotals?: {
+    science: number;
+    economy: number;
+    military: number;
+  };
 }
 
 const PAST_VISIBLE_LIMIT = 6; // Cap rendered history to keep the strip readable.
@@ -76,6 +87,7 @@ export function TrackStrip({
   next,
   upcomingCount,
   phase,
+  villageTotals,
 }: TrackStripProps) {
   // Visible past cards: the most-recently-flipped slice of `history`,
   // capped at PAST_VISIBLE_LIMIT. We render oldest → newest left to
@@ -193,6 +205,19 @@ export function TrackStrip({
               card={next}
               state="next"
             />
+          ) : null}
+
+          {/* Defense redesign 3.5 — boss thresholds readout. Only
+              rendered when the telegraphed `next` card is the boss
+              AND the parent supplies live `villageTotals`. The board
+              wires the totals from `G` (science completed count, bank
+              gold, sum of unit strength) so the readout updates live
+              while the chief / domestic / defense seats act on the
+              round before the boss flips. */}
+          {next !== undefined &&
+          next.kind === 'boss' &&
+          villageTotals !== undefined ? (
+            <BossReadout boss={next} current={villageTotals} />
           ) : null}
 
           {/* Face-down hint row. */}

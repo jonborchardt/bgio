@@ -292,6 +292,34 @@ const centerTile = {
   text: ramps.purple[50],
 };
 
+// Defense redesign 3.5 — boss-readout threshold tokens.
+//
+// The boss readout (rendered when the boss card is the next-card telegraph)
+// shows the village's current Science / Economy / Military totals next to
+// the boss's required thresholds. Each row reads as either "met" (green) or
+// "unmet" (warning amber). Anchored on the existing `green` / `yellow`
+// ramps so the tokens compose with the rest of the status palette without
+// introducing new hues.
+//
+// `metAccent`     — border / icon color for a satisfied threshold row.
+// `metSurface`    — subtle row tint, sits visibly above the readout's
+//                   own surface without washing the foreground text.
+// `unmetAccent`   — border / icon color for a pending threshold row.
+// `unmetSurface`  — subtle warning tint, paired with `unmetAccent`.
+// `text`          — on-surface foreground. Pulled from the same neutral
+//                   surface text token as the rest of the strip so met /
+//                   unmet rows stay equally readable.
+//
+// Color is paired with a ✓ / ✗ glyph in the component (CLAUDE.md
+// accessibility rule: never communicate state via hue alone).
+const bossReadout = {
+  metAccent: ramps.green[500],
+  metSurface: ramps.green[700],
+  unmetAccent: ramps.yellow[500],
+  unmetSurface: ramps.yellow[700],
+  text: ramps.slate[50],
+};
+
 // Defense redesign 3.1 — track strip palette tokens.
 //
 // `past`     — already-flipped cards, greyed out at the left of the strip.
@@ -353,6 +381,13 @@ declare module '@mui/material/styles' {
       surface: string;
       text: string;
     };
+    bossReadout: {
+      metAccent: string;
+      metSurface: string;
+      unmetAccent: string;
+      unmetSurface: string;
+      text: string;
+    };
   }
   // PaletteOptions mirrors Palette for the createTheme input. We
   // accept the same shapes (Partial keeps the existing tokens
@@ -376,6 +411,13 @@ declare module '@mui/material/styles' {
     centerTile?: {
       accent: string;
       surface: string;
+      text: string;
+    };
+    bossReadout?: {
+      metAccent: string;
+      metSurface: string;
+      unmetAccent: string;
+      unmetSurface: string;
       text: string;
     };
   }
@@ -405,6 +447,7 @@ export const theme = createTheme({
     eventColor,
     track,
     centerTile,
+    bossReadout,
   },
   typography: {
     fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
