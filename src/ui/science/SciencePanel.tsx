@@ -29,6 +29,10 @@ import { EMPTY_BAG } from '../../game/resources/types.ts';
 import { rolesAtSeat } from '../../game/roles.ts';
 import type { ScienceCardDef } from '../../data/scienceCards.ts';
 import { ScienceCard } from './ScienceCard.tsx';
+import { DrillButton } from './DrillButton.tsx';
+import { TeachButton } from './TeachDialog.tsx';
+import { drillCost } from '../../game/roles/science/drill.ts';
+import type { SkillID } from '../../game/roles/science/skills.ts';
 import { RolePanel } from '../layout/RolePanel.tsx';
 import { SectionHeading } from '../layout/SectionHeading.tsx';
 import { PlayableHand } from '../cards/PlayableHand.tsx';
@@ -95,6 +99,22 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
     if (seatCtx) seatCtx.setSeat(nextSeatAfterDone(G, playerID));
   };
 
+  // Defense redesign 3.7 — Drill / Teach handlers and the inputs the
+  // sub-components need to compute their disabled / status state.
+  const handleDrill = (unitID: string): void => {
+    moves.scienceDrill(unitID);
+  };
+
+  const handleTeach = (unitID: string, skillID: SkillID): void => {
+    moves.scienceTeach(unitID, skillID);
+  };
+
+  const inPlayUnits = G.defense?.inPlay ?? [];
+  const drillUsed = science.scienceDrillUsed === true;
+  const taughtUsed = science.scienceTaughtUsed === true;
+  const stashScience = stash.science ?? 0;
+  const drillCostScience = drillCost(G).science;
+
   // Visualize as columns side-by-side. Each column = one color, with row 0
   // (lowest tier) at the top.
   return (
@@ -133,6 +153,35 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
     >
       <Stack spacing={1.5}>
         <RequestsRow G={G} playerID={playerID} panelRole="science" />
+
+        <Stack
+          spacing={0.75}
+          aria-label="Defense moves"
+          data-science-defense-moves="true"
+        >
+          <SectionHeading role="science">Defense moves</SectionHeading>
+          <Stack
+            direction="row"
+            spacing={2}
+            sx={{ flexWrap: 'wrap', rowGap: 1 }}
+          >
+            <DrillButton
+              units={inPlayUnits}
+              canAct={canAct && !alreadyDone}
+              drillUsed={drillUsed}
+              stashScience={stashScience}
+              drillCost={drillCostScience}
+              onDrill={handleDrill}
+            />
+            <TeachButton
+              units={inPlayUnits}
+              canAct={canAct && !alreadyDone}
+              taughtUsed={taughtUsed}
+              stashScience={stashScience}
+              onTeach={handleTeach}
+            />
+          </Stack>
+        </Stack>
 
         <PlayableHand
           techs={science.hand}

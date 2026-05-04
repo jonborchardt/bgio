@@ -29,6 +29,30 @@ describe('SciencePanel smoke (05.5)', () => {
     expect(typeof mod.default).toBe('function');
   });
 
+  // Defense redesign 3.7 — Drill / Teach controls live alongside the
+  // existing Research-Areas grid. Smoke-import the new sub-components
+  // so a future rename doesn't silently drop them out of the bundle.
+  it('DrillButton imports without runtime errors', async () => {
+    const mod = await import('../../../src/ui/science/DrillButton.tsx');
+    expect(mod).toBeTruthy();
+    expect(typeof mod.DrillButton).toBe('function');
+    expect(typeof mod.default).toBe('function');
+  });
+
+  it('TeachDialog imports without runtime errors', async () => {
+    const mod = await import('../../../src/ui/science/TeachDialog.tsx');
+    expect(mod).toBeTruthy();
+    expect(typeof mod.TeachButton).toBe('function');
+    expect(typeof mod.default).toBe('function');
+  });
+
+  it('UnitPicker imports without runtime errors', async () => {
+    const mod = await import('../../../src/ui/science/UnitPicker.tsx');
+    expect(mod).toBeTruthy();
+    expect(typeof mod.UnitPicker).toBe('function');
+    expect(typeof mod.UnitPickerDialog).toBe('function');
+  });
+
   // TODO(05.5): once @testing-library/react is added, replace the smoke
   // tests above with the render-and-click checks listed in the plan.
   it.todo('renders the 3×3 grid for a fresh game');
