@@ -320,6 +320,31 @@ const bossReadout = {
   text: ramps.slate[50],
 };
 
+// Defense redesign 3.3 — path-overlay tokens.
+//
+// The PathOverlay highlights the cells a threat just walked across,
+// pulses the impact tiles, and (on a center-burn) ripples from the
+// vault outward. All three states share the existing `red` ramp so the
+// overlay reads as "incoming threat" without introducing a new hue.
+//
+// `pathTrail`        — base highlight along every cell on the threat's
+//                      path. Soft red so non-impact cells read as
+//                      "where it traveled" not "where it hit."
+// `pathImpact`       — saturated red for the impact tiles (where the
+//                      threat actually consumed HP). Pulses briefly on
+//                      animation.
+// `pathFire`         — the firing units' tiles (yellow accent) so the
+//                      table can read "these are the units that shot."
+// `centerRipple`     — purple (matches the centerTile accent) for the
+//                      ripple-from-center animation when the threat
+//                      reached the vault.
+const pathOverlay = {
+  pathTrail: ramps.red[300],
+  pathImpact: ramps.red[500],
+  pathFire: ramps.yellow[300],
+  centerRipple: ramps.purple[300],
+};
+
 // Defense redesign 3.1 — track strip palette tokens.
 //
 // `past`     — already-flipped cards, greyed out at the left of the strip.
@@ -388,6 +413,12 @@ declare module '@mui/material/styles' {
       unmetSurface: string;
       text: string;
     };
+    pathOverlay: {
+      pathTrail: string;
+      pathImpact: string;
+      pathFire: string;
+      centerRipple: string;
+    };
   }
   // PaletteOptions mirrors Palette for the createTheme input. We
   // accept the same shapes (Partial keeps the existing tokens
@@ -420,6 +451,12 @@ declare module '@mui/material/styles' {
       unmetSurface: string;
       text: string;
     };
+    pathOverlay?: {
+      pathTrail: string;
+      pathImpact: string;
+      pathFire: string;
+      centerRipple: string;
+    };
   }
 }
 
@@ -448,6 +485,7 @@ export const theme = createTheme({
     track,
     centerTile,
     bossReadout,
+    pathOverlay,
   },
   typography: {
     fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',

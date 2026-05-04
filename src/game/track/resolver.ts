@@ -92,6 +92,7 @@ import {
 } from './path.ts';
 import { centerBurn } from './centerBurn.ts';
 import { resolveBoss } from './boss.ts';
+import type { ResolveTrace } from '../track.ts';
 
 // Effective stats for a unit at fire time, after folding placement
 // bonuses, taught skills, and the optional drill token. Pure data —
@@ -232,12 +233,27 @@ const orderFire = (
 };
 
 /**
+ * Append a trace onto `G.track.traces` and update `G.track.lastResolve`.
+ * Lazy-initializes both slots; safe to call when `G.track` is missing
+ * (some test fixtures don't seed a track). Defense redesign 3.3.
+ */
+const publishTrace = (G: SettlementState, trace: ResolveTrace): void => {
+  if (G.track === undefined) return;
+  if (G.track.traces === undefined) G.track.traces = [];
+  G.track.traces.push(trace);
+  G.track.lastResolve = trace;
+};
+
+/**
  * Resolve a single threat card against `G`. Mutates `G` in place. See
  * the file-level comment for the full algorithm.
  *
  * Exported so the Phase 2.7 boss resolver can dispatch its scripted
  * attack pattern through the same pipeline (each boss attack synthesizes
  * a `ThreatCard` and feeds it through here).
+ *
+ * Defense redesign 3.3 — also fills `G.track.lastResolve` and pushes
+ * onto `G.track.traces` so the UI can replay the path animation.
  */
 export const resolveThreat = (
   G: SettlementState,
@@ -297,6 +313,15 @@ export const resolveThreat = (
   }
   const fires = orderFire(candidates);
 
+  // Defense redesign 3.3 — accumulators for the playback trace. We track
+  // every cell the threat actually crossed (kept in path order) so the
+  // overlay can paint the highlighted lane, plus the unit ids that
+  // fired and the impact-tile keys the threat actually consumed.
+  const tracePath: Array<{ x: number; y: number }> = [];
+  const traceFiringUnitIDs: string[] = [];
+  const traceImpactTiles: string[] = [];
+  let traceCenterBurned: number | undefined;
+
   // Run the fire volley. Each fire deducts strength from the threat;
   // bail early when threat dies. Track which units fired so we can
   // apply the "repel" 1-HP cost if the threat survives.
@@ -306,6 +331,7 @@ export const resolveThreat = (
     if (hp <= 0) break;
     hp -= stats.strength;
     firedUnits.push(unit);
+    traceFiringUnitIDs.push(unit.id);
     // Drill token consumes on fire whether or not the threat dies.
     if (unit.drillToken === true) {
       unit.drillToken = false;
@@ -313,7 +339,12 @@ export const resolveThreat = (
   }
 
   if (hp <= 0) {
-    // Threat killed before reaching the first impact tile.
+    // Threat killed before reaching the first impact tile. The trace
+    // covers the fire-slice (entry through the first impact tile) so the
+    // overlay can paint "the threat got this far before going down."
+    for (const cell of fireSlice) {
+      tracePath.push({ x: cell.x, y: cell.y });
+    }
     if (threat.reward !== undefined) {
       const delta: Partial<Record<string, number>> = {};
       let any = false;
@@ -328,6 +359,12 @@ export const resolveThreat = (
         appendBankLog(G, 'threatReward', delta, `Threat ${threat.id} repelled`);
       }
     }
+    publishTrace(G, {
+      pathTiles: tracePath,
+      firingUnitIDs: traceFiringUnitIDs,
+      impactTiles: traceImpactTiles,
+      outcome: 'killed',
+    });
     return;
   }
 
@@ -356,30 +393,87 @@ export const resolveThreat = (
     const stack = (G.defense?.inPlay ?? [])
       .filter((u) => u.cellKey === cellKeyStr)
       .sort((a, b) => a.placementOrder - b.placementOrder);
+    let touched = false;
     for (const unit of stack) {
       if (damage <= 0) break;
       const absorb = Math.min(unit.hp, damage);
       unit.hp -= absorb;
       damage -= absorb;
+      touched = true;
     }
     // Remove any units killed by stack absorption.
     if (G.defense !== undefined) {
       G.defense.inPlay = G.defense.inPlay.filter((u) => u.hp > 0);
     }
 
+    if (damage > 0) {
+      // Then the building. Buildings can't be destroyed; clamp at 1.
+      const newHp = Math.max(1, building.hp - damage);
+      const absorbed = building.hp - newHp;
+      if (absorbed > 0) touched = true;
+      building.hp = newHp;
+      damage -= absorbed;
+    }
+
+    if (touched) traceImpactTiles.push(cellKeyStr);
     if (damage <= 0) break;
-
-    // Then the building. Buildings can't be destroyed; clamp at 1.
-    const newHp = Math.max(1, building.hp - damage);
-    const absorbed = building.hp - newHp;
-    building.hp = newHp;
-    damage -= absorbed;
   }
 
-  // If the path reached center with damage left, burn the pool.
+  // The path the trace covers depends on where the threat ended up:
+  //   - reached center → cover the entire computed `path`.
+  //   - died en route  → cover up to (and including) the last impact
+  //                       tile; that's the threat's furthest-traversed
+  //                       cell.
   if (damage > 0) {
-    centerBurn(G, random, damage, `Threat ${threat.id} (${threat.name})`);
+    for (const cell of path) tracePath.push({ x: cell.x, y: cell.y });
+  } else if (traceImpactTiles.length > 0) {
+    const lastKey = traceImpactTiles[traceImpactTiles.length - 1]!;
+    for (const cell of path) {
+      tracePath.push({ x: cell.x, y: cell.y });
+      const k = `${cell.x},${cell.y}`;
+      if (k === lastKey) break;
+    }
+  } else {
+    // No impacts and no center burn — the resolver fired but didn't
+    // damage anything. Cover the fire slice for visibility.
+    for (const cell of fireSlice) tracePath.push({ x: cell.x, y: cell.y });
   }
+
+  // If the path reached center with damage left, burn the pool. Capture
+  // the burn total for the trace so the UI can render the ripple at the
+  // appropriate intensity.
+  if (damage > 0) {
+    const burned = centerBurn(
+      G,
+      random,
+      damage,
+      `Threat ${threat.id} (${threat.name})`,
+    );
+    let total = 0;
+    for (const r of RESOURCES) {
+      const v = burned[r];
+      if (v !== undefined) total += v;
+    }
+    traceCenterBurned = total;
+  }
+
+  const outcome: ResolveTrace['outcome'] =
+    damage > 0
+      ? 'reachedCenter'
+      : traceImpactTiles.length > 0
+        ? 'overflowed'
+        : 'killed';
+
+  const trace: ResolveTrace = {
+    pathTiles: tracePath,
+    firingUnitIDs: traceFiringUnitIDs,
+    impactTiles: traceImpactTiles,
+    outcome,
+  };
+  if (traceCenterBurned !== undefined) {
+    trace.centerBurned = traceCenterBurned;
+  }
+  publishTrace(G, trace);
 };
 
 /**
@@ -390,6 +484,19 @@ const pushModifier = (G: SettlementState, card: ModifierCard): void => {
   if (G.track === undefined) return;
   if (G.track.activeModifiers === undefined) G.track.activeModifiers = [];
   G.track.activeModifiers.push(card);
+};
+
+/** Defense redesign 3.3 — emit a degenerate trace for non-threat flips
+ *  (boon / modifier). The path overlay uses `outcome: 'noop'` to skip
+ *  the lane animation while still letting the strip blink + the event
+ *  log advance. */
+const publishNoopTrace = (G: SettlementState): void => {
+  publishTrace(G, {
+    pathTiles: [],
+    firingUnitIDs: [],
+    impactTiles: [],
+    outcome: 'noop',
+  });
 };
 
 /**
@@ -433,9 +540,11 @@ export const resolveTrackCard = (
   switch (card.kind) {
     case 'boon':
       dispatchBoon(G, random, card);
+      publishNoopTrace(G);
       return;
     case 'modifier':
       pushModifier(G, card);
+      publishNoopTrace(G);
       return;
     case 'threat':
       resolveThreat(G, random, card);

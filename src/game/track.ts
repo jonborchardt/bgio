@@ -18,6 +18,47 @@ import type { TrackCardDef, ModifierCard } from '../data/index.ts';
 import type { RandomAPI } from './random.ts';
 import { registerRoundEndHook } from './hooks.ts';
 
+// Defense redesign 3.3 — per-resolve playback trace.
+//
+// Every time a track card flips and `resolveTrackCard` runs, the resolver
+// fills out a `ResolveTrace` summarizing what just happened: the path the
+// threat walked, which units fired (by id), which tiles took damage in
+// what order, whether the center vault was burned, and an outcome label
+// the UI uses to decide which animation to play. Boons / modifiers also
+// emit a (degenerate) trace with `outcome: 'noop'` so the playback layer
+// can blink the strip even for a non-combat flip.
+//
+// The trace is parallel-indexed against `history`: `traces[i]` describes
+// the resolution of `history[i]`. `lastResolve` is a convenience handle on
+// the most recently appended trace — the UI watches that field's identity
+// to detect "a new flip just resolved" without comparing array lengths.
+// Boss attacks (each one is a synthetic threat) push a trace per attack,
+// not per boss card, so the path overlay can animate the multi-attack
+// sequence one path at a time.
+export interface ResolveTrace {
+  /** Cells the threat walked, in path order. Empty for boons / modifiers. */
+  pathTiles: ReadonlyArray<{ x: number; y: number }>;
+  /** UnitInstance.id values that opened fire. Stable across renders so the
+   *  UI can highlight the firing units' tiles distinctly from the path. */
+  firingUnitIDs: string[];
+  /** cellKey strings for tiles the threat damaged in path order (the
+   *  building / unit-stack absorption sites). Excludes the entry / pass-
+   *  through cells. */
+  impactTiles: string[];
+  /** Total resources burned from the center pool (sum across resources).
+   *  `undefined` when the threat did not reach center. */
+  centerBurned?: number;
+  /** What the trace reads as for the playback layer:
+   *   - `killed`         : threat died to fire before reaching impact.
+   *   - `overflowed`     : threat damaged 1+ buildings, then either died or
+   *                        reached center.
+   *   - `reachedCenter`  : threat crossed the village without enough push-
+   *                        back and burned the pool.
+   *   - `noop`           : non-threat card (boon / modifier) — the strip
+   *                        blinks but no path animation runs. */
+  outcome: 'killed' | 'overflowed' | 'reachedCenter' | 'noop';
+}
+
 export interface TrackState {
   // The full card sequence — built at setup, never re-shuffled.
   // Index 0 is the next card to flip (and the face-up telegraph).
@@ -44,6 +85,16 @@ export interface TrackState {
   // starts with the flag reset). Optional so older fixtures stay
   // source-compatible.
   flippedThisRound?: boolean;
+  // Defense redesign 3.3 — playback traces, one per resolve volley
+  // (parallel-indexed against the boss's expanded attack list, so a single
+  // boss flip produces multiple traces). Optional so older fixtures stay
+  // source-compatible; the resolver lazy-initializes on first append.
+  traces?: ResolveTrace[];
+  // Defense redesign 3.3 — convenience handle on the most-recently-
+  // appended trace. The UI's animation context watches this slot's
+  // identity to detect "a new flip just resolved" without diffing the
+  // `traces[]` length. Optional for the same reason as `traces`.
+  lastResolve?: ResolveTrace;
 }
 
 /**

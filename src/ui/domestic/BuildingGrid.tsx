@@ -21,6 +21,8 @@ import type { BuildingDef } from '../../data/schema.ts';
 import type { UnitInstance } from '../../game/roles/defense/types.ts';
 import { CellSlot } from './CellSlot.tsx';
 import { EmbossedFrame } from '../layout/EmbossedFrame.tsx';
+import { PathOverlay } from '../track/PathOverlay.tsx';
+import { useActivePathHighlight } from '../track/resolveAnimationContext.tsx';
 
 export interface BuildingGridProps {
   grid: Record<string, DomesticBuilding>;
@@ -35,6 +37,16 @@ export interface BuildingGridProps {
   pooledTotal?: number;
   /** Optional resource breakdown for the center-tile tooltip. */
   pooledBreakdown?: Array<{ resource: string; amount: number }>;
+  /** Defense redesign 3.3 — cell-keys to mark as "on the threat path"
+   *  (rendered with the trail tint) and "on the impact list" (rendered
+   *  with the impact pulse). Both default to empty when no animation is
+   *  playing. The overlay layer is anchored above the grid and reads the
+   *  same cell-keys to draw the SVG arrow. */
+  pathHighlight?: {
+    pathKeys: ReadonlySet<string>;
+    impactKeys: ReadonlySet<string>;
+    firingUnitIDs?: ReadonlySet<string>;
+  };
 }
 
 interface Bounds {
@@ -93,11 +105,20 @@ export function BuildingGrid({
   units,
   pooledTotal,
   pooledBreakdown,
+  pathHighlight,
 }: BuildingGridProps) {
   const isPlacing = activeCard !== undefined;
   const { xMin, xMax, yMin, yMax } = computeBounds(grid, isPlacing);
   const cols = xMax - xMin + 1;
   const isEmpty = Object.keys(grid).length === 0;
+
+  // Defense redesign 3.3 — when no explicit highlight prop is supplied,
+  // fall back to the currently-animating trace from the resolve-animation
+  // context. The hook is safe to call unconditionally because the default
+  // context value returns `current: null` when no provider is mounted
+  // (e.g. headless tests), which collapses to `undefined` here.
+  const contextHighlight = useActivePathHighlight();
+  const activeHighlight = pathHighlight ?? contextHighlight;
 
   // Group defense units by `cellKey` once per render; CellSlot reads
   // the per-cell list out of this map. The values are placement-order-
@@ -125,6 +146,14 @@ export function BuildingGrid({
   const colXs: number[] = [];
   for (let x = xMin; x <= xMax; x += 1) colXs.push(x);
 
+  // Defense redesign 3.3 — overlay bounds align with the rendered grid
+  // (xMin..xMax × yMin..yMax). Forwarded to <PathOverlay> so the SVG
+  // viewBox snaps to the same cell coordinates the grid is drawing.
+  const overlayBounds = useMemo(
+    () => ({ xMin, xMax, yMin, yMax }),
+    [xMin, xMax, yMin, yMax],
+  );
+
   return (
     <EmbossedFrame
       role="domestic"
@@ -150,65 +179,85 @@ export function BuildingGrid({
         </Typography>
       ) : (
         <Box
-          aria-label="Domestic building grid"
           sx={{
-            display: 'grid',
-            // Column width matches the `normal` card (180px) plus a
-            // small gutter; cells are fixed-aspect to match the
-            // physical-card height. Village cards render at the
-            // medium / `normal` size so the village board reads as a
-            // tile grid rather than a detailed deck.
-            gridTemplateColumns: `repeat(${cols}, 190px)`,
-            gap: 0.75,
+            position: 'relative',
+            // The relative wrapper exists so <PathOverlay>'s
+            // absolutely-positioned SVG can stretch over the grid
+            // without escaping the EmbossedFrame's scroll container.
           }}
         >
-          {rowYs.map((y) =>
-            colXs.map((x) => {
-              const key = cellKey(x, y);
-              const building = grid[key];
-              const isLegal = isPlacing
-                ? isPlacementLegal(grid, x, y)
-                : false;
-              // Compute the (up to four) orthogonal-neighbour defIDs so
-              // the placed BuildingCard can paint each adjacency rule
-              // as currently-firing or latent.
-              let activeNeighbors: ReadonlySet<string> | undefined;
-              if (building !== undefined) {
-                const ns = new Set<string>();
-                for (const [dx, dy] of [
-                  [1, 0],
-                  [-1, 0],
-                  [0, 1],
-                  [0, -1],
-                ] as const) {
-                  const n = grid[cellKey(x + dx, y + dy)];
-                  if (n !== undefined) ns.add(n.defID);
+          <Box
+            aria-label="Domestic building grid"
+            sx={{
+              display: 'grid',
+              // Column width matches the `normal` card (180px) plus a
+              // small gutter; cells are fixed-aspect to match the
+              // physical-card height. Village cards render at the
+              // medium / `normal` size so the village board reads as a
+              // tile grid rather than a detailed deck.
+              gridTemplateColumns: `repeat(${cols}, 190px)`,
+              gap: 0.75,
+            }}
+          >
+            {rowYs.map((y) =>
+              colXs.map((x) => {
+                const key = cellKey(x, y);
+                const building = grid[key];
+                const isLegal = isPlacing
+                  ? isPlacementLegal(grid, x, y)
+                  : false;
+                // Compute the (up to four) orthogonal-neighbour defIDs so
+                // the placed BuildingCard can paint each adjacency rule
+                // as currently-firing or latent.
+                let activeNeighbors: ReadonlySet<string> | undefined;
+                if (building !== undefined) {
+                  const ns = new Set<string>();
+                  for (const [dx, dy] of [
+                    [1, 0],
+                    [-1, 0],
+                    [0, 1],
+                    [0, -1],
+                  ] as const) {
+                    const n = grid[cellKey(x + dx, y + dy)];
+                    if (n !== undefined) ns.add(n.defID);
+                  }
+                  activeNeighbors = ns;
                 }
-                activeNeighbors = ns;
-              }
-              const cellUnits = unitsByCell.get(key);
-              const isCenter = building?.isCenter === true;
-              return (
-                <CellSlot
-                  key={key}
-                  x={x}
-                  y={y}
-                  building={building}
-                  isLegal={isLegal}
-                  isPlacing={isPlacing}
-                  activeNeighbors={activeNeighbors}
-                  units={cellUnits}
-                  pooledTotal={isCenter ? pooledTotal : undefined}
-                  pooledBreakdown={isCenter ? pooledBreakdown : undefined}
-                  onClick={() => {
-                    if (building !== undefined) return;
-                    if (!isPlacing || !isLegal) return;
-                    onPlace(x, y);
-                  }}
-                />
-              );
-            }),
-          )}
+                const cellUnits = unitsByCell.get(key);
+                const isCenter = building?.isCenter === true;
+                const onPath =
+                  activeHighlight?.pathKeys.has(key) ?? false;
+                const onImpact =
+                  activeHighlight?.impactKeys.has(key) ?? false;
+                return (
+                  <CellSlot
+                    key={key}
+                    x={x}
+                    y={y}
+                    building={building}
+                    isLegal={isLegal}
+                    isPlacing={isPlacing}
+                    activeNeighbors={activeNeighbors}
+                    units={cellUnits}
+                    pooledTotal={isCenter ? pooledTotal : undefined}
+                    pooledBreakdown={isCenter ? pooledBreakdown : undefined}
+                    onPath={onPath}
+                    onImpact={onImpact}
+                    onClick={() => {
+                      if (building !== undefined) return;
+                      if (!isPlacing || !isLegal) return;
+                      onPlace(x, y);
+                    }}
+                  />
+                );
+              }),
+            )}
+          </Box>
+          {/* Overlay layer — sits above the grid, reads the active
+              ResolveTrace from context, and paints the path arrow when
+              a flip is animating. Click-blocking is disabled at the
+              wrapper level so the overlay can't steal placements. */}
+          <PathOverlay bounds={overlayBounds} />
         </Box>
       )}
     </EmbossedFrame>

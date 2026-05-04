@@ -33,6 +33,10 @@ import {
   countCompletedScience,
   sumUnitStrength,
 } from './game/track/boss.ts';
+import {
+  ResolveAnimationProvider,
+  ResolveTraceWatcher,
+} from './ui/track/resolveAnimationContext.tsx';
 
 const ROLE_TITLE: Record<'chief' | 'science' | 'domestic' | 'defense', string> = {
   chief: 'Chief',
@@ -213,7 +217,17 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
         px: { xs: 1, md: 2 },
       }}
     >
-      {playArea}
+      {/* Defense redesign 3.3 — animation queue + watcher for path
+          overlay. The provider wraps the whole board so any consumer
+          (BuildingGrid in DomesticPanel, future track/center widgets)
+          reads from the same queue; the watcher pushes
+          `G.track.lastResolve` updates onto it as the engine resolves
+          flips. Mounted unconditionally — when `G.track` is missing
+          (older fixtures) the watcher pushes `undefined` and no-ops. */}
+      <ResolveAnimationProvider>
+        <ResolveTraceWatcher lastResolve={G.track?.lastResolve} />
+        {playArea}
+      </ResolveAnimationProvider>
     </Box>
   );
 }

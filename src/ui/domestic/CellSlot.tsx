@@ -47,6 +47,12 @@ export interface CellSlotProps {
   pooledTotal?: number;
   /** Optional per-resource breakdown for the center-tile tooltip. */
   pooledBreakdown?: Array<{ resource: string; amount: number }>;
+  /** Defense redesign 3.3 — `true` when this cell is on the currently-
+   *  animating threat path. Renders a soft trail tint. */
+  onPath?: boolean;
+  /** Defense redesign 3.3 — `true` when this cell is on the currently-
+   *  animating threat's impact list. Renders a saturated pulse. */
+  onImpact?: boolean;
 }
 
 export function CellSlot({
@@ -60,6 +66,8 @@ export function CellSlot({
   units,
   pooledTotal,
   pooledBreakdown,
+  onPath = false,
+  onImpact = false,
 }: CellSlotProps) {
   const occupied = building !== undefined;
   const isCenter = occupied && building.isCenter === true;
@@ -180,6 +188,8 @@ export function CellSlot({
       data-cell-y={y}
       data-cell-occupied={occupied ? 'true' : 'false'}
       data-cell-center={isCenter ? 'true' : 'false'}
+      data-cell-on-path={onPath ? 'true' : 'false'}
+      data-cell-on-impact={onImpact ? 'true' : 'false'}
       aria-label={
         occupied
           ? isCenter
@@ -225,6 +235,44 @@ export function CellSlot({
       }}
     >
       {body}
+      {/* Defense redesign 3.3 — path / impact tints. The cell stays
+          interactive (the tints don't capture clicks) and clears
+          automatically when the consumer drops `onPath` / `onImpact`. */}
+      {onPath || onImpact ? (
+        <Box
+          aria-hidden
+          data-testid="path-cell-tint"
+          sx={(t) => ({
+            position: 'absolute',
+            inset: 0,
+            borderRadius: 1.5,
+            pointerEvents: 'none',
+            zIndex: 4,
+            // Impact pulse beats the trail tint when both apply.
+            bgcolor: onImpact
+              ? `${t.palette.pathOverlay.pathImpact}33`
+              : `${t.palette.pathOverlay.pathTrail}1f`,
+            boxShadow: onImpact
+              ? `inset 0 0 0 2px ${t.palette.pathOverlay.pathImpact}`
+              : undefined,
+            // Mirror PathOverlay's pulse so the tile blink stays in
+            // sync with the SVG arrow.
+            animation: onImpact
+              ? 'pathTilePulse 350ms ease-out forwards'
+              : 'pathTileTrail 350ms ease-out forwards',
+            '@keyframes pathTilePulse': {
+              '0%': { opacity: 0 },
+              '25%': { opacity: 1 },
+              '100%': { opacity: 0 },
+            },
+            '@keyframes pathTileTrail': {
+              '0%': { opacity: 0 },
+              '20%': { opacity: 0.85 },
+              '100%': { opacity: 0 },
+            },
+          })}
+        />
+      ) : null}
       {/* Worker indicator stays on the cell wrapper so it floats above
           the inner tile regardless of which kind of tile renders. The
           center vault never carries a worker, so the guard skips it. */}
