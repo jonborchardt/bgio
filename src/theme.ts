@@ -265,6 +265,43 @@ const eventColor: Record<EventColor, PaletteColor> = {
   red: pc(ramps.red),
 };
 
+// Defense redesign 3.1 — track strip palette tokens.
+//
+// `past`     — already-flipped cards, greyed out at the left of the strip.
+// `current`  — the just-flipped card, briefly highlighted before sliding
+//              into the past row on round transition.
+// `next`     — the face-up telegraph card that defense plans against.
+// `boss`     — distinct accent for the unique phase-10 boss card so the
+//              table reads it as different from a regular threat.
+// `phaseMarkers` — gradient across `ramps.purple` so each phase marker
+//              above the strip carries a slightly darker shade as the
+//              game progresses; phase 10 is the densest. Length 10 so
+//              `phaseMarkers[phase - 1]` indexes safely without bounds
+//              checks at every call site.
+//
+// All values resolve to ramp slots — no raw hex literals leak into
+// component code. Track-specific shading uses `purple` (already in the
+// ramps) for the phase progression and `red` for the boss to match the
+// existing `role.defense` accent.
+const track = {
+  past: ramps.slate[600],
+  current: ramps.yellow[500],
+  next: ramps.yellow[300],
+  boss: ramps.red[500],
+  phaseMarkers: [
+    ramps.purple[50],
+    ramps.purple[300],
+    ramps.purple[300],
+    ramps.purple[500],
+    ramps.purple[500],
+    ramps.purple[500],
+    ramps.purple[700],
+    ramps.purple[700],
+    ramps.purple[700],
+    ramps.red[700],
+  ] as readonly string[],
+};
+
 // ── module augmentation ──────────────────────────────────────────
 
 declare module '@mui/material/styles' {
@@ -277,6 +314,13 @@ declare module '@mui/material/styles' {
     role: Record<Role, PaletteColor>;
     tier: Record<'beginner' | 'intermediate' | 'advanced', PaletteColor>;
     eventColor: Record<EventColor, PaletteColor>;
+    track: {
+      past: string;
+      current: string;
+      next: string;
+      boss: string;
+      phaseMarkers: readonly string[];
+    };
   }
   // PaletteOptions mirrors Palette for the createTheme input. We
   // accept the same shapes (Partial keeps the existing tokens
@@ -290,6 +334,13 @@ declare module '@mui/material/styles' {
     role?: Record<Role, PaletteColor>;
     tier?: Record<'beginner' | 'intermediate' | 'advanced', PaletteColor>;
     eventColor?: Record<EventColor, PaletteColor>;
+    track?: {
+      past: string;
+      current: string;
+      next: string;
+      boss: string;
+      phaseMarkers: readonly string[];
+    };
   }
 }
 
@@ -315,6 +366,7 @@ export const theme = createTheme({
     role,
     tier,
     eventColor,
+    track,
   },
   typography: {
     fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
