@@ -19,8 +19,8 @@
 // the panel-local "I'm placing this card" mode; clicking the same card
 // again clears it.
 
-import { useContext, useState } from 'react';
-import { Box, Button, Stack, Typography } from '@mui/material';
+import { useContext, useMemo, useState } from 'react';
+import { Button, Stack } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
 import type { SettlementState } from '../../game/types.ts';
 import { rolesAtSeat } from '../../game/roles.ts';
@@ -35,9 +35,9 @@ import { nextSeatAfterDone } from '../layout/nextSeat.ts';
 import { RequestHelpButton } from '../requests/RequestHelpButton.tsx';
 import { RequestsRow } from '../requests/RequestsRow.tsx';
 import { buildResourceSlices } from '../requests/useResourceSlice.ts';
-import type { DomesticBuilding } from '../../game/roles/domestic/types.ts';
 import { idForBuilding, idForTech } from '../../cards/registry.ts';
 import { buildingCost } from '../../data/index.ts';
+import { RESOURCES } from '../../game/resources/types.ts';
 
 export function DomesticPanel(props: BoardProps<SettlementState>) {
   const { G, ctx, moves, playerID } = props;
@@ -49,6 +49,27 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
   const [selectedCardName, setSelectedCardName] = useState<
     string | undefined
   >(undefined);
+
+  // Defense redesign 3.2 — pooled non-chief stash. The center vault
+  // (D2 / D3) shows this number on its face so the table reads at a
+  // glance how much resource is at risk if a threat reaches center.
+  // Compute once per render off `G.mats` (chief seat is intentionally
+  // absent — see `initialMats`). Resource breakdown is forwarded to
+  // the center-tile tooltip so a curious player can drill in.
+  // Hooks-rule: `useMemo` must run on every render, so it sits above
+  // the early-return guards alongside the other hooks.
+  const pooled = useMemo(() => {
+    const breakdown = RESOURCES.map((r) => {
+      let amount = 0;
+      const mats = G.mats ?? {};
+      for (const seatMat of Object.values(mats)) {
+        amount += seatMat?.stash?.[r] ?? 0;
+      }
+      return { resource: r, amount };
+    });
+    const total = breakdown.reduce((s, b) => s + b.amount, 0);
+    return { total, breakdown };
+  }, [G.mats]);
 
   if (playerID === undefined || playerID === null) return null;
 
@@ -82,6 +103,8 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
     moves.domesticSeatDone();
     if (seatCtx) seatCtx.setSeat(nextSeatAfterDone(G, playerID));
   };
+
+  const defenseUnits = G.defense?.inPlay;
 
   // The hand IS the source of truth for "what this seat can build" —
   // buildings are added to it by setup (starters), by `grantTechUnlocks`
@@ -181,41 +204,12 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
           grid={domestic.grid}
           activeCard={activeCard}
           onPlace={handlePlace}
+          units={defenseUnits}
+          pooledTotal={pooled.total}
+          pooledBreakdown={pooled.breakdown}
         />
-        <DamageSummary grid={domestic.grid} />
       </Stack>
     </RolePanel>
-  );
-}
-
-// Defense redesign 1.3 — console-readable HP stub. Phase 3 replaces this
-// with a per-tile pip row + repair affordance; until then we surface a
-// flat list of damaged buildings beneath the grid so the table can see
-// repair targets even when the cell tooltips are hidden. Center tiles
-// (D2) are skipped — they're never destroyed and have no `BuildingDef`.
-function DamageSummary({
-  grid,
-}: {
-  grid: Record<string, DomesticBuilding>;
-}) {
-  const damaged: Array<{ key: string; defID: string; hp: number; maxHp: number }> = [];
-  for (const [key, cell] of Object.entries(grid)) {
-    if (cell.isCenter === true) continue;
-    if (cell.hp >= cell.maxHp) continue;
-    damaged.push({ key, defID: cell.defID, hp: cell.hp, maxHp: cell.maxHp });
-  }
-  if (damaged.length === 0) return null;
-  return (
-    <Box aria-label="Damaged buildings" sx={{ mt: 0.5 }}>
-      <Typography
-        variant="caption"
-        sx={{ color: (t) => t.palette.status.muted, fontStyle: 'italic' }}
-      >
-        Damaged: {damaged
-          .map((d) => `${d.defID} (${d.key}) ${d.hp}/${d.maxHp}`)
-          .join(', ')}
-      </Typography>
-    </Box>
   );
 }
 

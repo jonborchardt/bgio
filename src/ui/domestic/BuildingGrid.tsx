@@ -10,6 +10,7 @@
 // `activeCard` is present — otherwise nothing on the grid is meant to be
 // placed onto.
 
+import { useMemo } from 'react';
 import { Box, Typography } from '@mui/material';
 import {
   cellKey,
@@ -17,6 +18,7 @@ import {
 } from '../../game/roles/domestic/grid.ts';
 import type { DomesticBuilding } from '../../game/roles/domestic/types.ts';
 import type { BuildingDef } from '../../data/schema.ts';
+import type { UnitInstance } from '../../game/roles/defense/types.ts';
 import { CellSlot } from './CellSlot.tsx';
 import { EmbossedFrame } from '../layout/EmbossedFrame.tsx';
 
@@ -24,6 +26,15 @@ export interface BuildingGridProps {
   grid: Record<string, DomesticBuilding>;
   activeCard?: BuildingDef;
   onPlace: (x: number, y: number) => void;
+  /** Defense redesign 3.2 — defense units in play; the grid groups them
+   *  by `cellKey` and forwards per-cell stacks to <CellSlot>. Optional
+   *  so older fixtures (e.g. the pre-2.5 hot-seat builds) render
+   *  without supplying defense state. */
+  units?: UnitInstance[];
+  /** Pooled non-chief stash total — surfaced by the center tile. */
+  pooledTotal?: number;
+  /** Optional resource breakdown for the center-tile tooltip. */
+  pooledBreakdown?: Array<{ resource: string; amount: number }>;
 }
 
 interface Bounds {
@@ -79,11 +90,32 @@ export function BuildingGrid({
   grid,
   activeCard,
   onPlace,
+  units,
+  pooledTotal,
+  pooledBreakdown,
 }: BuildingGridProps) {
   const isPlacing = activeCard !== undefined;
   const { xMin, xMax, yMin, yMax } = computeBounds(grid, isPlacing);
   const cols = xMax - xMin + 1;
   const isEmpty = Object.keys(grid).length === 0;
+
+  // Group defense units by `cellKey` once per render; CellSlot reads
+  // the per-cell list out of this map. The values are placement-order-
+  // sorted in UnitStack itself, so we leave them in the engine's
+  // append order here.
+  const unitsByCell = useMemo<Map<string, UnitInstance[]>>(() => {
+    const map = new Map<string, UnitInstance[]>();
+    if (!units) return map;
+    for (const u of units) {
+      const list = map.get(u.cellKey);
+      if (list === undefined) {
+        map.set(u.cellKey, [u]);
+      } else {
+        list.push(u);
+      }
+    }
+    return map;
+  }, [units]);
 
   // Render rows top-to-bottom, columns left-to-right. y descends visually
   // (so y=yMax is the top row) — matches a typical "looking down at the
@@ -154,6 +186,8 @@ export function BuildingGrid({
                 }
                 activeNeighbors = ns;
               }
+              const cellUnits = unitsByCell.get(key);
+              const isCenter = building?.isCenter === true;
               return (
                 <CellSlot
                   key={key}
@@ -163,6 +197,9 @@ export function BuildingGrid({
                   isLegal={isLegal}
                   isPlacing={isPlacing}
                   activeNeighbors={activeNeighbors}
+                  units={cellUnits}
+                  pooledTotal={isCenter ? pooledTotal : undefined}
+                  pooledBreakdown={isCenter ? pooledBreakdown : undefined}
                   onClick={() => {
                     if (building !== undefined) return;
                     if (!isPlacing || !isLegal) return;

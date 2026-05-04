@@ -168,9 +168,17 @@ export const colors = {
   // Status accents — `active` highlights the current player's score
   // tile and the in-progress status line; `muted` is for footer copy
   // and the score-tile labels.
+  //
+  // Defense redesign 3.2 — `healthy` / `warning` / `critical` drive the
+  // HpPips color states (full / ≤50% / 1) on every damage-bearing
+  // building tile. They also paint the per-tile damage / repair flash
+  // when `BuildingTile` sees `hp` change between renders.
   status: {
     active: ramps.sky[400],
     muted: ramps.slate[400],
+    healthy: ramps.green[500],
+    warning: ramps.yellow[500],
+    critical: ramps.red[500],
   },
 
   // App-wide surface fallbacks. Used by CssBaseline (background.default)
@@ -265,6 +273,25 @@ const eventColor: Record<EventColor, PaletteColor> = {
   red: pc(ramps.red),
 };
 
+// Defense redesign 3.2 — center tile (the village vault at (0,0)) palette.
+//
+// `accent`     — outer ring color so the circular vault reads as different
+//                from a regular building tile.
+// `surface`    — interior fill so the vault sits visibly above the empty-
+//                cell spacer beneath it.
+// `text`       — on-`surface` foreground for the label and the live
+//                pooled-stash total.
+//
+// All three resolve to ramp slots — no raw hex literals leak into
+// component code. Anchored on `purple` so the vault accent stays
+// distinct from the role accents (chief yellow, science blue, domestic
+// green, defense red) and from the track's threat / boon / boss accents.
+const centerTile = {
+  accent: ramps.purple[500],
+  surface: ramps.purple[700],
+  text: ramps.purple[50],
+};
+
 // Defense redesign 3.1 — track strip palette tokens.
 //
 // `past`     — already-flipped cards, greyed out at the left of the strip.
@@ -321,6 +348,11 @@ declare module '@mui/material/styles' {
       boss: string;
       phaseMarkers: readonly string[];
     };
+    centerTile: {
+      accent: string;
+      surface: string;
+      text: string;
+    };
   }
   // PaletteOptions mirrors Palette for the createTheme input. We
   // accept the same shapes (Partial keeps the existing tokens
@@ -340,6 +372,11 @@ declare module '@mui/material/styles' {
       next: string;
       boss: string;
       phaseMarkers: readonly string[];
+    };
+    centerTile?: {
+      accent: string;
+      surface: string;
+      text: string;
     };
   }
 }
@@ -367,6 +404,7 @@ export const theme = createTheme({
     tier,
     eventColor,
     track,
+    centerTile,
   },
   typography: {
     fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
