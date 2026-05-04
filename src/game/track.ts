@@ -15,6 +15,7 @@
 // performs no redaction on `G.track`.
 
 import type { TrackCardDef, ModifierCard } from '../data/index.ts';
+import type { ResourceBag } from './resources/types.ts';
 import type { RandomAPI } from './random.ts';
 import { registerRoundEndHook } from './hooks.ts';
 
@@ -48,6 +49,22 @@ export interface ResolveTrace {
   /** Total resources burned from the center pool (sum across resources).
    *  `undefined` when the threat did not reach center. */
   centerBurned?: number;
+  /** Defense redesign 3.4 — per-resource breakdown of what the center
+   *  burn actually consumed. Parallel to `centerBurned` (sum equals
+   *  `centerBurned`); the banner reads this to render its
+   *  "−3 wood, −1 stone" line without re-deriving from `bankLog`. Only
+   *  populated when `centerBurned > 0`; otherwise undefined. */
+  centerBurnDetail?: Partial<ResourceBag>;
+  /** Defense redesign 3.4 — name of the threat / boss-attack card that
+   *  caused the burn. Surfaces in the banner's second line ("to ⚔ Cyclone
+   *  | round 14") for audit traceability. Only populated when
+   *  `centerBurned > 0`. */
+  centerBurnSource?: string;
+  /** Defense redesign 3.4 — round number at which the burn happened.
+   *  Lifted off `G.round` at resolve time so the banner can show the
+   *  round even if it renders after the round counter advances. Only
+   *  populated when `centerBurned > 0`. */
+  centerBurnRound?: number;
   /** What the trace reads as for the playback layer:
    *   - `killed`         : threat died to fire before reaching impact.
    *   - `overflowed`     : threat damaged 1+ buildings, then either died or

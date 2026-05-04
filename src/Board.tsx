@@ -25,6 +25,7 @@ import { GameOverBanner } from './ui/layout/GameOverBanner.tsx';
 import { pickActiveSeat } from './ui/layout/activeSeat.ts';
 import type { GameOutcome } from './game/endConditions.ts';
 import { SeatTiles } from './ui/mat/CenterMat.tsx';
+import { CenterBurnBanner } from './ui/center/CenterBurnBanner.tsx';
 import { RelationshipsModalHost } from './ui/relationships/RelationshipsModalHost.tsx';
 import { DevSidebar } from './ui/layout/DevSidebar.tsx';
 import { EventLogDrawer } from './ui/log/EventLogDrawer.tsx';
@@ -188,7 +189,17 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
           "Trade Requests" section — it's chief-private, so it's not
           rendered at the board level. */}
       <Stack spacing={0}>
-        <SeatTiles {...props} />
+        {/* Defense redesign 3.4 — center-burn banner. Floats above the
+            seat-tile row when a threat reaches the village vault and
+            the resolver writes a `centerBurnDetail` onto the latest
+            trace. The wrapper is `position: relative` so the banner's
+            absolute layout resolves against the tile row; the banner
+            itself is `pointer-events: none` so seat-tile clicks pass
+            through. */}
+        <Box sx={{ position: 'relative' }}>
+          <CenterBurnBanner lastResolve={G.track?.lastResolve} />
+          <SeatTiles {...props} />
+        </Box>
         <Stack spacing={3}>
           {expanded('chief') ? <ChiefPanel {...props} /> : null}
           {expanded('science') ? <SciencePanel {...props} /> : null}

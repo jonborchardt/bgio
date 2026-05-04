@@ -78,7 +78,7 @@ import type { RandomAPI } from '../random.ts';
 import type { UnitInstance } from '../roles/defense/types.ts';
 import type { DomesticBuilding } from '../roles/domestic/types.ts';
 import { SKILLS, type SkillID } from '../roles/science/skills.ts';
-import { RESOURCES } from '../resources/types.ts';
+import { RESOURCES, type Resource, type ResourceBag } from '../resources/types.ts';
 import { appendBankLog } from '../resources/bankLog.ts';
 import { dispatch } from '../events/dispatcher.ts';
 import type { EventCardDef } from '../events/state.ts';
@@ -321,6 +321,9 @@ export const resolveThreat = (
   const traceFiringUnitIDs: string[] = [];
   const traceImpactTiles: string[] = [];
   let traceCenterBurned: number | undefined;
+  // Defense redesign 3.4 — per-resource breakdown the banner reads to
+  // render "−3 wood, −1 stone" without re-deriving from `bankLog`.
+  let traceCenterBurnDetail: Partial<ResourceBag> | undefined;
 
   // Run the fire volley. Each fire deducts strength from the threat;
   // bail early when threat dies. Track which units fired so we can
@@ -450,11 +453,20 @@ export const resolveThreat = (
       `Threat ${threat.id} (${threat.name})`,
     );
     let total = 0;
-    for (const r of RESOURCES) {
+    const detail: Partial<ResourceBag> = {};
+    for (const r of RESOURCES as ReadonlyArray<Resource>) {
       const v = burned[r];
-      if (v !== undefined) total += v;
+      if (v === undefined || v === 0) continue;
+      total += v;
+      detail[r] = v;
     }
     traceCenterBurned = total;
+    // Only attach the per-resource breakdown when the burn actually
+    // consumed tokens — an empty pool produces `total === 0` and no
+    // detail entries, in which case the banner has nothing to surface.
+    if (total > 0) {
+      traceCenterBurnDetail = detail;
+    }
   }
 
   const outcome: ResolveTrace['outcome'] =
@@ -472,6 +484,16 @@ export const resolveThreat = (
   };
   if (traceCenterBurned !== undefined) {
     trace.centerBurned = traceCenterBurned;
+  }
+  // Defense redesign 3.4 — surface the per-resource breakdown + the
+  // offending card name + the round so the banner can render
+  // "−3 wood, −1 stone burned to ⚔ Cyclone (round 14)" without reaching
+  // back into `bankLog`. Only populated when the burn actually consumed
+  // tokens (so an empty-pool resolve emits no banner).
+  if (traceCenterBurnDetail !== undefined) {
+    trace.centerBurnDetail = traceCenterBurnDetail;
+    trace.centerBurnSource = threat.name;
+    trace.centerBurnRound = G.round;
   }
   publishTrace(G, trace);
 };

@@ -320,6 +320,28 @@ const bossReadout = {
   text: ramps.slate[50],
 };
 
+// Defense redesign 3.4 — center-burn banner tokens.
+//
+// The banner appears in/near the center mat when a threat reaches the
+// village vault and burns from the pooled stash. The visual reads as
+// "alarm + audit": red border accent for "things were lost" plus a
+// dimmed slate surface so the banner can sit over the seat tiles
+// without washing them out. Anchored on the existing `red` and `slate`
+// ramps so no new hue lands.
+//
+// `accent`   — border / icon color (alarm red).
+// `surface`  — banner background. Slate so the banner reads as a
+//              floating panel that's *not* part of the playable grid.
+// `text`     — on-`surface` foreground for headline + detail lines.
+// `subText`  — slightly muted on-`surface` foreground used for the
+//              second line ("to ⚔ Cyclone | round 14").
+const centerBurnBanner = {
+  accent: ramps.red[500],
+  surface: ramps.slate[800],
+  text: ramps.slate[50],
+  subText: ramps.slate[300],
+};
+
 // Defense redesign 3.3 — path-overlay tokens.
 //
 // The PathOverlay highlights the cells a threat just walked across,
@@ -419,6 +441,12 @@ declare module '@mui/material/styles' {
       pathFire: string;
       centerRipple: string;
     };
+    centerBurnBanner: {
+      accent: string;
+      surface: string;
+      text: string;
+      subText: string;
+    };
   }
   // PaletteOptions mirrors Palette for the createTheme input. We
   // accept the same shapes (Partial keeps the existing tokens
@@ -457,6 +485,12 @@ declare module '@mui/material/styles' {
       pathFire: string;
       centerRipple: string;
     };
+    centerBurnBanner?: {
+      accent: string;
+      surface: string;
+      text: string;
+      subText: string;
+    };
   }
 }
 
@@ -486,6 +520,7 @@ export const theme = createTheme({
     centerTile,
     bossReadout,
     pathOverlay,
+    centerBurnBanner,
   },
   typography: {
     fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',

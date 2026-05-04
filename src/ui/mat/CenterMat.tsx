@@ -27,6 +27,7 @@ import { computeBankView } from '../../game/resources/bankLog.ts';
 import { rolesAtSeat, seatOfRole } from '../../game/roles.ts';
 import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
 import { Circle } from './Circle.tsx';
+import { CenterBurnBanner } from '../center/CenterBurnBanner.tsx';
 
 const titleCase = (s: string): string =>
   s.length === 0 ? s : s[0]!.toUpperCase() + s.slice(1);
@@ -159,8 +160,17 @@ export function SeatTiles(props: BoardProps<SettlementState>) {
 }
 
 export function CenterMat(props: BoardProps<SettlementState>) {
+  // Defense redesign 3.4 — the center-burn banner floats above the seat
+  // tiles. We mount it inside a relative-positioned wrapper so its
+  // `position: absolute` resolves against the seat-tile row rather than
+  // the page. The banner is `pointer-events: none`, so it never blocks
+  // tile clicks underneath.
   return (
-    <Box aria-label="Center mat" sx={{ display: 'grid', gap: 1.5 }}>
+    <Box
+      aria-label="Center mat"
+      sx={{ display: 'grid', gap: 1.5, position: 'relative' }}
+    >
+      <CenterBurnBanner lastResolve={props.G.track?.lastResolve} />
       <SeatTiles {...props} />
     </Box>
   );

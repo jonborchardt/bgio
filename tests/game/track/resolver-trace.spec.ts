@@ -183,6 +183,52 @@ describe('resolveTrackCard — trace publication (3.3)', () => {
     expect(t.impactTiles).toEqual([]);
   });
 
+  it('publishes per-resource centerBurnDetail + source + round on a center-reaching threat (3.4)', () => {
+    const G = buildG([]);
+    delete G.domestic!.grid[cellKey(0, 1)];
+    const seat = Object.keys(G.mats)[0]!;
+    // Pre-seed two distinct resource types so the deterministic
+    // pickOne (returns the first candidate) eats from `gold` until it
+    // runs out, then `wood`. This produces a multi-resource detail
+    // bag the banner can render.
+    G.mats[seat]!.stash.gold = 1;
+    G.mats[seat]!.stash.wood = 2;
+    G.round = 7;
+    resolveTrackCard(
+      G,
+      detRandom(),
+      threat({
+        direction: 'N',
+        offset: 0,
+        strength: 3,
+        name: 'Cyclone',
+      }),
+    );
+    const t = G.track!.lastResolve!;
+    expect(t.outcome).toBe('reachedCenter');
+    expect(t.centerBurned).toBe(3);
+    expect(t.centerBurnDetail).toEqual({ gold: 1, wood: 2 });
+    expect(t.centerBurnSource).toBe('Cyclone');
+    expect(t.centerBurnRound).toBe(7);
+  });
+
+  it('omits centerBurnDetail when the pool was empty at center (3.4)', () => {
+    const G = buildG([]);
+    delete G.domestic!.grid[cellKey(0, 1)];
+    // No stash on any seat — the burn no-ops.
+    resolveTrackCard(
+      G,
+      detRandom(),
+      threat({ direction: 'N', offset: 0, strength: 2 }),
+    );
+    const t = G.track!.lastResolve!;
+    expect(t.outcome).toBe('reachedCenter');
+    expect(t.centerBurned).toBe(0);
+    expect(t.centerBurnDetail).toBeUndefined();
+    expect(t.centerBurnSource).toBeUndefined();
+    expect(t.centerBurnRound).toBeUndefined();
+  });
+
   it('publishes a `noop` trace for a boon flip', () => {
     const G = buildG([]);
     const boon: BoonCard = {
