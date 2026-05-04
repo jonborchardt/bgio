@@ -3,7 +3,9 @@
 // `GameOutcome` on `ctx.gameover`.
 //
 // Two outcome kinds:
-//   - 'win' — the village has joined 10 settlements. Chief-gold accent.
+//   - 'win' — the village resolved the boss card (Phase 2.7). Chief-gold
+//     accent. Until 2.7 lands the boss, this branch is unreachable in
+//     practice; the banner still handles it for future-proofing.
 //   - 'timeUp' — the round cap was reached without winning. Muted accent.
 // "Play again" reloads the page; the proper lobby `playAgain` plumbing
 // (10.x) is out of scope here.
@@ -25,8 +27,8 @@ export function GameOverBanner({
     ? 'You won!'
     : "Time's up";
   const detail = isWin
-    ? `Settlements joined: ${outcome.settlementsJoined} — turns: ${outcome.turns}`
-    : `Reached turn ${outcome.turns}. Settlements joined: ${outcome.settlementsJoined} / 10`;
+    ? `Turns taken: ${outcome.turns}`
+    : `Reached turn ${outcome.turns}.`;
 
   return (
     <Paper

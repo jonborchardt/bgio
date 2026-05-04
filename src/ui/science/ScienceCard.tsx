@@ -3,7 +3,7 @@
 // Card shape (header / body / footer):
 //   - Header: color + level chip, with the "reward → recipient role" hint
 //     painted opposite. The reward is the always-visible "pro" the seat is
-//     paying for; the role mapping is fixed (red→Foreign, gold→Chief,
+//     paying for; the role mapping is fixed (red→Defense, gold→Chief,
 //     green→Domestic, blue→Science).
 //   - Body: per-resource cost vs. paid lines (the "con") with a +1 button on
 //     each, gated on `canAct && isLowest`.
@@ -101,7 +101,7 @@ const techDetailEntries = (
 
 // Fixed color → recipient-role mapping. Mirrors the switch in scienceComplete.
 const RECIPIENT_BY_COLOR: Record<ScienceColor, { role: string; branch: string }> = {
-  red: { role: 'Foreign', branch: 'Fighting' },
+  red: { role: 'Defense', branch: 'Fighting' },
   gold: { role: 'Chief', branch: 'Exploration' },
   green: { role: 'Domestic', branch: 'Civic' },
   blue: { role: 'Science', branch: 'Education' },

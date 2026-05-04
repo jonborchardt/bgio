@@ -169,7 +169,7 @@ describe('setupScience (05.1)', () => {
         ('chief' | 'science' | 'domestic' | 'defense')[]
       >,
       round: 0,
-      settlementsJoined: 0,
+      bossResolved: false,
       hands: {},
       mats: {},
       science,

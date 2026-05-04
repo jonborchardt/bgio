@@ -67,10 +67,10 @@ const buildG = (
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
   return {
     bank: { ...EMPTY_BAG },
-    centerMat: { tradeRequest: null },
+    centerMat: {},
     roleAssignments,
     round: 0,
-    settlementsJoined: 0,
+    bossResolved: false,
     hands,
     mats: initialMats(roleAssignments),
     ...partial,

@@ -74,14 +74,12 @@ export interface SettlementState {
   roleAssignments: Record<PlayerID, Role[]>;
   round: number;
 
-  // Total number of settlements the village has joined / absorbed.
-  // Defense redesign 1.4: the old battle / trade loops that ticked
-  // this counter are gone, so the value stays at 0 in a 1.4 build. Phase 2
-  // will retire `settlementsJoined >= 10` as the win condition entirely
-  // (D25 — boss-resolved becomes the win); 1.5 retires the field. We keep
-  // the slot here for one sub-phase so `endIf` and the persistence hook
-  // don't have to cross multiple sub-phases at once.
-  settlementsJoined: number;
+  // Defense redesign 1.5 (D25): when set to `true`, `endIf` returns a win.
+  // The flag is owned by Phase 2.7 (boss resolution) — until then nothing
+  // sets it, so the only end-of-game outcome is the `turnCap` time-up
+  // path. Defaulted to `false` at setup so `endIf` can read it without a
+  // guard.
+  bossResolved: boolean;
 
   // Per-match override for the round-count time-up cap (08.5). When unset,
   // the engine uses `TURN_CAP_DEFAULT` (80). Set at `setup` from

@@ -22,9 +22,11 @@ The game's rules and design notes live under `docs/`, **not** under `src/data/`:
 
 - **`docs/Rules.md`** — the canonical end-user rules. Roles, seats, the round structure
   (chief / others-in-parallel / end-of-round), resource flow (bank + per-seat
-  `in`/`out`/`stash`), per-role actions, the deterministic battle resolver, events,
-  trade requests, the win condition (`settlementsJoined >= 10`, no fail mode). When
-  you change a rule, update this file.
+  `in`/`out`/`stash`), per-role actions, events, the win condition. The fourth role is
+  mid-redesign (Foreign → Defense): Phase 1 retired the old battle / trade loop and
+  the `settlementsJoined` win check, Phase 2 brings the global event track + boss-
+  resolves-to-win flow. While Phase 2 is in flight, the only end-of-game outcome is
+  the time-up cap. No fail mode, ever. When you change a rule, update this file.
 - **`docs/game-design.md`** — designer-facing companion: the design premise, alternative
   options that were considered for each role, balance levers + tunables (with code
   locations and defaults), content size targets, open design questions, and known V1
@@ -89,26 +91,23 @@ Tests under `tests/` mirror the `src/` shape, with shared factories in `tests/he
   drains every `mats[seat].in` into `mats[seat].stash` and auto-fires `runProduceForSeat`
   for every domestic seat — produce is engine plumbing, not a player-driven button);
   `endOfRound` runs hooks + advances the round; `stages.ts` centralizes stage names.
-- `src/game/roles/{chief,science,domestic,foreign}/` — each role owns its move
+- `src/game/roles/{chief,science,domestic,defense}/` — each role owns its move
   implementations and any role-local helpers. Cross-role coordination goes through
   `hooks.ts`, not direct imports. Notable shared moves: `chief/distribute.ts` accepts
   signed amounts (push bank→`mats[target].in` and pull-back `in`→bank during the chief
-  phase); `foreign/tradeFulfill.ts` is **chief-only** — the chief pays `required` from
-  `G.bank` to the off-table trader and receives `reward` back into the bank, ticking
-  `settlementsJoined`. The trade slot is private to the chief (see `playerView`'s
-  `centerMat.tradeRequest` redaction); the `ownerSeat` field on the request is audit /
-  UI labeling only and does not gate fulfillment. `foreign/undoRelease.ts` reverses the
-  most recent `foreignReleaseUnit` (a real move because bgio's UNDO action is blocked
-  under `setActivePlayers`).
+  phase); `domestic/repair.ts` is the new spend sink that closes the loop on stash
+  burn from threat damage. The `defense/` folder is currently a stub — the role
+  ships a `defenseSeatDone` move only; Phase 2 brings the buy / place / play-tech
+  surface, the unit-on-tile state, and the global-event-track resolver.
 - `src/game/resources/{types,bag,bank,centerMat,playerMat,bankLog,moves}.ts` — resource
   primitives. `playerMat.ts` defines the per-non-chief-seat `{ in, out, stash }` shape
   populated by `setup` (chief acts on `G.bank` directly and owns no mat). `bankLog.ts`
   is the audit trail: every mutation that touches `G.bank` calls `appendBankLog` so the
   ChiefPanel tooltip can answer "where did the bank's current balance come from?".
-  `centerMat.ts` is now reduced to the single `tradeRequest` slot — the per-seat
-  resource circles it used to own were folded into `mats[seat].in` / `out`. `moves.ts`
-  exports `payFromStash`, the canonical spend helper used by every non-chief role's
-  purchase moves.
+  `centerMat.ts` is currently empty — the old trade-request slot was retired with the
+  rest of the foreign loop in 1.4; Phase 2 will repopulate it with the global event
+  track strip (past / current / next-card slots). `moves.ts` exports `payFromStash`,
+  the canonical spend helper used by every non-chief role's purchase moves.
 - `src/game/events/`, `src/game/opponent/`, `src/game/ai/`, `src/game/plugins/` — event
   cards, opponent / threat tracker, bgio `ai.enumerate` definitions, and any custom
   bgio `Plugin`s the game needs.
@@ -116,10 +115,11 @@ Tests under `tests/` mirror the `src/` shape, with shared factories in `tests/he
   the typed loaders in `src/data/schema.ts` and `src/data/index.ts`. Imports always go
   through the loaders (`BUILDINGS`, `UNITS`, `TECHNOLOGIES`, `BENEFIT_TOKENS`) — never
   the raw JSON.
-- `src/ui/{layout,cards,resources,mat,deck,hand,chief,science,domestic,foreign,chat}/` —
+- `src/ui/{layout,cards,resources,mat,deck,hand,chief,science,domestic,defense,chat}/` —
   React components, MUI primitives only. Per-role panels live under
   `src/ui/<role>/`; shared chrome (board layout, card primitives, resource chips,
-  center mat, decks, hand) sits alongside.
+  center mat, decks, hand) sits alongside. The `defense/` panel is a Phase 1 stub
+  (just an end-turn button) — the real panel lands in Phase 3.6.
 - `src/App.tsx` — wires `Settlement` + the active board into a `Client({ ... })`
   instance. The only place `boardgame.io/react` is imported.
 - `src/main.tsx` — React root; mounts `<App />` into `#root` and wraps it in MUI's
@@ -228,7 +228,7 @@ peer deps). Do not introduce a parallel styling system.
   type-safe via the module augmentation in `theme.ts`. Don't reach into `colors` or `ramps`
   directly from components when the value is already exposed on the palette.
 - **Per-role accents come from `palette.role.<role>`** (`palette.role.chief`,
-  `palette.role.science`, `palette.role.domestic`, `palette.role.foreign`). Role panels
+  `palette.role.science`, `palette.role.domestic`, `palette.role.defense`). Role panels
   under `src/ui/<role>/` should pull their primary accent from there rather than picking
   a ramp slot inline, so the palette stays the one place a designer changes a role's color.
 - MUI's defaults handle spacing (`sx={{ p: 1.5 }}`), typography variants
@@ -257,7 +257,7 @@ npm run lint
 Game changes are role-scoped. The workflow is:
 
 1. **Pick the role's folder** under `src/game/roles/<role>/` (chief / science / domestic /
-   foreign). If the change is genuinely cross-role, it belongs in `src/game/hooks.ts` (for
+   defense). If the change is genuinely cross-role, it belongs in `src/game/hooks.ts` (for
    end-of-round coordination), `src/game/phases/`, or `src/game/endConditions.ts` — not in
    another role's folder.
 2. **Update types + moves.** Extend `SettlementState` (or a role-local slice of it) in

@@ -157,7 +157,8 @@ export const FORMATTERS: Record<string, Formatter> = {
 
   domesticProduce: () => ({ role: 'domestic', parts: ['Produced'] }),
 
-  // ---- Foreign ------------------------------------------------------------
+  // ---- Defense -----------------------------------------------------------
+  // (Phase 1: defense ships only seatDone — log entries arrive in Phase 2.)
   // ---- Per-color event-card plays (non-chief) -----------------------------
   sciencePlayBlueEvent: (args) => {
     const cardID = String(args[0] ?? '');

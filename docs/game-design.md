@@ -24,10 +24,10 @@ count only decides who runs which ones.
 Three load-bearing constraints fall out of that:
 
 1. **Each role is a different mini-game.** Splendor-ish science,
-   Carcassonne/Suburbia-ish domestic, MTG/Star-Realms-ish foreign,
-   distribution-puzzle chief. A solo player owns all four; if the four
-   roles shared one mechanic, the solo game would be four iterations of
-   one decision.
+   Carcassonne/Suburbia-ish domestic, tower-defense-ish defense (post-
+   redesign — see §3.4), distribution-puzzle chief. A solo player owns
+   all four; if the four roles shared one mechanic, the solo game would
+   be four iterations of one decision.
 2. **Co-op against the world, no fail mode.** Pressure can degrade
    outcomes (longer match, less score, worse position) but cannot end
    the match. This frees pressure systems from being tuned to "exactly
@@ -44,7 +44,10 @@ These three are encoded in code: see `src/game/index.ts`,
 
 `endConditions.ts`:
 
-- **Win** when `settlementsJoined >= 10`.
+- **Win** when `G.bossResolved === true`. Phase 2.7 will flip this when
+  the village resolves the boss card on the global event track. Until
+  then, the flag is never set, so the only end-of-game outcome is
+  time-up.
 - **Time up** when `round >= turnCap` (default 80). Not a loss — the run
   just ends so the server can record the score.
 
@@ -76,7 +79,7 @@ shared bank.
 
 **Current (Option 1, hybrid):** 3×4 grid of science cards — one column
 per color, fixed in role order (chief→gold, science→blue, domestic→green,
-foreign→red). Lowest-level card in each column must be completed first.
+defense→red). Lowest-level card in each column must be completed first.
 Each card has 4 face-down tech cards under it that distribute on
 completion. (Earlier revisions picked 3 of 4 colors per game and let the
 fourth sit out; we dropped that variance because it consistently locked
@@ -115,68 +118,40 @@ of others-phase.
 
 Borrowed shape: *Carcassonne* / *Suburbia*.
 
-### 3.4 Foreign
+### 3.4 Defense (formerly Foreign)
 
-**Current (Option 1+ resolver):** a deterministic battle resolver against
-flipped Battle cards, plus a Trade-card stream that produces public
-trade requests on the center mat. Initiative-ordered turns; player picks
-damage allocation; abilities are heal / splash / armor / single-use /
-focus.
+The role is mid-redesign; see
+[reports/defense-redesign-spec.md](../reports/defense-redesign-spec.md)
+for the locked decisions and the `plans/defense-redesign-*.md` directory
+for the staged implementation. The short version: the old battle-deck /
+trade-request loop has been retired, the role has been renamed from
+*Foreign* to *Defense*, and the replacement is a global event track of
+threats / boons / modifiers that walk toward the village's center tile,
+plus a positional defense layer where Defense buys units and places them
+on Domestic building tiles. The win condition becomes "village resolves
+the boss card at the end of the track" (D25). Phase 2 plans cover the
+track, the resolver, the defense moves, the science Drill / Teach moves,
+and the boss flow.
 
-**Alternatives considered**
+### 3.5 Opponent (wander → global event track)
 
-- *Option 2 — sortie play mats:* deploy armies onto missions / trades /
-  defense.
-- *Option 3 — small grid battle (3×2 vs 3×2):* full positional combat
-  with cover/range/ammo etc. Rejected for V1 as too heavy for a parallel
-  stage.
-- *Option 4 — column/row defend:* if domestic is grid-based, defend along
-  rows, à la *Galaxy Trucker*. Reserved for a later expansion.
-- *Option 5 — MTG-style:* the closest spiritual ancestor for V1 combat.
-- *Option 6 — Risk-style:* ruled out as too coarse.
-- *Option 7 — tile-laying expedition:* place tiles defining what's at a
-  square; send units to claim. Marked "think about" — could land in a
-  later expansion.
-- *Option 8 — outpost piles in the middle:* face-down piles that units
-  can be sent to uncover and contest with AI opponents. Marked "think
-  about." The win-condition currently sits closest to this idea via
-  trade requests + battles incrementing `settlementsJoined`.
+The wander deck is **end-of-life**. While Phase 1 stages the redesign,
+the wander deck still flips one card per round-end and dispatches
+through the existing `EventEffect` taxonomy — that keeps the in-flight
+intermediate state playable as a degraded build. Phase 2 (D19, D20,
+G3) folds wander into the **global event track**: 10 phases × 3–4
+cards each (mix of threats / boons / modifiers / a single boss), with
+the next card always face-up so Defense can prepare for it. Once the
+track lands, the wander deck and its setup / round-end hook get
+retired wholesale.
 
-**Combat-resolver coverage gaps (intentional V1 omissions)**
+**Original alternative considered for the V1 wander shape**
 
-The resolver implements: focus (parsed but doesn't yet differentiate
-behavior), splash, armor, heal, single-use. It does **not** implement:
-
-- `cover`, `ammo`, `reload`
-- `vsBoss±N` modifiers
-- `revealsScout`
-- "−N initiative on turn 1"
-- trapper post-attack initiative bumps
-- player-driven ability target selection
-- multi-target absorption per "round" (each enemy-on-player damage
-  event consumes exactly one allocation, in resolver order)
-
-When you implement one, add the keyword in `src/game/roles/foreign/abilities.ts`
-AND wire it into `battleResolver.ts`. Keep the parser strict so silent
-drops don't happen.
-
-### 3.5 Opponent
-
-**Current (Option 1):** a wander deck. One card flips at the end of each
-round; effects dispatch through the same `EventEffect` taxonomy as
-player event cards.
-
-**Alternative considered**
-
-- *Option 2:* a *Star Realms*–style stat-growing enemy that must be
-  whittled down each round. Rejected for V1 because the wander-deck shape
-  composes more cleanly with the no-fail-mode stance — wanders shape
-  the village's tempo, they don't kill you.
-
-**Open question**
-
-- A growing enemy could later layer on top of the wander deck, not
-  replace it.
+- A *Star Realms*–style stat-growing enemy that must be whittled down
+  each round. Rejected at the time because the wander-deck shape
+  composed more cleanly with the no-fail-mode stance. The track design
+  (D19–D21) absorbs this concern — the boss card at the end of the
+  track is the "final fight" the table prepares for over the run.
 
 ## 4. Cross-role economy
 
@@ -188,20 +163,20 @@ The four roles are wired together by:
 - **The science → other-roles tech pipeline.** Completing a science
   card distributes its 4 tech cards to specific roles by color
   (`scienceComplete` in `src/game/roles/science/complete.ts`):
-  - red → Foreign
+  - red → Defense
   - gold → Chief
   - green → Domestic
   - blue → Science
-- **Domestic buildings tax / discount Foreign.** Forge → −1 gold per
-  unit recruited; Walls → −2 gold per unit upkeep; Tower → −4 gold per
-  unit upkeep. Implemented in `roles/foreign/recruit.ts` and
-  `roles/foreign/upkeep.ts` via `parseBenefit` over Domestic buildings.
-- **Win condition is a Foreign output but not Foreign-only.** Both
-  battle wins and trade fulfillments tick `settlementsJoined`. Foreign
-  flips the trade card; the **chief** then chooses whether to fulfill
-  it from the bank during the chief phase. So progress through trades
-  is gated by the chief's bank-management decisions, not by which seat
-  happens to be cash-rich on a given turn.
+- **Domestic buildings interact with Defense via placement bonuses.**
+  Per the redesign (D18), the bonus is authored on the *unit* — a
+  unit's card prints "+1 strength on Forge" or "+1 range on Tower" —
+  rather than baked into the building. Phase 2 wires this through the
+  combat resolver via `UnitDef.placementBonus[]`.
+- **Win condition is a cross-role output, not Defense-only.** The boss
+  card prints three thresholds (Science / Economy / Military). Each
+  threshold met → one fewer attack the boss makes. So winning is
+  shaped by all three non-chief roles plus the chief's bank-management
+  decisions, not just by Defense's units on the grid.
 
 The "web of techs" that ties the roles together (the Sniper recipe, the
 Education branch as the unlocking root, etc.) is described narratively in
@@ -218,13 +193,13 @@ code locations and defaults.
 | Per-round chief gold stipend  | 2       | `src/game/setup.ts` `CHIEF_STIPEND_DEFAULT`               |
 | Chief starter worker pool     | 3       | `src/game/setup.ts` (`chief: { workers: 3 }`)             |
 | Turn cap                      | 80      | `src/game/endConditions.ts` `TURN_CAP_DEFAULT`            |
-| Win threshold (settlements)   | 10      | `src/game/endConditions.ts` `endIf`                       |
+| Win flag (boss-resolved)      | flag    | `src/game/endConditions.ts` `endIf` (set by Phase 2.7)    |
 | Science colors picked         | 3 of 4  | `src/game/roles/science/setup.ts` `setupScience`          |
 | Tech cards under each science | 4       | same                                                      |
 | Event hand size               | 4       | `src/game/events/state.ts` `HAND_SIZE`                    |
-| Wander draws per round        | 1       | `src/game/opponent/wanderDeck.ts`                         |
+| Wander draws per round        | 1       | `src/game/opponent/wanderDeck.ts` (retired in Phase 2)    |
 | Building upgrade cost factor  | ×0.5    | `src/game/roles/domestic/upgrade.ts` (V1 stub)            |
-| Unit release refund           | ×0.5    | `src/game/roles/foreign/release.ts`                       |
+| Building maxHp range          | 1–4     | `src/data/buildings.json` per `BuildingDef.maxHp`         |
 
 The lobby form (`SettlementSetupData`) exposes `turnCap`,
 `chiefStipendPerRound`, `startingBank`, and `soloMode`/`humanRole`. New
@@ -238,17 +213,16 @@ Targets the V1 content pass aims for. Update as the deck reshapes.
 | --------------------- | ------------- | -------------------------------------------------------- |
 | Buildings (domestic)  | ~58           | Current pile in `src/data/buildings.json`.               |
 | Technologies          | ~82           | Cross-role tech tree; spans 4 colors / 4 branches.       |
-| Units (foreign)       | ~67           | Includes Militia starters.                               |
-| Battle cards          | ~?            | Sized by `number` 1..4 tiers; deck stacks low-on-top.    |
-| Trade cards           | ~?            | Same `number` 1..4 distribution.                         |
+| Units (defense)       | ~67           | Includes Militia starters; Phase 2 reshapes the schema.  |
+| Track cards (Phase 2) | 30–40         | 10 phases × 3–4 cards; threats / boons / modifiers + boss.|
 | Event cards           | 16 (4 / color)| Each role's hand is 4; cycle resets after exhausting.    |
-| Wander cards          | ~24           | One drawn per round; reshuffles when empty.              |
+| Wander cards          | ~24           | One drawn per round; retired when the track lands.       |
 
 Round-time target is **20–60 minutes** for a full match (roughly 20–60
 rounds at the cap of 80).
 
 The full pre-V1 wishlist sized for "20–60 turns": ~92 science cards
-total, 20 domestic-played-twice = 40 buildings used, ~10 foreign units
+total, 20 domestic-played-twice = 40 buildings used, ~10 defense units
 played multiple times = 20 unit deck, 4 events × 4 roles = 16 events,
 48-card opponent deck (8 bosses), 8×3 wanders + 8 directional wanders.
 Treat these as historical targets; live content lives in `src/data/`.
@@ -269,11 +243,13 @@ Carried over from the original design doc, partially still live:
   buckets, should events have card-driven "this turn must…" mandates?
   (Examples in the original doc: "must do random science this turn,"
   "must buy cheapest science," "can swap 2 science cards," etc.)
-- **Foreign incentive density.** The original doc asks: "There needs to
-  be a necessity to have some science, domestic, and foreign…" —
-  domestic discounts foreign upkeep, science feeds foreign units, but is
-  the pressure on foreign strong enough that a player can't just under-
-  invest in it forever?
+- **Defense incentive density.** The original doc asks: "There needs to
+  be a necessity to have some science, domestic, and defense…" — Phase 2
+  ties the boss's three thresholds (Science / Economy / Military) to all
+  three non-chief roles, so under-investing in any one of them shows up
+  as boss attacks at the end of the run. Live question is whether the
+  thresholds bite hard enough to force participation without forcing a
+  rigid build order.
 
 ## 8. Known V1 caveats / in-flight work
 
@@ -291,7 +267,9 @@ file alone has the picture:
   worker effects on production are reserved for later.
 - **Building upgrades are a stub.** ½× cost gold-only; richer upgrade
   content needs a data shape.
-- **Battle resolver coverage is intentional and partial** (see §3.4).
+- **Defense role mid-redesign (Phase 1 complete).** Defense ships no
+  user-facing moves yet; Phase 2 brings the global event track, the
+  defense moves, science Drill / Teach, and the boss flow. See §3.4.
 
 ## 9. The codename
 

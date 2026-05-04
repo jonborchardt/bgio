@@ -1,6 +1,6 @@
 // TechCard — presentational view of a TechnologyDef. Delegates to the
 // V9 shell, which renders four per-role panels (Chief / Science /
-// Domestic / Foreign), each listing buildings / units / resources
+// Domestic / Defense), each listing buildings / units / resources
 // granted to that role.
 
 import type { TechnologyDef } from '../../data/schema.ts';

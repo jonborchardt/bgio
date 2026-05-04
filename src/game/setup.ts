@@ -130,11 +130,10 @@ export const setup = (
     centerMat: initialCenterMat(),
     roleAssignments,
     round: 0,
-    // Defense redesign 1.4 — `settlementsJoined` is no longer ticked by any
-    // move (the old battle / trade loops that ticked it are retired).
-    // The win check still reads the field via 1.5's win-condition placeholder
-    // pass; here we initialize it to 0 and never advance it.
-    settlementsJoined: 0,
+    // Defense redesign 1.5 (D25) — boss-resolved win flag. Stays `false`
+    // through Phase 1; Phase 2.7's boss-resolution code flips it to `true`
+    // when the village survives the boss card on the global event track.
+    bossResolved: false,
     // 08.5 time-up cap: per-match override from `setupData.turnCap`, default
     // 80. Stored on G so `endIf` doesn't need to look back at setupData.
     turnCap: setupData?.turnCap ?? TURN_CAP_DEFAULT,

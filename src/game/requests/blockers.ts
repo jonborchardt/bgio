@@ -6,7 +6,7 @@
 //
 // The V1 calibration is intentionally narrow: every blocker today maps to
 // "missing resources" → the chief is the recipient. Tech / building /
-// unit prerequisites (e.g. a Foreign unit that requires a Domestic
+// unit prerequisites (e.g. a Defense unit that requires a Domestic
 // building) are a follow-up calibration pass — the request types support
 // them, but the detection here doesn't emit them yet.
 

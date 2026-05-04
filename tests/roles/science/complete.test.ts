@@ -119,7 +119,7 @@ const buildState = (
     centerMat: {},
     roleAssignments,
     round: 1,
-    settlementsJoined: 0,
+    bossResolved: false,
     hands,
     mats: initialMats(roleAssignments),
     science: scienceState,

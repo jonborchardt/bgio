@@ -76,10 +76,10 @@ const build2pState = (
 
   return {
     bank: bagOf({}),
-    centerMat: { tradeRequest: null },
+    centerMat: {},
     roleAssignments,
     round: 1,
-    settlementsJoined: 0,
+    bossResolved: false,
     hands,
     mats: initialMats(roleAssignments),
     ...partial,

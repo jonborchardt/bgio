@@ -26,7 +26,7 @@ const baseState = (): SettlementState => {
     centerMat: {},
     roleAssignments,
     round: 1,
-    settlementsJoined: 0,
+    bossResolved: false,
     hands,
     mats: initialMats(roleAssignments),
   };

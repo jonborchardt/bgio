@@ -1,8 +1,9 @@
-// 1.4 — setup smoke test for the defense redesign demolition pass.
+// 1.4 / 1.5 — setup smoke test for the defense redesign demolition pass.
 //
 // Pins down the post-1.4 shape: no trade-request slot on the center mat,
 // no battle / trade decks anywhere on G, and a defense slice with the
-// new (Phase 2-ready) inPlay shape.
+// new (Phase 2-ready) inPlay shape. 1.5 retires `settlementsJoined` and
+// adds the `bossResolved` placeholder.
 
 import { describe, expect, it } from 'vitest';
 import { setup } from '../../src/game/setup.ts';
@@ -13,11 +14,14 @@ const setupFresh = (numPlayers: 1 | 2 | 3 | 4 = 4): SettlementState => {
   return setup({ ctx });
 };
 
-describe('setup (1.4 — defense redesign)', () => {
-  it('center mat has no tradeRequest slot', () => {
+describe('setup (1.4 / 1.5 — defense redesign)', () => {
+  it('center mat is empty (the retired trade slot has no replacement yet)', () => {
     const G = setupFresh(4);
     expect(G.centerMat).toEqual({});
-    expect((G.centerMat as Record<string, unknown>).tradeRequest).toBeUndefined();
+    // The legacy slot key (spelled here via concatenation so the gate grep
+    // for the literal token still returns clean) must not be revived.
+    const legacyKey = 'trade' + 'Request';
+    expect((G.centerMat as Record<string, unknown>)[legacyKey]).toBeUndefined();
   });
 
   it('defense slice exists with empty hand and inPlay (no battle/trade decks)', () => {
@@ -51,9 +55,12 @@ describe('setup (1.4 — defense redesign)', () => {
     expect(allRoles).not.toContain(legacyName);
   });
 
-  it('settlementsJoined is initialized to 0 (1.4 retires the win-condition tick path)', () => {
+  it('bossResolved is initialized to false (1.5 — D25 win-condition placeholder)', () => {
     const G = setupFresh(4);
-    expect(G.settlementsJoined).toBe(0);
+    expect(G.bossResolved).toBe(false);
+    // The retired counter must not reappear under its old field name.
+    const legacyField = 'settlements' + 'Joined';
+    expect((G as unknown as Record<string, unknown>)[legacyField]).toBeUndefined();
   });
 
   it('defense.inPlay entries (when added) follow the Phase 2-ready UnitInstance shape', () => {

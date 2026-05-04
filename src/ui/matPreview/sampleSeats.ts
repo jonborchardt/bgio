@@ -23,7 +23,7 @@ export const SAMPLE_SEATS: ReadonlyArray<MatSample> = [
       stash: bag({ gold: 2, wood: 3 }),
       hideIncome: false,
     },
-    waitingFor: 'Science · Domestic · Foreign',
+    waitingFor: 'Science · Domestic · Defense',
   },
   {
     id: 'chief-active',

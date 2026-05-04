@@ -61,7 +61,7 @@ const wrapInG = (events: EventsState): SettlementState => ({
   centerMat: {},
   roleAssignments: FOUR_PLAYER_ASSIGNMENTS,
   round: 0,
-  settlementsJoined: 0,
+  bossResolved: false,
   hands: { '0': {}, '1': {}, '2': {}, '3': {} },
   mats: {
     '1': { in: { ...EMPTY_BAG }, out: { ...EMPTY_BAG }, stash: { ...EMPTY_BAG } },

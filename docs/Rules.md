@@ -7,6 +7,17 @@ This file is the source of truth for **how the game is played**. Anything
 beyond the rules — open questions, balance levers, alternative designs that
 were considered — lives in [game-design.md](./game-design.md).
 
+> **Status note (Defense redesign — Phase 1 complete).** The fourth role
+> is in mid-redesign: it has been renamed from *Foreign* to **Defense**,
+> the old battle-deck / trade-request loop has been retired, and the
+> replacement (a global event track + village defense grid + boss-resolves-
+> to-win flow) is being staged in over Phase 2. While that work is in
+> flight, the role is intentionally inert in code, the only end-of-game
+> outcome is the time-up cap, and several sections below are placeholders.
+> See [reports/defense-redesign-spec.md](../reports/defense-redesign-spec.md)
+> for the locked decisions and the `plans/` directory for the staged
+> implementation order.
+
 ## 1. The premise
 
 You and your fellow players run one shared post-apocalyptic village.
@@ -15,28 +26,23 @@ Whether one human plays alone or four humans split up, there are always
 Bots fill any seats humans don't.
 
 You all win or lose together. There is **no fail mode** — only a win
-condition and an outer time cap.
-
-- **Win** when the village has joined **10 competing settlements** to
-  itself (by tribute trade or by victory in battle).
-- **Time up** if the round counter reaches its cap (default 80 rounds)
-  before that. You record the score and try again.
+condition and an outer time cap. (See §6.)
 
 ## 2. Roles and seats
 
-The four roles are **Chief**, **Science**, **Domestic**, and **Foreign**.
+The four roles are **Chief**, **Science**, **Domestic**, and **Defense**.
 Roles are distributed across player seats by player count:
 
 | Players | Seat 0                    | Seat 1     | Seat 2 | Seat 3 |
 | :-----: | ------------------------- | ---------- | ------ | ------ |
-| 1       | chief, science, domestic, foreign |    |        |        |
-| 2       | chief, science            | domestic, foreign |  |    |
-| 3       | chief, science            | domestic   | foreign |       |
-| 4       | chief                     | science    | domestic | foreign |
+| 1       | chief, science, domestic, defense |    |        |        |
+| 2       | chief, science            | domestic, defense |  |    |
+| 3       | chief, science            | domestic   | defense |       |
+| 4       | chief                     | science    | domestic | defense |
 
 A seat that holds more than one non-chief role acts in stage priority
-**science → domestic → foreign**. (The seat takes the science stage; the
-domestic and foreign actions happen automatically/inside that same player's
+**science → domestic → defense**. (The seat takes the science stage; the
+domestic and defense actions happen automatically/inside that same player's
 turn.)
 
 ## 3. The shared bank, and per-seat player mats
@@ -51,10 +57,11 @@ Every non-chief seat has a **player mat** with three slots:
 - **Out** — resources the seat produced this round. Swept into the bank
   automatically at the start of the next chief turn.
 - **Stash** — the seat's working pool. **All spend moves** (science
-  contribution, domestic build/upgrade, foreign recruit/upkeep, trade
-  fulfillment) come from the stash.
+  contribution, domestic build/upgrade/repair) come from the stash.
 
-The center mat holds a single shared **trade-request** slot.
+The center mat is empty during Phase 1. Phase 2 will populate it with the
+**Global Event Track** strip — past / current / next-card slots — that
+replaces the old battle and trade decks.
 
 ### Resources
 
@@ -70,21 +77,23 @@ At game start:
 - The chief gets a starter pool of **3 worker tokens**.
 - **Science** lays out a 3×4 grid of science cards — one column per
   color, fixed in role order: **chief (gold), science (blue),
-  domestic (green), foreign (red)**. Each column is ordered with the
+  domestic (green), defense (red)**. Each column is ordered with the
   lowest level closest to the player. Under each science card go 4
   random tech cards from the matching tech branch (gold→Exploration,
   blue→Education, green→Civic, red→Fighting).
-- **Domestic** receives a hand containing every starter building, and an
-  empty placement grid.
-- **Foreign** builds a Battle deck and a Trade deck by sorting each card
-  set by `number`, shuffling each same-number group, and stacking with
-  the lowest numbers on top. Foreign starts with 3 starter Militia unit
-  cards in hand and no units in play.
+- **Domestic** receives a hand containing every starter building, an
+  empty placement grid, and the fixed **center tile** at `(0, 0)` (the
+  village vault — always present, never destroyed; see Phase 2 for the
+  threat-resolution interaction).
+- **Defense** is currently inert. The role's hand and grid presence
+  arrive in Phase 2.
 - **Events**: each color (gold/blue/green/red) has its own pool of cards;
   4 cards are dealt face-up to the seat that holds the matching role
-  (chief→gold, science→blue, domestic→green, foreign→red).
+  (chief→gold, science→blue, domestic→green, defense→red).
 - **Wander deck**: shuffled and placed face-down. One card flips at the
-  end of each round and applies its effect.
+  end of each round and applies its effect. *(Wander stays for the
+  duration of Phase 1; Phase 2 retires it when the global event track
+  lands.)*
 
 ## 5. The round
 
@@ -107,8 +116,6 @@ The chief may then, in any order:
   end their phase.
 - **Place workers** on Domestic-grid buildings from the chief's worker
   reserve (1 worker per cell, max 1).
-- **Decide a trade-discard** when a Foreign trade flip collided with an
-  occupied trade-request slot (see §5.2.4).
 
 Players may *talk* about what they want during this phase; they are not
 bound by what they say.
@@ -119,7 +126,7 @@ When the chief ends their phase: every seat's **In** drains into **Stash**
 ### 5.2 Others phase (parallel)
 
 Every non-chief seat acts **at the same time**. Each seat enters the
-stage matching its primary non-chief role (science / domestic / foreign).
+stage matching its primary non-chief role (science / domestic / defense).
 The chief seat sits idle in `done`.
 
 When the others phase begins:
@@ -127,7 +134,9 @@ When the others phase begins:
 1. Each seat's **In** drains into its **Stash**.
 2. Every domestic seat's buildings **auto-produce**. Production is
    deterministic (no decision) and lands in that seat's **Out**, where
-   it sits until the next chief phase sweep.
+   it sits until the next chief phase sweep. Yield is **prorated by
+   building damage** — a building at less than full HP contributes
+   proportionally less.
 
 Then each role acts. A seat may only spend its own stash; it never reaches
 into the bank or another seat's mat.
@@ -145,7 +154,7 @@ into the bank or another seat's mat.
   completion:
   - Spent resources move from the paid ledger to the bank.
   - The 4 tech cards under the completed card are distributed by color:
-    - red tech → Foreign hand
+    - red tech → Defense hand
     - gold tech → Chief hand
     - green tech → Domestic hand
     - blue tech → Science hand
@@ -159,91 +168,47 @@ into the bank or another seat's mat.
 - May **play 1 green event card** at any time during the round.
 - **Buy a building** from the domestic hand by paying its cost from
   stash. Place it on the building grid:
-  - The first building goes anywhere.
+  - The first building must be **orthogonally adjacent** to the fixed
+    center tile at `(0, 0)`.
   - Every subsequent building must be **orthogonally adjacent** (up, down,
-    left, or right — no diagonals) to an already-placed building.
+    left, or right — no diagonals) to an already-placed building (the
+    center tile counts as already-placed for this rule).
+  - Each placed building enters at full HP (`hp = maxHp`), where `maxHp`
+    is printed on the building card (1–4).
 - **Upgrade an in-play building** by paying ⌊½ × base cost⌋ gold from
   stash; this increments the building's `upgrades` counter. (V1 stub —
   upgrade content is being layered in over time.)
+- **Repair a damaged building** via `domesticRepair(cellKey, amount)`.
+  Cost: ⌈cost × amount/maxHp⌉ from stash, restoring up to `amount` HP
+  (capped at `maxHp − hp`). Repair is the new domestic spend sink that
+  closes the loop on stash burn from threat damage.
 - May **play tech cards** from the domestic tech hand.
 - **End my turn** when ready.
 
 Production runs automatically at the start of the others phase, so there
 is no "produce" button to press. Each placed building contributes its
-parsed yield (food/production/science/gold). A worker token on a building
-**doubles** that building's yield contribution. **Adjacency rules** add
+parsed yield (food/production/science/gold), reduced by current damage.
+A worker token on a building **doubles** that building's yield
+contribution (after the damage proration). **Adjacency rules** add
 content-defined bonuses to specific neighbor pairs.
 
-#### 5.2.3 Foreign
+#### 5.2.3 Defense
 
-The foreign turn must be done in this order, with one constraint:
+*Coming.* The role exists as a stub during the Phase 1 redesign work; it
+ships no moves beyond `End my turn`. Phase 2 will introduce buy / place /
+play-tech moves, units placed on domestic building tiles, the path-based
+threat resolver, and the boss-resolves-to-win flow. See
+[reports/defense-redesign-spec.md](../reports/defense-redesign-spec.md)
+and the `plans/defense-redesign-*.md` files for the staged work.
 
-1. **Pay upkeep** for every in-play unit, in gold, from stash.
-   - Per-unit upkeep starts at the unit's base cost and is reduced by
-     the sum of every in-play Domestic building's `unitMaintenance`
-     modifier (e.g. Walls: −2, Tower: −4 — clamped at 0 per unit).
-   - **Units recruited this turn are exempt** from upkeep this round.
-   - Upkeep is **all-or-nothing**: if stash gold can't cover the bill,
-     foreign must release units (see below) first.
-2. **Recruit** any number of units from the foreign hand by paying
-   their cost from stash. The Domestic `unitCost` modifier (Forge: −1
-   gold) discounts the gold portion of each unit's cost (clamped at 0);
-   non-gold portions of a unit's cost are not discountable.
-3. **Release** any in-play unit. The bank refunds **⌊½ × unit cost⌋
-   gold per released unit** into the foreign stash (clamped to what the
-   bank can pay). Releasing is the escape hatch when upkeep is
-   unaffordable. The most recent release can be **undone** before
-   another foreign action runs.
-4. **Flip a battle card.** This pulls the top of the battle deck and
-   commits every in-play unit to the fight; foreign now must resolve it
-   by **assigning damage** (see §5.3 for combat resolution).
-   - **Win** → reward listed on the card goes to the bank, and the
-     village joins **+1 settlement**.
-   - **Lose** → tribute listed on the card is **scheduled** as
-     `pendingTribute`. The seat's turn ends.
-5. **Flip a trade card** is allowed **only after a winning battle**, and
-   only one trade flip per win.
-   - The drawn card becomes a `TradeRequest` — a *demand* on the center
-     mat: a `required` bag of resources and a `reward` bag.
-   - If the trade slot is already occupied, the new card is **stashed**
-     and the **chief decides** which to keep on their next decision (see
-     §5.2.4).
-
-May **play 1 red event card** at any time during the round, and may
-**play tech cards** from the foreign tech hand.
-
-**End my turn** when ready. Foreign cannot end the turn while
-upkeep-eligible units remain unpaid.
-
-#### 5.2.4 Trade-request decisions
-
-The trade slot is **chief-private**. The Foreign seat that flipped the
-card knows it placed *something* there, but the card's `required` /
-`reward` is held face-down for the chief to read. Only the chief can
-**fulfill** it, on the chief phase:
-
-- Pay `required` from the **bank** to the off-table trader.
-- Receive `reward` from the off-table trader into the **bank**.
-- The village joins **+1 settlement**.
-- The slot clears.
-
-(Resources flow bank ↔ off-table here, not bank ↔ stash. The trader is
-fictional, like the chief stipend's source — no seat's stash gains or
-loses anything from a fulfillment.)
-
-When two trade flips collide, the chief — on their next chief phase —
-must call `chiefDecideTradeDiscard` and pick whether to keep the
-existing card on the slot or replace it with the pending one.
-
-#### 5.2.5 Events
+#### 5.2.4 Events
 
 Each role may play **at most one event card per round** of its color
-(chief→gold, science→blue, domestic→green, foreign→red). Event cards
+(chief→gold, science→blue, domestic→green, defense→red). Event cards
 fall into three buckets:
 
 - **Immediate** — applied at play time (e.g. a resource gain to bank or
-  stash, an extra event card added to a color deck, redrawing the top of
-  the battle deck, or waiving the next tribute).
+  stash, an extra event card added to a color deck).
 - **Modifier** — pushed onto a stack and consumed by the next matching
   move (e.g. *double science cost this turn*, *can't complete a card
   this turn*, *must complete the cheapest available*).
@@ -254,67 +219,34 @@ Within each color, a seat cycles through the deck: once you've played
 every card in your hand, the cycle resets and the same cards become
 playable again.
 
-### 5.3 Combat (the battle resolver)
-
-Combat is **deterministic** — there is no randomness in resolution. The
-foreign player **commits** all in-play units to the flipped battle card,
-then submits a **damage allocation plan**: for each enemy attack, which
-of their own units absorb the incoming damage (per unit, by `defID`).
-
-Resolver rules:
-
-- Units take turns in **descending initiative order**; ties resolve by
-  input order (stable).
-- **Player-side targeting**: each player unit attacks the enemy with the
-  **highest attack**, ties broken by input order.
-- **Enemy-side targeting**: each enemy unit attacks the player unit with
-  the **lowest HP**, ties broken by input order. (V1 only ships
-  "attacks weakest"; the resolver supports other rules but no card
-  uses them.)
-- **Heal** units skip their attack to restore 1 HP to the lowest-HP
-  ally that isn't at full. If no ally needs healing, they idle.
-- **Splash** attackers strike a second enemy at full damage.
-- **Armor** absorbs 1 incoming damage per hit (clamped at 0).
-- **Single-use** attackers drop out after one attack.
-- **Damage allocation rule.** Each unit you assign damage to must
-  absorb either an exact lethal amount (its full HP) or a non-lethal
-  amount strictly less than its remaining HP. You can't kill a unit by
-  splitting damage across two of them and "leaking" leftovers — the last
-  unit touched is the only one allowed to take partial damage.
-
-Outcomes: `win`, `lose`, or `mid`. `mid` means the allocation plan
-didn't terminate the fight; the move is rejected and state is left
-unchanged.
-
-Surviving units stay on the board. **Damaged units recover to full HP
-between battles** (the resolver restores HP from the unit's `defense`
-each fight).
-
-### 5.4 End-of-round
+### 5.3 End-of-round
 
 After every non-chief seat has ended its turn, the engine runs the
 end-of-round phase:
 
 1. The **wander deck** flips one card. Its effect dispatches through the
    same effect system as event cards. (When the deck empties, the
-   discard pile shuffles back in.)
+   discard pile shuffles back in.) *(Wander stays for the duration of
+   Phase 1; Phase 2 retires it when the global event track lands.)*
 2. Per-round bookkeeping resets:
    - Per-seat "I played an event of my color" flag is cleared.
    - Science's per-round completion counter is cleared.
    - Domestic's "produced this round" flag is cleared.
-   - Foreign's "upkeep paid" and "recruited this turn" markers are cleared.
 3. The round counter increments and the next chief phase begins.
 
 ## 6. Win condition
 
-The village wins when **`settlementsJoined` reaches 10**.
+*Coming.* The game's win condition will be **resolving the boss card**
+on the global event track (a single card at the end of the track that
+makes a deterministic number of attacks based on which of the village's
+science / economy / military thresholds it has met). Phase 2.7 will
+flip the engine-internal `bossResolved` flag to `true` when the village
+survives the boss; until then, that flag is never set.
 
-- Winning a flipped battle card joins **+1 settlement**.
-- Fulfilling a trade request joins **+1 settlement**.
-
-There is no loss condition. If `round` reaches the **turn cap** (default
-80, configurable per match) before the village joins 10, the run ends as
-"time up" — the score is recorded and the players try again.
+**Currently, the only way the game ends is the time-up cap.** If `round`
+reaches the **turn cap** (default 80, configurable per match), the run
+ends as `timeUp` — the score is recorded and the players try again.
+There is no loss condition.
 
 ## 7. Quick reference
 
@@ -323,6 +255,7 @@ There is no loss condition. If `round` reaches the **turn cap** (default
   - In ← chief distribution; drains to Stash on others-phase begin.
   - Out ← domestic production; sweeps to Bank on next chief-phase begin.
   - Stash = working pool, the only place spend moves draw from.
-- **Roles by player count**: 1p = one seat with all four; 2p = chief+science / domestic+foreign; 3p = chief+science / domestic / foreign; 4p = one role each.
-- **Per round**: each seat may play ≤1 event of its color; science completes ≤1 card; foreign pays upkeep once; domestic auto-produces.
-- **Win @ 10 settlements joined.** No loss.
+- **Roles by player count**: 1p = one seat with all four; 2p = chief+science / domestic+defense; 3p = chief+science / domestic / defense; 4p = one role each.
+- **Per round**: each seat may play ≤1 event of its color; science completes ≤1 card; domestic auto-produces.
+- **End condition (current)**: only `timeUp` at the turn cap. The boss-
+  resolved win arrives in Phase 2.7.

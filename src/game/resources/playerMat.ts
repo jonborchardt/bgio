@@ -11,8 +11,8 @@
 //               every seat's `out` into the bank at the start of their
 //               next turn.
 //   - `stash` : the seat's working pool. Spend moves (Science contribute,
-//               Domestic buy / upgrade, Foreign recruit / upkeep) all
-//               draw from here.
+//               Domestic buy / upgrade / repair, and the Phase 2 Defense
+//               buy/place + Science Drill/Teach moves) all draw from here.
 //
 // All mutating helpers run under Immer (called from inside boardgame.io
 // moves or `phase.turn.onBegin`), so they mutate `mat` directly.
