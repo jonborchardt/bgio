@@ -186,6 +186,38 @@ const enumerateScience = (
     }
   }
 
+  // Defense redesign 2.6 (D27) — Drill / Teach candidates. Both target
+  // a unit on the village grid. Once-per-round gating + stash checks
+  // happen inside the moves; the enumerator just surfaces plausible
+  // candidates. We cap the unit fan-out at the first few in-play units
+  // to keep the candidate list bounded — MCTS doesn't need every
+  // permutation.
+  const inPlay = G.defense?.inPlay ?? [];
+  const drillScience = stash?.science ?? 0;
+  if (
+    science.scienceDrillUsed !== true &&
+    drillScience >= 1 &&
+    inPlay.length > 0
+  ) {
+    for (const unit of inPlay.slice(0, 4)) {
+      out.push({ move: 'scienceDrill', args: [unit.id] });
+    }
+  }
+  if (science.scienceTaughtUsed !== true && inPlay.length > 0) {
+    // Teach surfaces (unit, skill) pairs only when the cheapest skill
+    // is affordable; the move itself enforces the per-skill cost.
+    for (const unit of inPlay.slice(0, 3)) {
+      // Hard-code the V1 skill list to keep enumerate.ts free of a
+      // SKILLS import (it doesn't depend on roles/science otherwise).
+      // Tuning lever lives in the SKILLS table; the bot only emits
+      // the cheapest skill candidate per unit so the search space
+      // stays manageable.
+      if ((stash?.science ?? 0) >= 2) {
+        out.push({ move: 'scienceTeach', args: [unit.id, 'extendRange'] });
+      }
+    }
+  }
+
   // scienceSeatDone: always a fallback so the bot can bail out cleanly.
   out.push({ move: 'scienceSeatDone', args: [] });
 

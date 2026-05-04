@@ -43,6 +43,14 @@ export interface ScienceState {
   // The Science role's tech-card hand — populated by `scienceComplete` (05.3)
   // when a blue-color science card resolves. Starts empty.
   hand: TechnologyDef[];
+  // Defense redesign 2.6 (D27) — once-per-round latches for the science
+  // seat's `scienceDrill` / `scienceTeach` moves. Both flip to `true` on
+  // a successful dispatch and are cleared by the `science:reset-defense-
+  // moves` round-end hook (registered in the move modules so this file
+  // doesn't need to import them). Optional for source-compat with older
+  // fixtures that pre-date 2.6.
+  scienceDrillUsed?: boolean;
+  scienceTaughtUsed?: boolean;
 }
 
 const COLOR_TO_BRANCH: Record<ScienceColor, string> = {

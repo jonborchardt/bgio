@@ -29,15 +29,20 @@
 //      fire opportunity.
 //   4. Order firing units: first-strike before non-first-strike, then
 //      placement order within each tier.
-//   5. Each unit's effective stats fold:
+//   5. Each unit's effective stats fold (in this order):
 //        - the unit def's printed `attack` / `range`,
 //        - `placementBonus` matched to the building underneath the
 //          unit,
-//        - `taughtSkills` (D27 — Phase 2.6 lands the move that grants
+//        - `taughtSkills` (D27 — Phase 2.6's `scienceTeach` move grants
 //          them; the resolver applies them here at fire time),
-//        - a one-shot `drillToken` (+1 strength on next fire).
-//      Plus the global "vs <keyword> +N" bonus when the threat's
-//      `modifiers[]` contains a tag the unit's effect line references.
+//        - the global "vs <keyword> +N" bonus when the threat's
+//          `modifiers[]` contains a tag the unit's effect line
+//          references,
+//        - finally a one-shot `drillToken` (+1 strength on next fire).
+//      Drill is *always* additive after every other modifier (D27) so
+//      it can't be masked by a placement bonus, a skill, or a matchup
+//      keyword — the +1 lands last, on top of whatever the other layers
+//      produced.
 //      The V1 unit JSON does not yet carry per-keyword bonuses on
 //      `placementBonus[]` (those are a future content add); the
 //      resolver still iterates the matchup-tag check so the structure
@@ -72,6 +77,7 @@ import type { UnitDef } from '../../data/schema.ts';
 import type { RandomAPI } from '../random.ts';
 import type { UnitInstance } from '../roles/defense/types.ts';
 import type { DomesticBuilding } from '../roles/domestic/types.ts';
+import { SKILLS, type SkillID } from '../roles/science/skills.ts';
 import { RESOURCES } from '../resources/types.ts';
 import { appendBankLog } from '../resources/bankLog.ts';
 import { dispatch } from '../events/dispatcher.ts';
@@ -163,31 +169,17 @@ const computeStats = (
     }
   }
 
-  // Taught skills (D27) — durable per-instance bumps. Phase 2.6 will
-  // ship the SKILLS table; until then we defensively interpret the
-  // skill IDs the spec lists (`extendRange`, `reinforce`, `accelerate`,
-  // `sharpen`, `firstStrike`).
+  // Taught skills (D27) — durable per-instance bumps. Phase 2.6 wires
+  // these through the same `PlacementEffect` taxonomy as placement
+  // bonuses, so a single applier (`applyPlacementEffect`) handles both
+  // shapes. Skills whose effects are off-fire (`reinforce` bumps hp at
+  // teach time; `accelerate` lives on the round-end regen path) collapse
+  // into no-ops here per `applyPlacementEffect`'s switch.
   const taught = unit.taughtSkills ?? [];
   for (const s of taught) {
-    switch (s) {
-      case 'extendRange':
-        stats.range += 1;
-        break;
-      case 'sharpen':
-        stats.strength += 1;
-        break;
-      case 'firstStrike':
-        stats.firstStrike = true;
-        break;
-      // reinforce / accelerate touch HP / regen which aren't fire-time.
-      default:
-        break;
-    }
-  }
-
-  // Drill token — +1 strength on this fire.
-  if (unit.drillToken === true) {
-    stats.strength += 1;
+    const skill = SKILLS[s as SkillID];
+    if (skill === undefined) continue;
+    applyPlacementEffect(stats, { buildingDefID: '', effect: skill.effect });
   }
 
   // Matchup keywords. We scan `def.note` for a "+N vs <keyword>" pattern
@@ -207,6 +199,14 @@ const computeStats = (
       const bump = Number(m[1]);
       if (Number.isFinite(bump)) stats.strength += bump;
     }
+  }
+
+  // Drill token — +1 strength on this fire. Per spec D27, drill is
+  // *always* additive after every other modifier (placement bonus,
+  // taught skills, matchup keywords) so its effect is unconditional —
+  // no other source can mask or cap the bump. Apply it last.
+  if (unit.drillToken === true) {
+    stats.strength += 1;
   }
 
   if (stats.strength < 0) stats.strength = 0;
