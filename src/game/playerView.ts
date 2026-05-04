@@ -234,6 +234,12 @@ export const playerViewFor = (
     awaitingInput = filtered;
   }
 
+  // Defense redesign 2.2 — `G.track` (the Global Event Track) is fully
+  // public table information: every viewer sees the same `upcoming`,
+  // `history`, and `currentPhase`. The face-up next card is the design's
+  // table-presence telegraph (D19), so we deliberately do *not* redact
+  // it here. No code below this comment touches `G.track`.
+
   // 08.4 — opponent wander deck. The deck order is hidden from EVERY
   // viewer (including the chief seat) — there's no role that "owns" the
   // opponent's hand. `currentlyApplied` and `discard` stay visible so

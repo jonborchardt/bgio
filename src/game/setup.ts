@@ -20,6 +20,8 @@ import { setupEvents } from './events/state.ts';
 import { setupWanderDeck } from './opponent/wanderDeck.ts';
 import { fromBgio, type BgioRandomLike } from './random.ts';
 import { TURN_CAP_DEFAULT } from './endConditions.ts';
+import { TRACK_CARDS } from '../data/index.ts';
+import { buildTrack } from './track.ts';
 
 // Per-match tunables passed through bgio's `Match.setupData` (or
 // directly to `setup({ ctx, random }, setupData)` in headless tests).
@@ -166,6 +168,13 @@ export const setup = (
       hand: [],
       inPlay: [],
     },
+    // Defense redesign 2.2 — Global Event Track. Built once at setup
+    // from the canonical TRACK_CARDS list: each phase pile is shuffled
+    // independently, then piles are concatenated in phase order so the
+    // boss (the unique phase-10 card) lands at the very end of
+    // `upcoming`. Phase 2.3 wires `chiefFlipTrack` against the helpers
+    // in `./track.ts`.
+    track: buildTrack(r, TRACK_CARDS),
     // Domestic role (06.1): pile of buildings + empty placement grid.
     domestic: setupDomestic(techsAlreadyUsedBy),
     // Chief role: starter worker reserve. game-design.md §Setup.Chief says

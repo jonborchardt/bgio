@@ -44,6 +44,10 @@ import type { WanderState } from './opponent/wanderDeck.ts';
 // `./requests/move.ts` imports types from this file, so the `import type`
 // keeps the cycle erased.
 import type { HelpRequest } from './requests/types.ts';
+// Defense redesign 2.2 — Global Event Track runtime state. The
+// `./track.ts` module is pure (no runtime imports back from this file)
+// so a plain type-only edge is enough to keep the cycle erased.
+import type { TrackState } from './track.ts';
 
 export type Role = 'chief' | 'science' | 'domestic' | 'defense';
 
@@ -59,6 +63,7 @@ export type {
   EventsState,
   DomesticState,
   WanderState,
+  TrackState,
 };
 
 export interface SettlementState {
@@ -146,6 +151,17 @@ export interface SettlementState {
   // fixtures that pre-date 1.4 remain source-compatible; moves and the
   // playerView redactor must guard for `undefined`.
   defense?: DefenseState;
+
+  // Defense redesign 2.2 — Global Event Track (D19). Built at setup by
+  // `buildTrack` (one shuffle per phase pile, then concatenate phases in
+  // order). Phase 2.3 will wire `chiefFlipTrack` against `advanceTrack`;
+  // Phase 2.5's red-tech "peek N" effects will read `peekFollowing`.
+  //
+  // Fully public: every player sees the same `G.track`. `playerView`
+  // performs no redaction — the face-up next card is the table-presence
+  // telegraph the design leans on. Optional so older fixtures (pre-2.2)
+  // stay source-compatible; helpers and moves that touch it must guard.
+  track?: TrackState;
 
   // Cross-cutting events state (08.x): per-color decks, per-seat hands /
   // used / playedThisRound. Built at setup by 08.1. Optional so older test
