@@ -220,7 +220,7 @@ export const FORMATTERS: Record<string, Formatter> = {
     const target = payload.targetLabel ?? payload.targetId ?? '';
     const targetIsCard =
       typeof payload.targetId === 'string' &&
-      /^(building|tech|unit|science|event|trade|battle|wander):/.test(
+      /^(building|tech|unit|science|event|trade|battle):/.test(
         payload.targetId,
       );
     const targetPart: ActivityPart = targetIsCard

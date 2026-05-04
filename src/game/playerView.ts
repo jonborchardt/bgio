@@ -240,21 +240,6 @@ export const playerViewFor = (
   // table-presence telegraph (D19), so we deliberately do *not* redact
   // it here. No code below this comment touches `G.track`.
 
-  // 08.4 — opponent wander deck. The deck order is hidden from EVERY
-  // viewer (including the chief seat) — there's no role that "owns" the
-  // opponent's hand. `currentlyApplied` and `discard` stay visible so
-  // observers can see what just hit the village.
-  let opponent = G.opponent;
-  if (opponent !== undefined) {
-    opponent = {
-      ...opponent,
-      wander: {
-        ...opponent.wander,
-        deck: redactDeckOrder(opponent.wander.deck),
-      },
-    };
-  }
-
   // Help requests: each row is visible only to the requester and the
   // recipient. Spectators see none. The list is small (a handful of
   // active rows at most), so a simple filter is fine.
@@ -280,7 +265,6 @@ export const playerViewFor = (
     science === G.science &&
     events === G.events &&
     awaitingInput === G._awaitingInput &&
-    opponent === G.opponent &&
     requests === G.requests
   ) {
     return { ...G };
@@ -294,7 +278,6 @@ export const playerViewFor = (
     science,
     events,
     _awaitingInput: awaitingInput,
-    opponent,
     requests,
   };
 };

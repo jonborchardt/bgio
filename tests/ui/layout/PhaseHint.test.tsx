@@ -60,10 +60,10 @@ describe('resolveHint (14.6)', () => {
     ).toMatch(/Resolve the event/);
   });
 
-  it('endOfRound: opponent message', () => {
+  it('endOfRound: bookkeeping message', () => {
     expect(
       resolveHint({ phase: 'endOfRound', rolesAtSeat: ['chief'] }),
-    ).toMatch(/opponent acts/);
+    ).toMatch(/bookkeeping/);
   });
 
   it('spectator branch', () => {

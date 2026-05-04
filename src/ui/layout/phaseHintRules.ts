@@ -24,7 +24,7 @@ export const resolveHint = ({
     return 'Distribute resources to non-chief seats. End your turn when ready.';
   }
   if (phase === 'endOfRound') {
-    return 'Round ending — opponent acts now.';
+    return 'Round ending — bookkeeping in progress.';
   }
   if (stage === 'playingEvent') {
     return 'Resolve the event you played.';

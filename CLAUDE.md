@@ -108,9 +108,10 @@ Tests under `tests/` mirror the `src/` shape, with shared factories in `tests/he
   rest of the foreign loop in 1.4; Phase 2 will repopulate it with the global event
   track strip (past / current / next-card slots). `moves.ts` exports `payFromStash`,
   the canonical spend helper used by every non-chief role's purchase moves.
-- `src/game/events/`, `src/game/opponent/`, `src/game/ai/`, `src/game/plugins/` — event
-  cards, opponent / threat tracker, bgio `ai.enumerate` definitions, and any custom
-  bgio `Plugin`s the game needs.
+- `src/game/events/`, `src/game/track/`, `src/game/ai/`, `src/game/plugins/` — event
+  cards, the global event track resolver, bgio `ai.enumerate` definitions, and any
+  custom bgio `Plugin`s the game needs. (The retired `src/game/opponent/` /
+  `src/game/wander/` directory was removed in 2.8 — the track now plays its role.)
 - `src/data/` — JSON content (`buildings.json`, `units.json`, `technologies.json`) plus
   the typed loaders in `src/data/schema.ts` and `src/data/index.ts`. Imports always go
   through the loaders (`BUILDINGS`, `UNITS`, `TECHNOLOGIES`, `BENEFIT_TOKENS`) — never
@@ -320,7 +321,7 @@ installs Python 3 / make / g++ for the SQLite native compile.
   `runs` history table from migration `002_users_and_runs.sql` is the remaining 10.7
   follow-up; everything else under that plan has landed.
 - **In-flight content gaps:** events.json migrated to typed `gainResource` shape (review
-  fix ride-along). Tech / wander / event content is a starter set; balancing comes after
+  fix ride-along). Tech / track / event content is a starter set; balancing comes after
   Stage 14.
 - **Networked playtest is still unverified end-to-end** in production-like conditions.
   Resume steps for a human run: `npm install`, `npm run dev:full`, build the client with

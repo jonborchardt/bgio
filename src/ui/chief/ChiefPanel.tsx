@@ -26,7 +26,6 @@ import { UndoButton } from '../layout/UndoButton.tsx';
 import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
 import { firstNonChiefSeat } from '../layout/nextSeat.ts';
 import { RequestsRow } from '../requests/RequestsRow.tsx';
-import { WanderEffectRow } from '../opponent/WanderEffectRow.tsx';
 
 export function ChiefPanel(props: BoardProps<SettlementState>) {
   const { G, ctx, moves, playerID } = props;
@@ -65,7 +64,6 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
     <RolePanel
       role="chief"
       connectedAbove
-      topRow={<WanderEffectRow opponent={G.opponent} />}
       actions={
         <>
           <GraveyardButton

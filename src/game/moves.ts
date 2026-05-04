@@ -31,6 +31,12 @@ import { domesticSeatDone } from './roles/domestic/seatDone.ts';
 import { defenseSeatDone } from './roles/defense/seatDone.ts';
 import { defenseBuyAndPlace } from './roles/defense/buyAndPlace.ts';
 import { defensePlay } from './roles/defense/play.ts';
+// Defense redesign 2.8 — module-load side effect: registers the
+// `defense:regen-units` and `defense:clear-modifiers` round-end hooks
+// against the shared 02.5 hook registry. The import has no exports we
+// need; it exists purely to pull the module into the dependency graph
+// so its registration runs alongside the other role hooks.
+import './roles/defense/hooks.ts';
 import { requestHelp } from './requests/move.ts';
 
 export const pass: Move<SettlementState> = () => {

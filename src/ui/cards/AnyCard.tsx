@@ -10,7 +10,6 @@ import { BuildingCard } from './BuildingCard.tsx';
 import { UnitCard } from './UnitCard.tsx';
 import { TechCard } from './TechCard.tsx';
 import { ScienceCard } from './ScienceCard.tsx';
-import { WanderCard } from './WanderCard.tsx';
 import { EventCard } from './EventCard.tsx';
 import type { CardSize } from './sizes.ts';
 
@@ -29,8 +28,6 @@ export function AnyCard({ entry, size = 'normal' }: AnyCardProps) {
       return <TechCard def={entry.def} size={size} />;
     case 'science':
       return <ScienceCard def={entry.def} size={size} />;
-    case 'wander':
-      return <WanderCard def={entry.def} size={size} />;
     case 'event':
       return <EventCard def={entry.def} size={size} />;
   }

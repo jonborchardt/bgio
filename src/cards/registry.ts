@@ -27,8 +27,6 @@ import type {
   ScienceCardDef,
   CanonicalScienceCardDef,
 } from '../data/scienceCards.ts';
-import { WANDER_CARDS } from '../data/wanderCards.ts';
-import type { WanderCardDef } from '../data/wanderCards.ts';
 import { EVENT_CARDS } from '../data/events.ts';
 import type { EventCardDef } from '../data/events.ts';
 
@@ -37,7 +35,6 @@ export type CardKind =
   | 'unit'
   | 'tech'
   | 'science'
-  | 'wander'
   | 'event';
 
 export const CARD_KINDS: ReadonlyArray<CardKind> = [
@@ -45,7 +42,6 @@ export const CARD_KINDS: ReadonlyArray<CardKind> = [
   'unit',
   'tech',
   'science',
-  'wander',
   'event',
 ];
 
@@ -54,7 +50,6 @@ export const CARD_KIND_LABELS: Record<CardKind, string> = {
   unit: 'Units',
   tech: 'Technologies',
   science: 'Science',
-  wander: 'Wander',
   event: 'Events',
 };
 
@@ -63,7 +58,6 @@ export type AnyCardEntry =
   | { id: string; kind: 'unit'; def: UnitDef }
   | { id: string; kind: 'tech'; def: TechnologyDef }
   | { id: string; kind: 'science'; def: CanonicalScienceCardDef }
-  | { id: string; kind: 'wander'; def: WanderCardDef }
   | { id: string; kind: 'event'; def: EventCardDef };
 
 // Stable id format: `${kind}:${name-or-id}`. Buildings, units and techs
@@ -80,7 +74,6 @@ export const idForTech = (def: TechnologyDef): string => `tech:${def.name}`;
 export const idForScience = (
   def: { color: ScienceCardDef['color']; tier: ScienceCardDef['tier']; level: ScienceCardDef['level'] },
 ): string => `science:${canonicalScienceCardId(def)}`;
-export const idForWander = (def: WanderCardDef): string => `wander:${def.id}`;
 export const idForEvent = (def: EventCardDef): string => `event:${def.id}`;
 
 const buildingEntries: AnyCardEntry[] = BUILDINGS.map((def) => ({
@@ -103,11 +96,6 @@ const scienceEntries: AnyCardEntry[] = SCIENCE_CANONICAL_CARDS.map((def) => ({
   kind: 'science' as const,
   def,
 }));
-const wanderEntries: AnyCardEntry[] = WANDER_CARDS.map((def) => ({
-  id: idForWander(def),
-  kind: 'wander' as const,
-  def,
-}));
 const eventEntries: AnyCardEntry[] = EVENT_CARDS.map((def) => ({
   id: idForEvent(def),
   kind: 'event' as const,
@@ -119,7 +107,6 @@ export const ALL_CARDS: ReadonlyArray<AnyCardEntry> = Object.freeze([
   ...unitEntries,
   ...techEntries,
   ...scienceEntries,
-  ...wanderEntries,
   ...eventEntries,
 ]);
 
@@ -150,8 +137,6 @@ export const cardName = (entry: AnyCardEntry): string => {
       return entry.def.name;
     case 'science':
       return `${entry.def.color} L${entry.def.level} ${entry.def.tier}`;
-    case 'wander':
-      return entry.def.name;
     case 'event':
       return entry.def.name;
   }

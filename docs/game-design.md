@@ -133,17 +133,17 @@ the boss card at the end of the track" (D25). Phase 2 plans cover the
 track, the resolver, the defense moves, the science Drill / Teach moves,
 and the boss flow.
 
-### 3.5 Opponent (wander → global event track)
+### 3.5 Opponent (global event track)
 
-The wander deck is **end-of-life**. While Phase 1 stages the redesign,
-the wander deck still flips one card per round-end and dispatches
-through the existing `EventEffect` taxonomy — that keeps the in-flight
-intermediate state playable as a degraded build. Phase 2 (D19, D20,
-G3) folds wander into the **global event track**: 10 phases × 3–4
-cards each (mix of threats / boons / modifiers / a single boss), with
-the next card always face-up so Defense can prepare for it. Once the
-track lands, the wander deck and its setup / round-end hook get
-retired wholesale.
+The Phase 2 redesign retires the old wander deck wholesale. Its role
+— a once-per-round flip that mixed boons, modifiers, and pressure —
+is now folded into the **global event track** (D19, D20, G3): 10
+phases × 3–4 cards each (mix of threats / boons / modifiers / a
+single boss), with the next card always face-up so Defense can
+prepare for it. The chief flips one track card per round at the
+chief → others phase boundary; track *boons* deliver the bank /
+village bumps the wander deck used to, and track *modifiers* bend
+rules for one round before being cleared at end-of-round.
 
 **Original alternative considered for the V1 wander shape**
 
@@ -197,7 +197,7 @@ code locations and defaults.
 | Science colors picked         | 3 of 4  | `src/game/roles/science/setup.ts` `setupScience`          |
 | Tech cards under each science | 4       | same                                                      |
 | Event hand size               | 4       | `src/game/events/state.ts` `HAND_SIZE`                    |
-| Wander draws per round        | 1       | `src/game/opponent/wanderDeck.ts` (retired in Phase 2)    |
+| Track flips per round         | 1       | `src/game/roles/chief/flipTrack.ts` (D22)                 |
 | Building upgrade cost factor  | ×0.5    | `src/game/roles/domestic/upgrade.ts` (V1 stub)            |
 | Building maxHp range          | 1–4     | `src/data/buildings.json` per `BuildingDef.maxHp`         |
 
@@ -214,9 +214,8 @@ Targets the V1 content pass aims for. Update as the deck reshapes.
 | Buildings (domestic)  | ~58           | Current pile in `src/data/buildings.json`.               |
 | Technologies          | ~82           | Cross-role tech tree; spans 4 colors / 4 branches.       |
 | Units (defense)       | ~67           | Includes Militia starters; Phase 2 reshapes the schema.  |
-| Track cards (Phase 2) | 30–40         | 10 phases × 3–4 cards; threats / boons / modifiers + boss.|
+| Track cards           | 30–40         | 10 phases × 3–4 cards; threats / boons / modifiers + boss.|
 | Event cards           | 16 (4 / color)| Each role's hand is 4; cycle resets after exhausting.    |
-| Wander cards          | ~24           | One drawn per round; retired when the track lands.       |
 
 Round-time target is **20–60 minutes** for a full match (roughly 20–60
 rounds at the cap of 80).
@@ -224,7 +223,7 @@ rounds at the cap of 80).
 The full pre-V1 wishlist sized for "20–60 turns": ~92 science cards
 total, 20 domestic-played-twice = 40 buildings used, ~10 defense units
 played multiple times = 20 unit deck, 4 events × 4 roles = 16 events,
-48-card opponent deck (8 bosses), 8×3 wanders + 8 directional wanders.
+30–40 track cards (1 boss + ~9 phases of threats / boons / modifiers).
 Treat these as historical targets; live content lives in `src/data/`.
 
 ## 7. Open design questions
@@ -261,7 +260,7 @@ file alone has the picture:
   "End my turn" moves.
 - **Auth + accounts in V1 are SQLite-backed but the networked playtest
   is still unverified end-to-end** in production-like conditions.
-- **Tech / wander / event content is starter-set.** Balancing comes
+- **Tech / track / event content is starter-set.** Balancing comes
   after content lands.
 - **Worker placement is a stub.** Placement bookkeeping works; richer
   worker effects on production are reserved for later.

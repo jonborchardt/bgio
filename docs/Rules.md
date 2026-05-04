@@ -90,10 +90,11 @@ At game start:
 - **Events**: each color (gold/blue/green/red) has its own pool of cards;
   4 cards are dealt face-up to the seat that holds the matching role
   (chief→gold, science→blue, domestic→green, defense→red).
-- **Wander deck**: shuffled and placed face-down. One card flips at the
-  end of each round and applies its effect. *(Wander stays for the
-  duration of Phase 1; Phase 2 retires it when the global event track
-  lands.)*
+- **Global Event Track**: a fixed 10-phase sequence of cards
+  (threats / boons / modifiers / boss). The chief flips one card per
+  round at the chief→others phase boundary. Track *boon* cards play the
+  role the retired wander deck used to (one-shot rules-bending or bank
+  gains); *modifier* cards bend rules for one round only.
 
 ## 5. The round
 
@@ -222,17 +223,25 @@ playable again.
 ### 5.3 End-of-round
 
 After every non-chief seat has ended its turn, the engine runs the
-end-of-round phase:
+end-of-round phase. The next round's track card is already face-up
+(telegraphed) at this point — the chief flipped this round's card
+between chiefPhase and othersPhase, so end-of-round is pure
+bookkeeping:
 
-1. The **wander deck** flips one card. Its effect dispatches through the
-   same effect system as event cards. (When the deck empties, the
-   discard pile shuffles back in.) *(Wander stays for the duration of
-   Phase 1; Phase 2 retires it when the global event track lands.)*
-2. Per-round bookkeeping resets:
+1. **Defense regen.** Every alive unit on the grid heals
+   `unit.regen` HP (plus any taught `accelerate` skill), capped at the
+   unit's effective max HP. Drill markers on units that didn't fire
+   this round persist into the next round (they are consumed at
+   fire time, not by end-of-round cleanup).
+2. **One-round modifiers expire.** Any `track.activeModifiers` left on
+   the stack are cleared.
+3. **Per-round latches reset.**
    - Per-seat "I played an event of my color" flag is cleared.
-   - Science's per-round completion counter is cleared.
+   - Science's per-round `scienceDrillUsed` / `scienceTaughtUsed`
+     latches and completion counter are cleared.
    - Domestic's "produced this round" flag is cleared.
-3. The round counter increments and the next chief phase begins.
+   - The chief's per-round `flippedThisRound` latch is cleared.
+4. The round counter increments and the next chief phase begins.
 
 ## 6. Win condition
 

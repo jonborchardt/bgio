@@ -22,7 +22,7 @@ export interface RolePanelProps {
   actions?: ReactNode;
   /** Optional content rendered inside the panel above the actions row.
    *  Used for cross-cutting status that should sit higher than the role's
-   *  own action affordances (e.g. the wander effect row). */
+   *  own action affordances. */
   topRow?: ReactNode;
   children: ReactNode;
   /** When true, the panel renders as the active tab's content — its top

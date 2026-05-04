@@ -35,11 +35,6 @@ import type { EventsState } from './events/state.ts';
 // modifier stack and the awaiting-input map below. `./events/effects.ts`
 // has no runtime imports back from this file.
 import type { EventEffect } from './events/effects.ts';
-// Type-only edge for the 08.4 opponent (wander deck) state. The runtime
-// module under `./opponent/wanderDeck.ts` imports `RandomAPI` and
-// `registerRoundEndHook` back from this package, so an `import type`
-// here keeps the cycle erased.
-import type { WanderState } from './opponent/wanderDeck.ts';
 // Type-only edge for help-request rows. The runtime module under
 // `./requests/move.ts` imports types from this file, so the `import type`
 // keeps the cycle erased.
@@ -62,7 +57,6 @@ export type {
   DefenseState,
   EventsState,
   DomesticState,
-  WanderState,
   TrackState,
 };
 
@@ -232,13 +226,6 @@ export interface SettlementState {
   // (it adds `defID` + `upgrades` alongside the existing `worker` field),
   // so the stub keeps working unchanged.
   domestic?: DomesticState;
-
-  // 08.4 — opponent state. Today this just holds the wander deck (the V1
-  // opponent: a card flipped at each round end whose effects bonus or
-  // hurt our village). Optional so older fixtures stay source-compatible
-  // and so the `opponent:wander-step` round-end hook can no-op cleanly
-  // when not present.
-  opponent?: { wander: WanderState };
 
   // Per-seat ordered log of cards the seat has played / placed /
   // recruited. Each entry carries enough info for the UI to render the

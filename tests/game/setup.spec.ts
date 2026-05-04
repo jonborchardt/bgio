@@ -86,4 +86,15 @@ describe('setup (1.4 / 1.5 — defense redesign)', () => {
     expect(G.defense!.inPlay[0]!.cellKey).toBe('0,0');
     expect(G.defense!.inPlay[0]!.placementOrder).toBe(0);
   });
+
+  it('wander deck is retired (no G.opponent slice produced by setup) — 2.8', () => {
+    // Defense redesign 2.8 — the wander deck and its setup hook were
+    // retired in favor of the global event track. setup must NOT emit
+    // `G.opponent` and the type's old key should be gone too.
+    const G = setupFresh(4);
+    expect((G as unknown as Record<string, unknown>).opponent).toBeUndefined();
+    // Track is the replacement; smoke-check it landed.
+    expect(G.track).toBeDefined();
+    expect(G.track!.upcoming.length).toBeGreaterThan(0);
+  });
 });

@@ -25,7 +25,6 @@ describe('seedFreshGame', () => {
     expect(G.defense).toBeDefined();
     expect(G.domestic).toBeDefined();
     expect(G.events).toBeDefined();
-    expect(G.opponent).toBeDefined();
     expect(typeof G.round).toBe('number');
   });
 

@@ -17,7 +17,6 @@ import { initialMats } from './resources/playerMat.ts';
 import { setupScience } from './roles/science/setup.ts';
 import { setupDomestic } from './roles/domestic/grid.ts';
 import { setupEvents } from './events/state.ts';
-import { setupWanderDeck } from './opponent/wanderDeck.ts';
 import { fromBgio, type BgioRandomLike } from './random.ts';
 import { TURN_CAP_DEFAULT } from './endConditions.ts';
 import { TRACK_CARDS, UNITS } from '../data/index.ts';
@@ -209,10 +208,9 @@ export const setup = (
     // Cross-cutting events (08.1): four decks (gold/blue/green/red) with
     // 4 cards dealt to the role-holding seat's hand per color.
     events: setupEvents(roleAssignments, r),
-    // 08.4 — opponent (wander deck). Shuffled at setup; the
-    // `opponent:wander-step` round-end hook flips one card per round end
-    // and dispatches its effects.
-    opponent: { wander: setupWanderDeck(r) },
+    // Defense redesign 2.8 — wander deck retired. Its end-of-round role
+    // (boon / modifier flips) is now played by the global event track;
+    // see `./track.ts` and the spec §5 (D19).
     // Help requests start empty; populated as players click the helper
     // button next to disabled actions. See `./requests/`.
     requests: [],

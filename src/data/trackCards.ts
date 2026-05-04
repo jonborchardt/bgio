@@ -1,7 +1,7 @@
 // Defense redesign 2.1 — typed loader for src/data/trackCards.json.
 //
-// Mirrors the pattern in src/data/wanderCards.ts and src/data/scienceCards.ts:
-// validation runs at module load (per-card shape via `validateTrackCards` in
+// Mirrors the pattern in src/data/scienceCards.ts: validation runs at
+// module load (per-card shape via `validateTrackCards` in
 // schema.ts, plus the cross-card invariants below), and the result is
 // deep-frozen so accidental mutation in game logic crashes loudly.
 //
