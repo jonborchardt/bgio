@@ -16,6 +16,7 @@
 
 import type { TrackCardDef, ModifierCard } from '../data/index.ts';
 import type { RandomAPI } from './random.ts';
+import { registerRoundEndHook } from './hooks.ts';
 
 export interface TrackState {
   // The full card sequence — built at setup, never re-shuffled.
@@ -134,3 +135,20 @@ export const advanceTrack = (
   t.currentPhase = t.upcoming[0]?.phase ?? next.phase;
   return next;
 };
+
+// Defense redesign 2.4 — round-end hook: clear the per-round
+// `flippedThisRound` latch so the next round's `chiefPhase` starts with
+// the chief required to flip again (D22). Registered at module load
+// (idempotent under the hooks-registry contract). Tests that need a
+// clean slate must call `__resetHooksForTest()` and then re-import
+// this module.
+//
+// Note: `chiefPhase.onBegin` also resets `flippedThisRound` defensively
+// at the top of every chief turn. The round-end clear is the canonical
+// reset point in the per-feature ownership model (each module owns its
+// per-round state), and it runs before `chiefPhase` so the chief never
+// sees a stale `true` from the previous round.
+registerRoundEndHook('track:reset-flipped-this-round', (G) => {
+  if (G.track === undefined) return;
+  G.track.flippedThisRound = false;
+});
