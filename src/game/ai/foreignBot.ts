@@ -118,7 +118,7 @@ const buildAllocationPlan = (
     if (entry.count <= 0) continue;
     const def = lookupUnit(entry.defID);
     if (def === undefined) continue;
-    const hp = def.defense > 0 ? def.defense : 1;
+    const hp = def.hp > 0 ? def.hp : 1;
     if (target === null || hp < target.hp) {
       target = { defID: entry.defID, hp, count: entry.count };
     }
@@ -162,7 +162,7 @@ const predictWin = (G: SettlementState): boolean => {
   for (const entry of sortedRoster) {
     const def = lookupUnit(entry.defID);
     if (def === undefined) continue;
-    const hp = def.defense > 0 ? def.defense : 1;
+    const hp = def.hp > 0 ? def.hp : 1;
     if (absorber === null || hp < absorber.perUnitHp) {
       absorber = { defID: entry.defID, perUnitHp: hp, count: entry.count };
     }

@@ -19,6 +19,33 @@ export interface BuildingDef {
   costBag?: Partial<ResourceBag>;
   benefit: string;
   note: string;
+  // Defense redesign D15: maximum HP for this building when placed on the
+  // domestic grid. Integer in [1, 4]; ties loosely to cost (shacks 1,
+  // mid-tier 2, big buildings 3, fortifications 4) but **not** 1:1.
+  // Read at runtime in 1.3 (building HP / repair); declared here in 1.1
+  // so the loader and JSON are in sync with no behaviour change yet.
+  maxHp: number;
+}
+
+// Defense redesign D18 — placement-bonus effects authored on a unit's card.
+// The combat resolver (Phase 2) reads `UnitDef.placementBonus[]` at fire
+// time and consults the building underneath the unit's tile. The same
+// shape is reused by `SkillDef.effect` (D27) so a single applier can layer
+// placement bonuses and taught skills on the same unit. `firstStrike` is
+// the only flag-style effect; the rest carry an integer `amount`.
+export type PlacementEffect =
+  | { kind: 'strength'; amount: number }
+  | { kind: 'range'; amount: number }
+  | { kind: 'regen'; amount: number }
+  | { kind: 'hp'; amount: number }
+  | { kind: 'firstStrike' };
+
+export interface PlacementBonus {
+  // Matches `BuildingDef.name`. The schema validator checks the shape;
+  // cross-table existence is asserted in tests so a typo in JSON surfaces
+  // before the resolver tries to read it.
+  buildingDefID: string;
+  effect: PlacementEffect;
 }
 
 export interface UnitDef {
@@ -36,7 +63,11 @@ export interface UnitDef {
   costBag?: Partial<ResourceBag>;
   initiative: number;
   attack: number;
-  defense: number;
+  // Defense redesign D9: total HP. Pure rename of the legacy `defense`
+  // field — the old MTG-style "defense stat" doubled as HP in the battle
+  // resolver, so 1.1 renames the field for clarity before 1.4 retires
+  // the resolver entirely. Same numeric values, same call sites updated.
+  hp: number;
   altStats: string;
   requires: string;
   // Optional typed list of prerequisite token names parsed out of the
@@ -47,6 +78,23 @@ export interface UnitDef {
   // so existing JSON entries don't need to be migrated wholesale.
   requiresList?: string[];
   note: string;
+  // Defense redesign D9 — Chebyshev range (tiles a placed unit can defend
+  // from its grid square). Default 1 for melee; ranged units bump this up.
+  range: number;
+  // Defense redesign D9 — HP regenerated per round, capped at hp at fire
+  // time (Phase 2 enforces the cap). Default 0.
+  regen: number;
+  // Defense redesign D9 — first-strike flag. Default false. Phase 2's
+  // resolver fires first-strike units before non-first-strike at the same
+  // tile.
+  firstStrike: boolean;
+  // Defense redesign D18 — placement bonuses authored per unit. The
+  // combat resolver reads this at fire time and matches `buildingDefID`
+  // against the building underneath the unit. Default `[]` — most units
+  // carry no placement bonus. The shape is opt-in in JSON; the loader
+  // returns an empty array when absent so call sites can iterate
+  // unconditionally.
+  placementBonus: PlacementBonus[];
 }
 
 export interface TechnologyDef {
@@ -133,6 +181,21 @@ const requireNumber = (
   return v;
 };
 
+const requireBoolean = (
+  obj: Record<string, unknown>,
+  key: string,
+  index: number,
+  type: string,
+): boolean => {
+  const v = obj[key];
+  if (typeof v !== 'boolean') {
+    throw new Error(
+      `${type}[${index}]: field "${key}" must be a boolean, got ${typeof v}`,
+    );
+  }
+  return v;
+};
+
 const requireArray = (raw: unknown, type: string): unknown[] => {
   if (!Array.isArray(raw)) {
     throw new Error(`${type}: expected an array, got ${typeof raw}`);
@@ -157,11 +220,18 @@ export const validateBuildings = (raw: unknown): BuildingDef[] => {
   const arr = requireArray(raw, 'BuildingDef');
   return arr.map((entry, i) => {
     const obj = requireObject(entry, i, 'BuildingDef');
+    const maxHp = requireNumber(obj, 'maxHp', i, 'BuildingDef');
+    if (!Number.isInteger(maxHp) || maxHp < 1 || maxHp > 4) {
+      throw new Error(
+        `BuildingDef[${i}]: maxHp must be an integer in [1, 4], got ${String(maxHp)}`,
+      );
+    }
     const def: BuildingDef = {
       name: requireString(obj, 'name', i, 'BuildingDef'),
       cost: requireNumber(obj, 'cost', i, 'BuildingDef'),
       benefit: requireString(obj, 'benefit', i, 'BuildingDef'),
       note: requireString(obj, 'note', i, 'BuildingDef'),
+      maxHp,
     };
     const costBag = optionalCostBag(obj, 'costBag', i, 'BuildingDef');
     if (costBag !== undefined) def.costBag = costBag;
@@ -178,10 +248,26 @@ export const validateUnits = (raw: unknown): UnitDef[] => {
       cost: requireNumber(obj, 'cost', i, 'UnitDef'),
       initiative: requireNumber(obj, 'initiative', i, 'UnitDef'),
       attack: requireNumber(obj, 'attack', i, 'UnitDef'),
-      defense: requireNumber(obj, 'defense', i, 'UnitDef'),
+      hp: requireNumber(obj, 'hp', i, 'UnitDef'),
       altStats: requireString(obj, 'altStats', i, 'UnitDef'),
       requires: requireString(obj, 'requires', i, 'UnitDef'),
       note: requireString(obj, 'note', i, 'UnitDef'),
+      // Defense redesign D9: range / regen / firstStrike. Required fields
+      // — the JSON migration in 1.1 fills sane defaults across the table
+      // (range 1, regen 0, firstStrike false) so the loader can stay
+      // strict.
+      range: requireNumber(obj, 'range', i, 'UnitDef'),
+      regen: requireNumber(obj, 'regen', i, 'UnitDef'),
+      firstStrike: requireBoolean(obj, 'firstStrike', i, 'UnitDef'),
+      // Defense redesign D18: optional in JSON (most units have no
+      // placement bonus). Loader normalizes to `[]` so call sites can
+      // iterate without a null check.
+      placementBonus: optionalPlacementBonusArray(
+        obj,
+        'placementBonus',
+        i,
+        'UnitDef',
+      ) ?? [],
     };
     const costBag = optionalCostBag(obj, 'costBag', i, 'UnitDef');
     if (costBag !== undefined) def.costBag = costBag;
@@ -288,6 +374,75 @@ const optionalCostBag = (
     out[resourceKey as Resource] = value;
   }
   return out;
+};
+
+// Defense redesign D18 — optional `PlacementBonus[]` parser. Returns
+// `undefined` when the JSON omits the key so the unit-loader can normalize
+// to `[]` without round-tripping a spurious empty array. Throws on shape
+// violations with the offending index/key.
+const PLACEMENT_EFFECT_KINDS = new Set([
+  'strength',
+  'range',
+  'regen',
+  'hp',
+  'firstStrike',
+] as const);
+
+const optionalPlacementBonusArray = (
+  obj: Record<string, unknown>,
+  key: string,
+  index: number,
+  type: string,
+): PlacementBonus[] | undefined => {
+  const v = obj[key];
+  if (v === undefined) return undefined;
+  if (!Array.isArray(v)) {
+    throw new Error(
+      `${type}[${index}]: field "${key}" must be an array when present`,
+    );
+  }
+  return v.map((entry, ei): PlacementBonus => {
+    if (!isPlainObject(entry)) {
+      throw new Error(
+        `${type}[${index}]: ${key}[${ei}] must be an object`,
+      );
+    }
+    const buildingDefID = entry.buildingDefID;
+    if (typeof buildingDefID !== 'string' || buildingDefID.length === 0) {
+      throw new Error(
+        `${type}[${index}]: ${key}[${ei}].buildingDefID must be a non-empty string`,
+      );
+    }
+    const effect = entry.effect;
+    if (!isPlainObject(effect)) {
+      throw new Error(
+        `${type}[${index}]: ${key}[${ei}].effect must be an object`,
+      );
+    }
+    const kind = effect.kind;
+    if (
+      typeof kind !== 'string' ||
+      !(PLACEMENT_EFFECT_KINDS as ReadonlySet<string>).has(kind)
+    ) {
+      throw new Error(
+        `${type}[${index}]: ${key}[${ei}].effect.kind must be one of ` +
+          `strength|range|regen|hp|firstStrike, got ${String(kind)}`,
+      );
+    }
+    if (kind === 'firstStrike') {
+      return { buildingDefID, effect: { kind: 'firstStrike' } };
+    }
+    const amount = effect.amount;
+    if (typeof amount !== 'number' || !Number.isFinite(amount)) {
+      throw new Error(
+        `${type}[${index}]: ${key}[${ei}].effect.amount must be a finite number`,
+      );
+    }
+    return {
+      buildingDefID,
+      effect: { kind: kind as 'strength' | 'range' | 'regen' | 'hp', amount },
+    };
+  });
 };
 
 // Helper: pull an optional effects array out of `obj[key]`. `unknown[]` here

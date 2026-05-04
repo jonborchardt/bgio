@@ -222,7 +222,7 @@ export function unitDisplay(def: UnitDef, count?: number): DisplayCard {
     cost: { bag: bagToList(bag), short: `${def.cost}g` },
     stats: [
       { label: 'ATK', value: String(def.attack) },
-      { label: 'DEF', value: String(def.defense) },
+      { label: 'DEF', value: String(def.hp) },
       { label: 'INI', value: String(def.initiative) },
     ],
     flavor: def.note,

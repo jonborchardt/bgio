@@ -51,7 +51,7 @@ describe('playerRowsFor (14.10)', () => {
       { defID: 'NeverExisted', count: 0 },
     ]);
     expect(rows).toEqual([
-      { defID: 'Brute', totalHp: brute.defense * 2, count: 2 },
+      { defID: 'Brute', totalHp: brute.hp * 2, count: 2 },
     ]);
   });
 });
@@ -66,20 +66,28 @@ describe('discoverIncomingEvents (14.10)', () => {
       cost: 1,
       requires: '',
       attack: 1,
-      defense: 1,
+      hp: 1,
       initiative: 1,
       altStats: '',
       note: '',
+      range: 1,
+      regen: 0,
+      firstStrike: false,
+      placementBonus: [],
     };
     const playerDef = {
       name: 'TestKnight',
       cost: 1,
       attack: 1,
-      defense: 3,
+      hp: 3,
       requires: '',
       initiative: 0, // enemy goes first
       altStats: '',
       note: '',
+      range: 1,
+      regen: 0,
+      firstStrike: false,
+      placementBonus: [],
     };
     const lookup = (id: string) =>
       id === 'TestGoblin'

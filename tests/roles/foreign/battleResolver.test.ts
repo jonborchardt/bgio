@@ -21,7 +21,7 @@ interface SyntheticDef {
   name: string;
   initiative: number;
   attack: number;
-  defense: number;
+  hp: number;
   altStats?: string;
   note?: string;
   cost?: number;
@@ -33,10 +33,14 @@ const makeDef = (s: SyntheticDef): UnitDef => ({
   cost: s.cost ?? 0,
   initiative: s.initiative,
   attack: s.attack,
-  defense: s.defense,
+  hp: s.hp,
   altStats: s.altStats ?? '',
   requires: s.requires ?? '',
   note: s.note ?? '',
+  range: 1,
+  regen: 0,
+  firstStrike: false,
+  placementBonus: [],
 });
 
 const lookupFromTable = (
@@ -101,10 +105,10 @@ describe('resolveBattle — abilities', () => {
         name: 'Bomber',
         initiative: 9,
         attack: 5,
-        defense: 5,
+        hp: 5,
         note: 'splash',
       }),
-      makeDef({ name: 'Mook', initiative: 1, attack: 1, defense: 5 }),
+      makeDef({ name: 'Mook', initiative: 1, attack: 1, hp: 5 }),
     ];
     const input: ResolverInput = {
       player: [{ defID: 'Bomber', count: 1 }],
@@ -122,12 +126,12 @@ describe('resolveBattle — abilities', () => {
 
   it('armor reduces incoming damage by 1', () => {
     const defs = [
-      makeDef({ name: 'Slugger', initiative: 1, attack: 3, defense: 5 }),
+      makeDef({ name: 'Slugger', initiative: 1, attack: 3, hp: 5 }),
       makeDef({
         name: 'Tank',
         initiative: 9,
         attack: 1,
-        defense: 5,
+        hp: 5,
         note: 'armor',
       }),
     ];
@@ -156,11 +160,11 @@ describe('resolveBattle — abilities', () => {
         name: 'Medic',
         initiative: 1,
         attack: 1,
-        defense: 5,
+        hp: 5,
         note: 'heal +1',
       }),
-      makeDef({ name: 'Tanky', initiative: 1, attack: 0, defense: 10 }),
-      makeDef({ name: 'Hitter', initiative: 9, attack: 3, defense: 5 }),
+      makeDef({ name: 'Tanky', initiative: 1, attack: 0, hp: 10 }),
+      makeDef({ name: 'Hitter', initiative: 9, attack: 3, hp: 5 }),
     ];
     const input: ResolverInput = {
       player: [
@@ -194,10 +198,10 @@ describe('resolveBattle — abilities', () => {
         name: 'OneShot',
         initiative: 9,
         attack: 2,
-        defense: 5,
+        hp: 5,
         altStats: 'single use',
       }),
-      makeDef({ name: 'Mook', initiative: 1, attack: 1, defense: 10 }),
+      makeDef({ name: 'Mook', initiative: 1, attack: 1, hp: 10 }),
     ];
     const input: ResolverInput = {
       player: [{ defID: 'OneShot', count: 1 }],
@@ -228,8 +232,8 @@ describe('resolveBattle — abilities', () => {
 describe('resolveBattle — allocation validation', () => {
   it("flags an allocation whose sum doesn't match incoming damage", () => {
     const defs = [
-      makeDef({ name: 'Foot', initiative: 1, attack: 1, defense: 5 }),
-      makeDef({ name: 'Hitter', initiative: 9, attack: 3, defense: 5 }),
+      makeDef({ name: 'Foot', initiative: 1, attack: 1, hp: 5 }),
+      makeDef({ name: 'Hitter', initiative: 9, attack: 3, hp: 5 }),
     ];
     const input: ResolverInput = {
       player: [{ defID: 'Foot', count: 1 }],
@@ -250,8 +254,8 @@ describe('resolveBattle — allocation validation', () => {
 
   it('returns mid when allocations are exhausted before resolution', () => {
     const defs = [
-      makeDef({ name: 'Foot', initiative: 1, attack: 1, defense: 5 }),
-      makeDef({ name: 'Hitter', initiative: 9, attack: 1, defense: 100 }),
+      makeDef({ name: 'Foot', initiative: 1, attack: 1, hp: 5 }),
+      makeDef({ name: 'Hitter', initiative: 9, attack: 1, hp: 100 }),
     ];
     const input: ResolverInput = {
       player: [{ defID: 'Foot', count: 1 }],

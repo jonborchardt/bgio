@@ -13,7 +13,13 @@ import {
 } from './schema.ts';
 import type { BuildingDef, UnitDef, TechnologyDef } from './schema.ts';
 
-export type { BuildingDef, UnitDef, TechnologyDef } from './schema.ts';
+export type {
+  BuildingDef,
+  UnitDef,
+  TechnologyDef,
+  PlacementBonus,
+  PlacementEffect,
+} from './schema.ts';
 
 import type { BuildingDef as _BuildingDef, UnitDef as _UnitDef } from './schema.ts';
 import type { ResourceBag } from '../game/resources/types.ts';

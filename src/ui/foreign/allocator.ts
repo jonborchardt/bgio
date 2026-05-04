@@ -41,7 +41,7 @@ export interface PlayerRow {
 const lookupHp = (defID: string): number => {
   const def = UNITS.find((u) => u.name === defID);
   if (def === undefined) return 1;
-  return def.defense > 0 ? def.defense : 1;
+  return def.hp > 0 ? def.hp : 1;
 };
 
 /** Collapse `inPlay` into per-defID rows annotated with totalHp/count. */

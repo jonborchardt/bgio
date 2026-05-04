@@ -151,7 +151,7 @@ const expandSide = (
       continue;
     }
     const abilities = abilitiesFor(def, override);
-    const hp = def.defense > 0 ? def.defense : 1;
+    const hp = def.hp > 0 ? def.hp : 1;
     const count = inst.count > 0 ? inst.count : 1;
     for (let i = 0; i < count; i += 1) {
       rows.push({

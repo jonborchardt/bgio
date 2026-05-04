@@ -15,6 +15,7 @@ import {
 import { bagOf } from '../../../src/game/resources/bag.ts';
 import { assignRoles } from '../../../src/game/roles.ts';
 import { UNITS, unitCost } from '../../../src/data/index.ts';
+import type { UnitDef } from '../../../src/data/index.ts';
 import type { ResourceBag } from '../../../src/game/resources/types.ts';
 import type { SettlementState, ForeignState } from '../../../src/game/types.ts';
 import type { DomesticBuilding } from '../../../src/game/roles/domestic/types.ts';
@@ -120,17 +121,21 @@ describe('foreignRecruit (07.2)', () => {
     });
 
     it('unitCost helper returns def.costBag when present', () => {
-      const def = {
+      const def: UnitDef = {
         name: 'TestUnit',
         cost: 5,
         costBag: { gold: 3, steel: 2 },
         initiative: 1,
         attack: 1,
-        defense: 1,
+        hp: 1,
         altStats: '',
         requires: '',
         note: '',
-      } as const;
+        range: 1,
+        regen: 0,
+        firstStrike: false,
+        placementBonus: [],
+      };
       expect(unitCost(def)).toEqual({ gold: 3, steel: 2 });
     });
 
