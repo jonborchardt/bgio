@@ -129,8 +129,14 @@ describe('resolveTrackCard — boon / modifier dispatch', () => {
     expect(G.track!.activeModifiers![0]!.id).toBe('mod-1');
   });
 
-  it('boss card is a no-op stub (does not throw)', () => {
+  it('boss card dispatches through resolveBoss (does not throw, flips bossResolved)', () => {
+    // 2.7 — boss is no longer a stub. With all thresholds at 0 and an
+    // empty attackPattern, resolveBoss takes the trivial-defeat path:
+    // every threshold counts as met, attacks clamps to 0, and only the
+    // win flag fires. Tests for the rich attack-pattern math live in
+    // tests/game/track/boss.spec.ts.
     const G = seedFreshGame(2);
+    expect(G.bossResolved).toBe(false);
     expect(() =>
       resolveTrackCard(G, detRandom(), {
         kind: 'boss',
@@ -143,6 +149,7 @@ describe('resolveTrackCard — boon / modifier dispatch', () => {
         attackPattern: [],
       }),
     ).not.toThrow();
+    expect(G.bossResolved).toBe(true);
   });
 });
 

@@ -38,7 +38,7 @@ import {
 } from './moves.ts';
 import { chiefPhase, othersPhase, endOfRound } from './phases/index.ts';
 import { playerView } from './playerView.ts';
-import { endIf } from './endConditions.ts';
+import { endIf, onEnd } from './endConditions.ts';
 import { enumerate } from './ai/enumerate.ts';
 
 export type {
@@ -153,6 +153,13 @@ export const Settlement: Game<SettlementState> = {
   // sets `ctx.gameover` to that value (a `GameOutcome`). The wrapper here
   // adapts the bgio shape to our pure 2-arg `endIf`.
   endIf: ({ G, ctx }) => endIf(G, ctx),
+  // 2.7: `onEnd` writes a flat `_score` snapshot to G the first time
+  // `endIf` returns a truthy outcome — the server-side persistence hook
+  // and future lobby-summary UI consume the snapshot rather than
+  // walking the post-game state themselves.
+  onEnd: ({ G }) => {
+    onEnd(G);
+  },
   // 11.2 — bgio's `RandomBot` / `MCTSBot` call `Game.ai.enumerate(G, ctx,
   // playerID)` to learn the legal move surface at a given state. Our
   // enumerator inspects the phase / stage and returns a bounded list of

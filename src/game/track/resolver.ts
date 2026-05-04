@@ -91,6 +91,7 @@ import {
   type Cell,
 } from './path.ts';
 import { centerBurn } from './centerBurn.ts';
+import { resolveBoss } from './boss.ts';
 
 // Effective stats for a unit at fire time, after folding placement
 // bonuses, taught skills, and the optional drill token. Pure data —
@@ -233,8 +234,12 @@ const orderFire = (
 /**
  * Resolve a single threat card against `G`. Mutates `G` in place. See
  * the file-level comment for the full algorithm.
+ *
+ * Exported so the Phase 2.7 boss resolver can dispatch its scripted
+ * attack pattern through the same pipeline (each boss attack synthesizes
+ * a `ThreatCard` and feeds it through here).
  */
-const resolveThreat = (
+export const resolveThreat = (
   G: SettlementState,
   random: RandomAPI,
   threat: ThreatCard,
@@ -415,18 +420,10 @@ const dispatchBoon = (
 };
 
 /**
- * Boss stub — Phase 2.7 will land the real boss resolver. We keep the
- * shell in place so resolveTrackCard's switch is exhaustive at runtime
- * and so the no-op is testable: a boss flip should not throw.
- */
-const resolveBoss = (G: SettlementState): void => {
-  void G;
-  // Intentional no-op for 2.3.
-};
-
-/**
  * Single entry point. Routes each `TrackCardDef` to its sub-resolver.
- * Mutates `G` in place.
+ * Mutates `G` in place. The boss case dispatches to `./boss.ts` —
+ * Phase 2.7 lands the real implementation that flips `G.bossResolved`
+ * after running the printed attack pattern (D21, D25).
  */
 export const resolveTrackCard = (
   G: SettlementState,
@@ -444,7 +441,7 @@ export const resolveTrackCard = (
       resolveThreat(G, random, card);
       return;
     case 'boss':
-      resolveBoss(G);
+      resolveBoss(G, random, card);
       return;
   }
 };

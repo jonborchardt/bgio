@@ -98,10 +98,18 @@ export interface SettlementState {
   chiefStipend?: number;
 
   // Optional snapshot of `G.round` at the moment the win condition fired.
-  // Reserved for the persistence hook (10.7) so the server can write the
-  // win-time score even if `G.round` advances further before `endIf` is
-  // re-checked. `endIf` itself reads `G.round` directly today.
+  // Set by `resolveBoss` (Phase 2.7) at the same time `bossResolved` flips
+  // so the persistence hook (10.7) can write the win-time score even if
+  // `G.round` advances before `endIf` is re-checked. `endIf` prefers this
+  // when set and falls back to `G.round` otherwise.
   turnsAtWin?: number;
+
+  // Flat post-mortem snapshot written by `endConditions.onEnd` (Phase 2.7)
+  // when `endIf` returns a truthy outcome for the first time. Read by
+  // server-side score persistence (10.7) and the future lobby-summary UI.
+  // Optional so older test fixtures and live mid-game states stay source-
+  // compatible — present iff the game has ended.
+  _score?: import('./endConditions.ts').RunScore;
 
   // Private slices populated by 02.4; refined per role later.
   // Decks belong to whoever owns them and live under those players' hands.

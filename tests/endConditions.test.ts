@@ -15,11 +15,22 @@
 import { describe, expect, it } from 'vitest';
 import {
   endIf,
+  onEnd,
+  computeRunScore,
   TURN_CAP_DEFAULT,
 } from '../src/game/endConditions.ts';
 import type { SettlementState } from '../src/game/types.ts';
 import { setup } from '../src/game/setup.ts';
 import { EMPTY_BAG } from '../src/game/resources/types.ts';
+import { resolveBoss } from '../src/game/track/boss.ts';
+import type { BossCard } from '../src/data/schema.ts';
+import type { RandomAPI } from '../src/game/random.ts';
+import { seedFreshGame } from './helpers/factories.ts';
+import {
+  CENTER_CELL_KEY,
+  cellKey,
+} from '../src/game/roles/domestic/grid.ts';
+import type { DomesticBuilding } from '../src/game/roles/domestic/types.ts';
 
 // Smallest legal SettlementState shell — `endIf` only reads `round`,
 // `bossResolved`, and `turnCap`, but the full shape is required by the
@@ -91,5 +102,116 @@ describe('endIf', () => {
       kind: 'timeUp',
       turns: 20,
     });
+  });
+
+  it('after resolveBoss (2.7) flips bossResolved, endIf returns a win', () => {
+    // The full integration: a boss card flips → resolveBoss runs → endIf
+    // reports the village won. Uses a trivially-defeatable boss (all
+    // thresholds met by default seed values, baseAttacks = 1) so the
+    // test focuses on the win-flag flow rather than the attack math.
+    const G = seedFreshGame(2);
+    G.round = 30;
+    G.bank.gold = 100;
+    G.science!.completed = ['s1', 's2', 's3', 's4', 's5', 's6'];
+    const boss: BossCard = {
+      kind: 'boss',
+      id: 'b-test',
+      name: 'Test Boss',
+      phase: 10,
+      description: '',
+      baseAttacks: 1,
+      thresholds: { science: 1, economy: 1, military: 0 },
+      attackPattern: [{ direction: 'N', offset: 0, strength: 1 }],
+    };
+    const r: RandomAPI = {
+      shuffle: <T>(a: ReadonlyArray<T>): T[] => [...a],
+      pickOne: <T>(a: ReadonlyArray<T>): T => a[0]!,
+      rangeInt: (lo: number) => lo,
+    };
+    expect(endIf(G, undefined)).toBeUndefined();
+    resolveBoss(G, r, boss);
+    expect(G.bossResolved).toBe(true);
+    expect(G.turnsAtWin).toBe(30);
+    expect(endIf(G, undefined)).toEqual({ kind: 'win', turns: 30 });
+  });
+});
+
+describe('onEnd (2.7) — score recording', () => {
+  const center: DomesticBuilding = {
+    defID: 'Center',
+    upgrades: 0,
+    worker: null,
+    hp: 99,
+    maxHp: 99,
+    isCenter: true,
+  };
+
+  it('writes a win score onto G._score with rounds / buildings / units snapshot', () => {
+    const G = seedFreshGame(2);
+    G.round = 22;
+    G.bossResolved = true;
+    G.turnsAtWin = 22;
+    G.domestic = {
+      hand: [],
+      grid: {
+        [CENTER_CELL_KEY]: center,
+        [cellKey(0, 1)]: {
+          defID: 'Mill',
+          upgrades: 0,
+          worker: null,
+          hp: 4,
+          maxHp: 4,
+        },
+        [cellKey(1, 0)]: {
+          defID: 'Forge',
+          upgrades: 0,
+          worker: null,
+          hp: 2,
+          maxHp: 4,
+        },
+      },
+    };
+    G.defense = {
+      hand: [],
+      inPlay: [
+        {
+          id: 'u1',
+          defID: 'Brute',
+          cellKey: cellKey(0, 1),
+          hp: 2,
+          placementOrder: 0,
+        },
+      ],
+    };
+    onEnd(G);
+    expect(G._score).toBeDefined();
+    expect(G._score!.outcome).toBe('win');
+    expect(G._score!.rounds).toBe(22);
+    expect(G._score!.buildingsAtEnd).toBe(2); // Mill + Forge, center excluded
+    // Mill at 100% (4/4), Forge at 50% (2/4) → average 75.
+    expect(G._score!.hpRetainedPct).toBe(75);
+    expect(G._score!.unitsAlive).toBe(1);
+  });
+
+  it('writes a timeUp score when the cap is hit without a win', () => {
+    const G = seedFreshGame(2);
+    G.round = TURN_CAP_DEFAULT;
+    G.bossResolved = false;
+    onEnd(G);
+    expect(G._score).toBeDefined();
+    expect(G._score!.outcome).toBe('timeUp');
+    expect(G._score!.rounds).toBe(TURN_CAP_DEFAULT);
+  });
+
+  it('computeRunScore: hpRetainedPct is 0 when no non-center buildings exist', () => {
+    const G = seedFreshGame(2);
+    G.domestic = {
+      hand: [],
+      grid: { [CENTER_CELL_KEY]: center },
+    };
+    const score = computeRunScore(G, 'timeUp');
+    expect(score.buildingsAtEnd).toBe(0);
+    expect(score.hpRetainedPct).toBe(0);
+    expect(score.unitsAlive).toBe(0);
   });
 });
