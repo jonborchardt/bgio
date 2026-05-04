@@ -24,6 +24,21 @@ export type BankLogSource =
   | 'stashPayment'
   | 'distribute'
   | 'release'
+  // Defense redesign 2.3 — center-tile pool burn. Posted by `centerBurn`
+  // (./centerMat.ts… actually, ../track/centerBurn.ts) when a threat
+  // reaches the village vault and resources are taken from non-chief
+  // seat stashes. The delta is informational (the burn is on per-seat
+  // stash mats, not `G.bank`) — the entry is appended so the chief
+  // tooltip's audit trail can narrate the loss alongside other bank
+  // events. `appendBankLog` skips empty deltas, so a burn that ate
+  // exactly zero tokens (no stash to burn) emits no entry.
+  | 'centerBurn'
+  // Defense redesign 2.3 — threat reward, paid to the bank when units
+  // chip a threat down to S=0 before it reaches center. Distinct from
+  // `battleReward` (which was the retired foreign battle resolver) so
+  // the audit trail can tell new-system rewards from legacy entries
+  // that may live in saved-game DBs.
+  | 'threatReward'
   // Dev-only: top-up via DevSidebar's "Bank: +N of each" button. Tagged
   // distinctly so the chief tooltip's income/stash split (computeBankView)
   // doesn't lump the injection in with real round-zero setup amounts.

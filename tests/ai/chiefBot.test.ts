@@ -57,6 +57,9 @@ describe('chiefBot (11.3)', () => {
   it('ends phase when the bank gold is empty', () => {
     const G = setupG(4);
     G.bank.gold = 0;
+    // Defense redesign 2.3: the bot must flip the track first; once
+    // the flip latch is set, the next call returns chiefEndPhase.
+    if (G.track !== undefined) G.track.flippedThisRound = true;
     const action = chiefBot.play({
       G,
       ctx: ctxFor('chiefPhase', 4),
@@ -68,6 +71,7 @@ describe('chiefBot (11.3)', () => {
   it('1-player game: chief is also every other role, no other seats — ends phase', () => {
     const G = setupG(1);
     G.bank.gold = 5;
+    if (G.track !== undefined) G.track.flippedThisRound = true;
     const action = chiefBot.play({
       G,
       ctx: ctxFor('chiefPhase', 1),
@@ -118,11 +122,28 @@ describe('chiefBot (11.3)', () => {
     if (G.science !== undefined) {
       G.science.completed = G.science.grid.flat().map((c) => c.id);
     }
+    if (G.track !== undefined) G.track.flippedThisRound = true;
     const action = chiefBot.play({
       G,
       ctx: ctxFor('chiefPhase', 4),
       playerID: '0',
     });
     expect(action).toEqual({ move: 'chiefEndPhase', args: [] });
+  });
+
+  it('flips the track when not yet flipped this round and ready to end phase', () => {
+    // Defense redesign 2.3 (D22): chief must flip the track before
+    // ending phase. With no demand and no flip yet, the bot returns
+    // chiefFlipTrack rather than chiefEndPhase.
+    const G = setupG(4);
+    G.bank.gold = 0; // nothing to distribute
+    // Track was populated by setup; flippedThisRound starts undefined.
+    expect(G.track?.flippedThisRound).not.toBe(true);
+    const action = chiefBot.play({
+      G,
+      ctx: ctxFor('chiefPhase', 4),
+      playerID: '0',
+    });
+    expect(action).toEqual({ move: 'chiefFlipTrack', args: [] });
   });
 });

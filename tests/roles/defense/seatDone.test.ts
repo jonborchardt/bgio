@@ -52,7 +52,10 @@ describe('defenseSeatDone (1.4)', () => {
     const chiefSeat = seatOfRole(assignments, 'chief');
     const defenseSeat = seatOfRole(assignments, 'defense');
 
-    runMoves(client, [{ player: chiefSeat, move: 'chiefEndPhase' }]);
+    runMoves(client, [
+      { player: chiefSeat, move: 'chiefFlipTrack' },
+      { player: chiefSeat, move: 'chiefEndPhase' },
+    ]);
     runMoves(client, [{ player: defenseSeat, move: 'defenseSeatDone' }]);
     expect(client.getState()!.G.othersDone?.[defenseSeat]).toBe(true);
   });

@@ -8,6 +8,7 @@ import type { Move } from 'boardgame.io';
 import type { PlayerID, SettlementState } from './types.ts';
 import { chiefDistribute } from './roles/chief/distribute.ts';
 import { chiefEndPhase } from './roles/chief/endPhase.ts';
+import { chiefFlipTrack } from './roles/chief/flipTrack.ts';
 import { chiefPlaceWorker } from './roles/chief/workerPlacement.ts';
 import { chiefPlayGoldEvent } from './roles/chief/playGoldEvent.ts';
 import { sciencePlayBlueEvent } from './roles/science/playBlueEvent.ts';
@@ -41,6 +42,7 @@ export const pass: Move<SettlementState> = () => {
 export {
   chiefDistribute,
   chiefEndPhase,
+  chiefFlipTrack,
   chiefPlaceWorker,
   chiefPlayGoldEvent,
 };

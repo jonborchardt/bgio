@@ -62,6 +62,7 @@ const stubEnumerate = (
     out.push({ move: 'chiefDistribute', args: [target, { gold: 1 }] });
   }
   out.push({ move: 'chiefEndPhase', args: [] });
+  out.push({ move: 'chiefFlipTrack', args: [] });
   out.push({ move: 'chiefPlaceWorker', args: [{ x: 0, y: 0 }] });
 
   // Science: contribute 1 gold to a card we can name; the move resolves

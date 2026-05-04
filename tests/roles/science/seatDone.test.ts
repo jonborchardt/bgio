@@ -63,8 +63,11 @@ describe('scienceSeatDone (14.2)', () => {
     const domesticSeat = seatOfRole(assignments, 'domestic');
     const defenseSeat = seatOfRole(assignments, 'defense');
 
-    // Get out of chiefPhase first.
-    runMoves(client, [{ player: chiefSeat, move: 'chiefEndPhase' }]);
+    // Get out of chiefPhase first (flip + end-phase per D22).
+    runMoves(client, [
+      { player: chiefSeat, move: 'chiefFlipTrack' },
+      { player: chiefSeat, move: 'chiefEndPhase' },
+    ]);
     expect(client.getState()!.ctx.phase).toBe('othersPhase');
 
     // Science seat flips done — domestic and defense still pending.

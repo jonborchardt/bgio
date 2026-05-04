@@ -28,6 +28,14 @@ export const chiefPhase: PhaseConfig<SettlementState> = {
   // out the real per-phase stage map.
   turn: {
     onBegin: ({ G, events }) => {
+      // Defense redesign 2.3 — reset the per-round track-flip latch so
+      // the chief can flip the next round's card. The latch is set by
+      // `chiefFlipTrack` and consulted by `chiefEndPhase` to enforce
+      // "flip before end-phase" (D22).
+      if (G.track !== undefined) {
+        G.track.flippedThisRound = false;
+      }
+
       // Per-round chief stipend: a small fixed gold income to the bank so
       // the chief always has *something* to distribute, independent of
       // production/battle outcomes. Default = 2 (see setup.ts

@@ -14,7 +14,7 @@
 // publicly visible (it's the table-presence telegraph), so `playerView`
 // performs no redaction on `G.track`.
 
-import type { TrackCardDef } from '../data/index.ts';
+import type { TrackCardDef, ModifierCard } from '../data/index.ts';
 import type { RandomAPI } from './random.ts';
 
 export interface TrackState {
@@ -29,6 +29,20 @@ export interface TrackState {
   // phase (or 1 if the track was never populated — degenerate but
   // non-throwing).
   currentPhase: number;
+  // Defense redesign 2.3 — modifier cards pushed by the resolver when a
+  // `kind: 'modifier'` track card flips. Consumed by the resolver at the
+  // start of the next threat fire (so a modifier dispatched on round N
+  // affects threats flipped later in round N) and cleared at end-of-round
+  // (Phase 2.8). Optional so older fixtures stay source-compatible; the
+  // resolver lazy-initializes when pushing.
+  activeModifiers?: ModifierCard[];
+  // Defense redesign 2.3 — per-round latch: `true` after `chiefFlipTrack`
+  // resolves. `chiefEndPhase` rejects (INVALID_MOVE) until this is set,
+  // forcing the chief to flip the round's track card before transitioning
+  // to `othersPhase`. Cleared at every chiefPhase.onBegin (the next round
+  // starts with the flag reset). Optional so older fixtures stay
+  // source-compatible.
+  flippedThisRound?: boolean;
 }
 
 /**

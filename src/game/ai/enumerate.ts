@@ -67,6 +67,16 @@ const enumerateChief = (
     }
   }
 
+  // chiefFlipTrack: when there's a card to flip and the round's flip
+  // hasn't happened yet (D22). The move re-validates legality.
+  if (
+    G.track !== undefined &&
+    G.track.upcoming.length > 0 &&
+    G.track.flippedThisRound !== true
+  ) {
+    out.push({ move: 'chiefFlipTrack', args: [] });
+  }
+
   // chiefEndPhase: always a candidate while in chiefPhase.
   out.push({ move: 'chiefEndPhase', args: [] });
 

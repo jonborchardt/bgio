@@ -103,9 +103,19 @@ const play = (state: BotState): BotAction | null => {
   const chiefSeat = tryChiefSeat(G);
   if (chiefSeat === null || chiefSeat !== playerID) return null;
 
-  // Empty bank → nothing to distribute, end phase.
+  // Empty bank → nothing left to distribute. End the phase, but only if
+  // the round's track flip has happened — otherwise flip first (D22).
   const bankGold = G.bank.gold ?? 0;
-  if (bankGold <= 0) return endPhase();
+  if (bankGold <= 0) {
+    if (
+      G.track !== undefined &&
+      G.track.flippedThisRound !== true &&
+      G.track.upcoming.length > 0
+    ) {
+      return { move: 'chiefFlipTrack', args: [] };
+    }
+    return endPhase();
+  }
 
   // Find the seat with maximum demand. Ties broken by sorted seat order
   // (set up in `seatDemands` already).
@@ -117,7 +127,15 @@ const play = (state: BotState): BotAction | null => {
   }
 
   if (best === null) {
-    // No other seat needs anything → just end the phase.
+    // No other seat needs anything → just end the phase. Flip the
+    // track first if we haven't this round.
+    if (
+      G.track !== undefined &&
+      G.track.flippedThisRound !== true &&
+      G.track.upcoming.length > 0
+    ) {
+      return { move: 'chiefFlipTrack', args: [] };
+    }
     return endPhase();
   }
 

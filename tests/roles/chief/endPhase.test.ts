@@ -19,7 +19,12 @@ describe('chiefEndPhase (04.2)', () => {
     );
 
     expect(client.getState()!.ctx.phase).toBe('chiefPhase');
-    runMoves(client, [{ player: chiefSeat, move: 'chiefEndPhase' }]);
+    // Defense redesign 2.3 (D22): chief must flip the track before ending
+    // the phase. Skipping the flip would now collapse to INVALID_MOVE.
+    runMoves(client, [
+      { player: chiefSeat, move: 'chiefFlipTrack' },
+      { player: chiefSeat, move: 'chiefEndPhase' },
+    ]);
     expect(client.getState()!.ctx.phase).toBe('othersPhase');
     expect(client.getState()!.G.phaseDone).toBe(true);
   });
@@ -29,7 +34,10 @@ describe('chiefEndPhase (04.2)', () => {
     const assignments = client.getState()!.G.roleAssignments;
     const chiefSeat = seatOfRole(assignments, 'chief');
 
-    runMoves(client, [{ player: chiefSeat, move: 'chiefEndPhase' }]);
+    runMoves(client, [
+      { player: chiefSeat, move: 'chiefFlipTrack' },
+      { player: chiefSeat, move: 'chiefEndPhase' },
+    ]);
     expect(client.getState()!.ctx.phase).toBe('othersPhase');
 
     const active = client.getState()!.ctx.activePlayers ?? {};
@@ -48,8 +56,12 @@ describe('chiefEndPhase (04.2)', () => {
       'chief',
     );
 
-    // Get out of chiefPhase first by using the real chiefEndPhase.
-    runMoves(client, [{ player: chiefSeat, move: 'chiefEndPhase' }]);
+    // Get out of chiefPhase first by using the real chiefEndPhase
+    // (preceded by the required flip).
+    runMoves(client, [
+      { player: chiefSeat, move: 'chiefFlipTrack' },
+      { player: chiefSeat, move: 'chiefEndPhase' },
+    ]);
     expect(client.getState()!.ctx.phase).toBe('othersPhase');
 
     // Snapshot G; the rejected move must not mutate it.
@@ -70,6 +82,7 @@ describe('chiefEndPhase (04.2)', () => {
     );
 
     runMoves(client, [
+      { player: chiefSeat, move: 'chiefFlipTrack' },
       { player: chiefSeat, move: 'chiefEndPhase' },
       // Second call lands in othersPhase (the transition already happened
       // after the first call). bgio's `ctx.phase` check inside the move
@@ -80,5 +93,19 @@ describe('chiefEndPhase (04.2)', () => {
 
     expect(client.getState()!.ctx.phase).toBe('othersPhase');
     expect(client.getState()!.G.phaseDone).toBe(true);
+  });
+
+  it('rejects chiefEndPhase before chiefFlipTrack has fired (D22)', () => {
+    const client = makeClient();
+    const chiefSeat = seatOfRole(
+      client.getState()!.G.roleAssignments,
+      'chief',
+    );
+
+    expect(client.getState()!.ctx.phase).toBe('chiefPhase');
+    // Skipping the flip => chiefEndPhase rejects with INVALID_MOVE.
+    runMoves(client, [{ player: chiefSeat, move: 'chiefEndPhase' }]);
+    expect(client.getState()!.ctx.phase).toBe('chiefPhase');
+    expect(client.getState()!.G.phaseDone).toBe(false);
   });
 });

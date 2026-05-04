@@ -1,0 +1,450 @@
+// Defense redesign 2.3 — track-card resolve pipeline.
+//
+// Single entry point `resolveTrackCard(G, random, card)` is called by
+// `chiefFlipTrack` after `advanceTrack(G.track)` returns the just-popped
+// card. The resolver dispatches on `card.kind`:
+//
+//   - boon     → applies the printed effect through the same dispatcher
+//                the per-color event-card moves use.
+//   - modifier → pushes the card onto `G.track.activeModifiers`. The
+//                stack is consumed (and cleared) by `consumeModifiers` at
+//                the start of every threat resolution. End-of-round
+//                cleanup (Phase 2.8) clears anything that wasn't
+//                consumed.
+//   - threat   → walks the path / fire / impact pipeline (spec §3 + §4).
+//   - boss     → no-op stub. Phase 2.7 lands the real boss resolver.
+//
+// The resolver is deliberately kept pure-ish — it mutates `G` in place
+// (Immer-friendly) but takes no bgio plumbing beyond the `RandomAPI`
+// stub. The combat math lives here so unit tests can exercise it
+// against a synthetic `G` without booting a full client.
+//
+// Combat math (spec §4):
+//
+//   1. Compute the path from the threat's entry point to center.
+//   2. The first impact tile is the first occupied cell on the path
+//      (excluding center).
+//   3. Every unit whose Chebyshev range covers any cell on the path
+//      between the threat's entry and the first impact tile gets one
+//      fire opportunity.
+//   4. Order firing units: first-strike before non-first-strike, then
+//      placement order within each tier.
+//   5. Each unit's effective stats fold:
+//        - the unit def's printed `attack` / `range`,
+//        - `placementBonus` matched to the building underneath the
+//          unit,
+//        - `taughtSkills` (D27 — Phase 2.6 lands the move that grants
+//          them; the resolver applies them here at fire time),
+//        - a one-shot `drillToken` (+1 strength on next fire).
+//      Plus the global "vs <keyword> +N" bonus when the threat's
+//      `modifiers[]` contains a tag the unit's effect line references.
+//      The V1 unit JSON does not yet carry per-keyword bonuses on
+//      `placementBonus[]` (those are a future content add); the
+//      resolver still iterates the matchup-tag check so the structure
+//      is in place for content.
+//   6. For each fire, deduct the unit's effective strength from the
+//      threat's HP. If HP <= 0, the threat dies — apply `reward` to
+//      the bank and return.
+//   7. If the threat survives the fire, every unit that fired loses 1
+//      HP (the "repel" cost). Killed units (HP <= 0) are removed.
+//   8. The leftover damage is applied to the impact tile. Units stacked
+//      on the tile (in placement order, oldest first) absorb up to
+//      their current HP each before the next; whatever's left after
+//      the stack reduces the building's HP (clamped at 1 — buildings
+//      can't be destroyed, per D15).
+//   9. If the threat still has HP > 0, advance to the next occupied
+//      cell on the path and repeat from step 5 (with no further unit
+//      fires from already-spent units; this iteration only does stack/
+//      building damage). The "fire" volley happens once per threat.
+//   10. If the path reaches center with HP > 0, run `centerBurn` to
+//       drain the village vault.
+
+import type { SettlementState } from '../types.ts';
+import type {
+  ThreatCard,
+  TrackCardDef,
+  ModifierCard,
+  BoonCard,
+  PlacementBonus,
+} from '../../data/schema.ts';
+import { UNITS } from '../../data/index.ts';
+import type { UnitDef } from '../../data/schema.ts';
+import type { RandomAPI } from '../random.ts';
+import type { UnitInstance } from '../roles/defense/types.ts';
+import type { DomesticBuilding } from '../roles/domestic/types.ts';
+import { RESOURCES } from '../resources/types.ts';
+import { appendBankLog } from '../resources/bankLog.ts';
+import { dispatch } from '../events/dispatcher.ts';
+import type { EventCardDef } from '../events/state.ts';
+import {
+  computeGridBounds,
+  computePath,
+  occupiedPath,
+  parseCellKey,
+  tileCoversPath,
+  type Cell,
+} from './path.ts';
+import { centerBurn } from './centerBurn.ts';
+
+// Effective stats for a unit at fire time, after folding placement
+// bonuses, taught skills, and the optional drill token. Pure data —
+// the resolver builds one of these per unit per resolve call.
+interface EffectiveStats {
+  strength: number;
+  range: number;
+  hp: number;
+  firstStrike: boolean;
+}
+
+const findUnitDef = (defID: string): UnitDef | undefined =>
+  UNITS.find((u) => u.name === defID);
+
+/** Fold a single placement-bonus effect onto the running stats bag. */
+const applyPlacementEffect = (
+  stats: EffectiveStats,
+  bonus: PlacementBonus,
+): void => {
+  const e = bonus.effect;
+  switch (e.kind) {
+    case 'strength':
+      stats.strength += e.amount;
+      return;
+    case 'range':
+      stats.range += e.amount;
+      return;
+    case 'regen':
+      // Regen is round-end bookkeeping, not fire-time math; ignored
+      // here. The end-of-round hook (Phase 2.8) reads it directly.
+      return;
+    case 'hp':
+      // HP modifiers from placement bonuses bump the unit's effective
+      // max HP — but per-instance HP is tracked separately on the
+      // UnitInstance, so we don't fold the bump here. Phase 2.5 (the
+      // place move) will add the +HP to the instance at place time.
+      return;
+    case 'firstStrike':
+      stats.firstStrike = true;
+      return;
+  }
+};
+
+/**
+ * Compute a unit's effective stats for a single fire against `threat`.
+ * Folds:
+ *   - the unit def's printed stats,
+ *   - the placement bonus matching the building underneath the unit,
+ *   - taught skills (D27) — applied as a flat numeric bump per skill,
+ *   - one-shot drill (+1 strength) when the token is set,
+ *   - matchup keywords (`unit.note` text containing "vs <Keyword> +N"
+ *     when `threat.modifiers` includes the keyword) — V1 implementation
+ *     is permissive: the resolver scans the unit's printed `note` for a
+ *     "vs <keyword> +N" pattern. Future content can replace this with
+ *     a structured field on UnitDef.
+ */
+const computeStats = (
+  unit: UnitInstance,
+  def: UnitDef,
+  building: DomesticBuilding | undefined,
+  threat: ThreatCard,
+): EffectiveStats => {
+  const stats: EffectiveStats = {
+    strength: def.attack,
+    range: def.range,
+    hp: unit.hp,
+    firstStrike: def.firstStrike,
+  };
+
+  // Placement bonuses — match `BuildingDef.name` to the placed defID.
+  if (building !== undefined && !building.isCenter) {
+    for (const bonus of def.placementBonus) {
+      if (bonus.buildingDefID === building.defID) {
+        applyPlacementEffect(stats, bonus);
+      }
+    }
+  }
+
+  // Taught skills (D27) — durable per-instance bumps. Phase 2.6 will
+  // ship the SKILLS table; until then we defensively interpret the
+  // skill IDs the spec lists (`extendRange`, `reinforce`, `accelerate`,
+  // `sharpen`, `firstStrike`).
+  const taught = unit.taughtSkills ?? [];
+  for (const s of taught) {
+    switch (s) {
+      case 'extendRange':
+        stats.range += 1;
+        break;
+      case 'sharpen':
+        stats.strength += 1;
+        break;
+      case 'firstStrike':
+        stats.firstStrike = true;
+        break;
+      // reinforce / accelerate touch HP / regen which aren't fire-time.
+      default:
+        break;
+    }
+  }
+
+  // Drill token — +1 strength on this fire.
+  if (unit.drillToken === true) {
+    stats.strength += 1;
+  }
+
+  // Matchup keywords. We scan `def.note` for a "+N vs <keyword>" pattern
+  // (case-insensitive) and apply the bump when the threat carries the
+  // matching modifier. Soft pattern: deliberate so authors can write
+  // free-form effect lines while the resolver picks up the explicit
+  // bonus.
+  const note = (def.note ?? '').toLowerCase();
+  const tags = threat.modifiers ?? [];
+  for (const tag of tags) {
+    const lower = tag.toLowerCase();
+    // Match either "+N vs <tag>" or "vs <tag> +N".
+    const re1 = new RegExp(`\\+(\\d+)\\s+vs\\s+${lower}\\b`, 'i');
+    const re2 = new RegExp(`\\bvs\\s+${lower}\\s*\\+(\\d+)`, 'i');
+    const m = re1.exec(note) ?? re2.exec(note);
+    if (m && m[1] !== undefined) {
+      const bump = Number(m[1]);
+      if (Number.isFinite(bump)) stats.strength += bump;
+    }
+  }
+
+  if (stats.strength < 0) stats.strength = 0;
+  if (stats.range < 0) stats.range = 0;
+  return stats;
+};
+
+/**
+ * Order firing units: first-strike before non-first-strike, then by
+ * placement order within each tier. Stable across runs because
+ * `placementOrder` is monotonic and assigned at place time.
+ */
+const orderFire = (
+  units: ReadonlyArray<{ unit: UnitInstance; stats: EffectiveStats }>,
+): Array<{ unit: UnitInstance; stats: EffectiveStats }> => {
+  return [...units].sort((a, b) => {
+    const af = a.stats.firstStrike ? 0 : 1;
+    const bf = b.stats.firstStrike ? 0 : 1;
+    if (af !== bf) return af - bf;
+    return a.unit.placementOrder - b.unit.placementOrder;
+  });
+};
+
+/**
+ * Resolve a single threat card against `G`. Mutates `G` in place. See
+ * the file-level comment for the full algorithm.
+ */
+const resolveThreat = (
+  G: SettlementState,
+  random: RandomAPI,
+  threat: ThreatCard,
+): void => {
+  // Consume any pending modifiers — they're a no-op for the V1 resolver
+  // (their effects bend rules elsewhere) but the spec says "the resolver
+  // consumes them at the start of the next threat fire and clears at
+  // end-of-round." Reading them out of the active stack gives Phase 2.8
+  // a clean handoff and keeps the modifier semantics testable here.
+  const modifiers = G.track?.activeModifiers ?? [];
+  void modifiers;
+
+  // Resolver consults the domestic grid + defense instances. If either
+  // is missing we degenerate cleanly — no fires, threat heads straight
+  // to center.
+  const grid = G.domestic?.grid ?? {};
+  const inPlay = G.defense?.inPlay ?? [];
+
+  const bounds = computeGridBounds(grid);
+  const path = computePath(threat.direction, threat.offset, bounds);
+
+  // First impact tile — the first occupied non-center cell on the path.
+  // The path always ends at center, so if no occupied tiles intervene,
+  // `firstImpactKey` is null and the threat goes straight to center.
+  const occupied = occupiedPath(path, grid);
+  const firstImpactKey: string | null = occupied[0] ?? null;
+
+  // Compute fire eligibility against the path *up to and including* the
+  // first impact tile (or the entire path when no impact tile exists —
+  // the spec says "between entry and first impact"; with no impact the
+  // resolver still lets units in range fire as the threat passes
+  // through their reach).
+  const fireSlice: Cell[] = (() => {
+    if (firstImpactKey === null) return [...path];
+    const cut: Cell[] = [];
+    for (const cell of path) {
+      cut.push(cell);
+      const k = `${cell.x},${cell.y}`;
+      if (k === firstImpactKey) break;
+    }
+    return cut;
+  })();
+
+  // Build the firing-unit list.
+  const candidates: Array<{ unit: UnitInstance; stats: EffectiveStats }> = [];
+  for (const unit of inPlay) {
+    const def = findUnitDef(unit.defID);
+    if (def === undefined) continue;
+    const tile = parseCellKey(unit.cellKey);
+    if (tile === null) continue;
+    const building = grid[unit.cellKey];
+    const stats = computeStats(unit, def, building, threat);
+    if (!tileCoversPath(tile, stats.range, fireSlice)) continue;
+    candidates.push({ unit, stats });
+  }
+  const fires = orderFire(candidates);
+
+  // Run the fire volley. Each fire deducts strength from the threat;
+  // bail early when threat dies. Track which units fired so we can
+  // apply the "repel" 1-HP cost if the threat survives.
+  let hp = threat.strength;
+  const firedUnits: UnitInstance[] = [];
+  for (const { unit, stats } of fires) {
+    if (hp <= 0) break;
+    hp -= stats.strength;
+    firedUnits.push(unit);
+    // Drill token consumes on fire whether or not the threat dies.
+    if (unit.drillToken === true) {
+      unit.drillToken = false;
+    }
+  }
+
+  if (hp <= 0) {
+    // Threat killed before reaching the first impact tile.
+    if (threat.reward !== undefined) {
+      const delta: Partial<Record<string, number>> = {};
+      let any = false;
+      for (const r of RESOURCES) {
+        const v = threat.reward[r];
+        if (v === undefined || v === 0) continue;
+        G.bank[r] += v;
+        delta[r] = v;
+        any = true;
+      }
+      if (any) {
+        appendBankLog(G, 'threatReward', delta, `Threat ${threat.id} repelled`);
+      }
+    }
+    return;
+  }
+
+  // Threat survives the fire. Every unit that fired absorbs 1 HP.
+  for (const unit of firedUnits) {
+    unit.hp -= 1;
+  }
+  // Remove any unit that just died.
+  if (G.defense !== undefined) {
+    G.defense.inPlay = G.defense.inPlay.filter((u) => u.hp > 0);
+  }
+
+  // Now apply the leftover damage to the path's impact tiles. The
+  // resolver walks `occupied` cells in path order; at each tile the
+  // damage is consumed by the unit stack (placement order, bottom-up)
+  // before reducing the building's HP.
+  let damage = hp;
+  for (const cellKeyStr of occupied) {
+    if (damage <= 0) break;
+    const building = grid[cellKeyStr];
+    if (building === undefined) continue;
+    if (building.isCenter === true) continue;
+
+    // Stack consumption — every (still-alive) unit on this tile in
+    // placement order absorbs up to its current HP.
+    const stack = (G.defense?.inPlay ?? [])
+      .filter((u) => u.cellKey === cellKeyStr)
+      .sort((a, b) => a.placementOrder - b.placementOrder);
+    for (const unit of stack) {
+      if (damage <= 0) break;
+      const absorb = Math.min(unit.hp, damage);
+      unit.hp -= absorb;
+      damage -= absorb;
+    }
+    // Remove any units killed by stack absorption.
+    if (G.defense !== undefined) {
+      G.defense.inPlay = G.defense.inPlay.filter((u) => u.hp > 0);
+    }
+
+    if (damage <= 0) break;
+
+    // Then the building. Buildings can't be destroyed; clamp at 1.
+    const newHp = Math.max(1, building.hp - damage);
+    const absorbed = building.hp - newHp;
+    building.hp = newHp;
+    damage -= absorbed;
+  }
+
+  // If the path reached center with damage left, burn the pool.
+  if (damage > 0) {
+    centerBurn(G, random, damage, `Threat ${threat.id} (${threat.name})`);
+  }
+};
+
+/**
+ * Push a `modifier` track card onto the active-modifier stack. Lazy-
+ * initializes the slot. Phase 2.8 clears the stack at end-of-round.
+ */
+const pushModifier = (G: SettlementState, card: ModifierCard): void => {
+  if (G.track === undefined) return;
+  if (G.track.activeModifiers === undefined) G.track.activeModifiers = [];
+  G.track.activeModifiers.push(card);
+};
+
+/**
+ * Apply a `boon` track card by reusing the event-effect dispatcher. The
+ * dispatcher expects an `EventCardDef`, so we wrap the boon's printed
+ * effect into a synthetic single-effect card. Color is set to `'gold'`
+ * because boons that gain bank resources go to the chief's pool — this
+ * matches the retired wander-deck behavior.
+ */
+const dispatchBoon = (
+  G: SettlementState,
+  random: RandomAPI,
+  card: BoonCard,
+): void => {
+  // Wrap the boon as a single-effect event card. The dispatcher takes
+  // the effects array off `card.effects`; we synthesize a minimal one.
+  const synthetic: EventCardDef = {
+    id: `track-boon:${card.id}`,
+    name: card.name,
+    color: 'gold',
+    effects: [card.effect],
+  };
+  // The dispatcher is permissive about ctx (typed as `unknown`); we
+  // pass `undefined` since the resolver isn't inside a stage move with
+  // events plumbing available. Boon effects in TRACK_CARDS are
+  // resource gains today, which don't need the stage transition path.
+  dispatch(G, undefined, random, synthetic);
+};
+
+/**
+ * Boss stub — Phase 2.7 will land the real boss resolver. We keep the
+ * shell in place so resolveTrackCard's switch is exhaustive at runtime
+ * and so the no-op is testable: a boss flip should not throw.
+ */
+const resolveBoss = (G: SettlementState): void => {
+  void G;
+  // Intentional no-op for 2.3.
+};
+
+/**
+ * Single entry point. Routes each `TrackCardDef` to its sub-resolver.
+ * Mutates `G` in place.
+ */
+export const resolveTrackCard = (
+  G: SettlementState,
+  random: RandomAPI,
+  card: TrackCardDef,
+): void => {
+  switch (card.kind) {
+    case 'boon':
+      dispatchBoon(G, random, card);
+      return;
+    case 'modifier':
+      pushModifier(G, card);
+      return;
+    case 'threat':
+      resolveThreat(G, random, card);
+      return;
+    case 'boss':
+      resolveBoss(G);
+      return;
+  }
+};
