@@ -16,8 +16,9 @@
 // from a regular threat at a glance. Visual tokens come exclusively
 // from `palette.track.*` per CLAUDE.md's no-raw-hex rule.
 
-import { Box, Paper, Stack, Typography } from '@mui/material';
+import { Box, Paper, Stack, Tooltip, Typography } from '@mui/material';
 import type { TrackCardDef } from '../../data/index.ts';
+import { useReducedMotion } from '../layout/useReducedMotion.ts';
 
 export type TrackCardState = 'past' | 'current' | 'next';
 
@@ -63,40 +64,53 @@ interface KindIconProps {
   size?: number;
 }
 
+// Defense redesign 3.9 — plain-English explanation per kind. Surfaced
+// in the tooltip the icon wears so non-developers can read what the
+// silhouette means.
+const KIND_TOOLTIP: Record<TrackCardDef['kind'], string> = {
+  threat: 'Threat — walks toward center along its row/column and damages buildings + the village.',
+  boon: 'Boon — friendly card. Resolves immediately on flip with a one-line effect.',
+  modifier: 'Modifier — bends rules for one round (range / strength / cost shifts, etc.).',
+  boss: 'Boss — final card. Each unmet threshold (Sci / Eco / Mil) costs the village an extra attack.',
+};
+
 function KindIcon({ kind, size = 18 }: KindIconProps) {
   const { d, extra } = GLYPHS[kind];
   return (
-    <Box
-      component="span"
-      aria-hidden
-      sx={{
-        display: 'inline-flex',
-        width: size,
-        height: size,
-        flexShrink: 0,
-      }}
-    >
-      <svg viewBox="0 0 32 32" width={size} height={size}>
-        <path
-          d={d}
-          stroke="currentColor"
-          strokeWidth={1.6}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-        />
-        {extra ? (
+    <Tooltip title={KIND_TOOLTIP[kind]} placement="top">
+      <Box
+        component="span"
+        role="img"
+        aria-label={`${KIND_LABEL[kind]} icon`}
+        sx={{
+          display: 'inline-flex',
+          width: size,
+          height: size,
+          flexShrink: 0,
+        }}
+      >
+        <svg viewBox="0 0 32 32" width={size} height={size}>
           <path
-            d={extra}
+            d={d}
             stroke="currentColor"
-            strokeWidth={1.4}
+            strokeWidth={1.6}
             strokeLinecap="round"
             strokeLinejoin="round"
             fill="none"
           />
-        ) : null}
-      </svg>
-    </Box>
+          {extra ? (
+            <path
+              d={extra}
+              stroke="currentColor"
+              strokeWidth={1.4}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+          ) : null}
+        </svg>
+      </Box>
+    </Tooltip>
   );
 }
 
@@ -122,17 +136,28 @@ const summaryFor = (card: TrackCardDef): string => {
 
 export function TrackCardView({ card, state }: TrackCardViewProps) {
   const isBoss = card.kind === 'boss';
+  const reducedMotion = useReducedMotion();
   // Slightly muted opacity for past cards keeps them visually de-
   // emphasised even with a distinct border accent.
   const opacity = state === 'past' ? 0.55 : 1;
+  // Defense redesign 3.9 — make every card focusable so the strip's
+  // arrow-key navigation can cycle past → current → next without a
+  // mouse. Tabbing into the strip lands on the first focusable card,
+  // and arrow keys (handled in TrackStrip) move focus across siblings.
+  const ariaCurrent: 'true' | 'false' | undefined =
+    state === 'current' ? 'true' : state === 'next' ? 'false' : undefined;
 
   return (
     <Paper
       elevation={0}
       role="article"
-      aria-label={`${KIND_LABEL[card.kind]} — ${card.name}`}
+      aria-label={`${KIND_LABEL[card.kind]} — ${card.name}. ${card.description}`}
+      aria-current={ariaCurrent}
+      tabIndex={0}
+      data-track-card="true"
       data-track-card-state={state}
       data-track-card-kind={card.kind}
+      data-reduced-motion={reducedMotion ? 'true' : 'false'}
       title={`${card.name} — ${card.description}`}
       sx={{
         position: 'relative',
@@ -154,10 +179,21 @@ export function TrackCardView({ card, state }: TrackCardViewProps) {
         bgcolor: (t) => t.palette.card.surface,
         color: (t) => t.palette.card.text,
         opacity,
-        transition: 'opacity 250ms ease, border-color 250ms ease',
+        // Defense-redesign 3.9: animation budget = ≤ 250ms, suppressed
+        // entirely under prefers-reduced-motion so the card does not
+        // visibly fade or shift its border color.
+        transition: reducedMotion
+          ? 'none'
+          : 'opacity 250ms ease, border-color 250ms ease',
         boxShadow: (t) =>
           state === 'current' ? t.palette.shadow.floating : t.palette.shadow.card,
         overflow: 'hidden',
+        // Visible focus ring for keyboard users.
+        '&:focus-visible': {
+          outline: '2px solid',
+          outlineColor: (t) => t.palette.status.active,
+          outlineOffset: 2,
+        },
       }}
     >
       <Stack spacing={0.5} sx={{ height: '100%' }}>

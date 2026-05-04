@@ -19,6 +19,7 @@ import { SeatPickerContext } from './ui/layout/SeatPickerContext.ts';
 import { CardInfoProvider } from './ui/cards/CardInfoContext.tsx';
 import { CardPreviewPage } from './ui/cardPreview/CardPreviewPage.tsx';
 import { MatPreviewPage } from './ui/matPreview/MatPreviewPage.tsx';
+import { FuzzPage } from './fuzz/FuzzPage.tsx';
 import type { PlayerID } from './game/index.ts';
 
 /** Whether to show bgio's built-in Debug panel (12.2).
@@ -226,12 +227,27 @@ const AppShell: ComponentType = () => {
   // `#mats` opens the player-mat design preview page. Both are
   // reachable in any build. Read at first render only — each preview
   // page exposes a "Back to game" button that resets the hash + reloads.
+  // Defense redesign 3.9 — `#fuzz` opens the headless 4-player
+  // RandomBot driver used by the e2e smoke spec. Dev-only (the build
+  // dead-code-eliminates the page outside `import.meta.env.DEV`).
   if (typeof window !== 'undefined') {
     if (window.location.hash === '#cards') {
       return <CardPreviewPage />;
     }
     if (window.location.hash === '#mats') {
       return <MatPreviewPage />;
+    }
+    const isDev =
+      (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true;
+    // Accept `#fuzz` exact-match or `#fuzz?…` so callers (e.g. the
+    // e2e smoke spec) can pass a seed via the hash query without
+    // tripping the strict equality check.
+    if (
+      isDev &&
+      (window.location.hash === '#fuzz' ||
+        window.location.hash.startsWith('#fuzz?'))
+    ) {
+      return <FuzzPage />;
     }
   }
   return (

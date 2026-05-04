@@ -25,7 +25,7 @@
 // to drop to N attacks"). It's a nice-to-have per the plan; we ship it
 // because the math is one line and the table benefits from the framing.
 
-import { Box, Paper, Stack, Typography } from '@mui/material';
+import { Box, Paper, Stack, Tooltip, Typography } from '@mui/material';
 import type { BossCard } from '../../data/index.ts';
 
 export interface BossReadoutProps {
@@ -102,58 +102,67 @@ interface ThresholdRowProps {
 }
 
 function ThresholdRow({ label, short, current, required, met }: ThresholdRowProps) {
+  // Defense redesign 3.9 — plain-English tooltip per row. Reads the
+  // delta to the threshold so the table knows how far off (or how much
+  // surplus) it has.
+  const delta = current - required;
+  const tooltip = met
+    ? `${label} threshold met (${current} of ${required}, +${delta} surplus). Subtracts one boss attack.`
+    : `${label} threshold NOT met (${current} of ${required}, need ${-delta} more). Counts as one extra boss attack.`;
   return (
-    <Stack
-      direction="row"
-      spacing={1}
-      role="listitem"
-      data-testid={`boss-readout-row-${short.toLowerCase()}`}
-      data-met={met ? 'true' : 'false'}
-      aria-label={`${label}: ${current} of ${required} ${met ? 'met' : 'not met'}`}
-      sx={{
-        alignItems: 'center',
-        px: 1,
-        py: 0.5,
-        borderRadius: 0.5,
-        border: '1px solid',
-        borderColor: (t) =>
-          met ? t.palette.bossReadout.metAccent : t.palette.bossReadout.unmetAccent,
-        bgcolor: (t) =>
-          met ? t.palette.bossReadout.metSurface : t.palette.bossReadout.unmetSurface,
-        color: (t) => t.palette.bossReadout.text,
-      }}
-    >
-      <Box
+    <Tooltip title={tooltip} placement="top">
+      <Stack
+        direction="row"
+        spacing={1}
+        role="listitem"
+        data-testid={`boss-readout-row-${short.toLowerCase()}`}
+        data-met={met ? 'true' : 'false'}
+        aria-label={`${label}: ${current} of ${required} ${met ? 'met' : 'not met'}`}
         sx={{
-          color: (t) =>
+          alignItems: 'center',
+          px: 1,
+          py: 0.5,
+          borderRadius: 0.5,
+          border: '1px solid',
+          borderColor: (t) =>
             met ? t.palette.bossReadout.metAccent : t.palette.bossReadout.unmetAccent,
-          display: 'inline-flex',
+          bgcolor: (t) =>
+            met ? t.palette.bossReadout.metSurface : t.palette.bossReadout.unmetSurface,
+          color: (t) => t.palette.bossReadout.text,
         }}
       >
-        <MetGlyph met={met} />
-      </Box>
-      <Typography
-        variant="caption"
-        sx={{
-          fontWeight: 700,
-          letterSpacing: '0.04em',
-          textTransform: 'uppercase',
-          width: 64,
-          flexShrink: 0,
-        }}
-      >
-        {label}
-      </Typography>
-      <Typography
-        variant="body2"
-        sx={{
-          fontVariantNumeric: 'tabular-nums',
-          fontWeight: 600,
-        }}
-      >
-        {current} / {required}
-      </Typography>
-    </Stack>
+        <Box
+          sx={{
+            color: (t) =>
+              met ? t.palette.bossReadout.metAccent : t.palette.bossReadout.unmetAccent,
+            display: 'inline-flex',
+          }}
+        >
+          <MetGlyph met={met} />
+        </Box>
+        <Typography
+          variant="caption"
+          sx={{
+            fontWeight: 700,
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+            width: 64,
+            flexShrink: 0,
+          }}
+        >
+          {label}
+        </Typography>
+        <Typography
+          variant="body2"
+          sx={{
+            fontVariantNumeric: 'tabular-nums',
+            fontWeight: 600,
+          }}
+        >
+          {current} / {required}
+        </Typography>
+      </Stack>
+    </Tooltip>
   );
 }
 

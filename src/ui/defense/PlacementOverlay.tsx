@@ -17,6 +17,7 @@
 // number of units already on the tile (so the player can see "stacking
 // onto the same tile" at a glance — D13 stack visualization).
 
+import { useEffect } from 'react';
 import { Box, Button, Stack, Typography } from '@mui/material';
 import type { DomesticBuilding } from '../../game/roles/domestic/types.ts';
 import type { UnitInstance } from '../../game/roles/defense/types.ts';
@@ -48,6 +49,30 @@ export function PlacementOverlay({
   onPick,
   onCancel,
 }: PlacementOverlayProps) {
+  // Defense redesign 3.9 — Esc cancels the in-flight placement.
+  // Mounted unconditionally (the effect early-returns when no unit is
+  // armed) so the listener follows the overlay's lifecycle and we don't
+  // leak handlers across mount / unmount cycles.
+  useEffect(() => {
+    if (selectedUnitName === undefined) return;
+    const handler = (evt: globalThis.KeyboardEvent): void => {
+      if (evt.key !== 'Escape') return;
+      // Don't fight inputs / textareas — Esc is sometimes used to clear
+      // their value.
+      const target = evt.target as HTMLElement | null;
+      if (target !== null) {
+        const tag = target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      }
+      evt.preventDefault();
+      onCancel();
+    };
+    window.addEventListener('keydown', handler);
+    return () => {
+      window.removeEventListener('keydown', handler);
+    };
+  }, [selectedUnitName, onCancel]);
+
   if (selectedUnitName === undefined) return null;
 
   // Pull placement targets out of the grid: occupied, non-center cells.
@@ -99,14 +124,15 @@ export function PlacementOverlay({
             size="small"
             variant="text"
             onClick={onCancel}
-            aria-label="Cancel placement"
+            aria-label="Cancel placement (Esc)"
+            aria-keyshortcuts="Escape"
             data-placement-overlay-cancel="true"
             sx={{
               color: (t) => t.palette.status.muted,
               textTransform: 'none',
             }}
           >
-            Cancel
+            Cancel <Box component="span" aria-hidden sx={{ opacity: 0.7, ml: 0.5, fontSize: '0.7rem' }}>(Esc)</Box>
           </Button>
         </Stack>
         {cellKeys.length === 0 ? (

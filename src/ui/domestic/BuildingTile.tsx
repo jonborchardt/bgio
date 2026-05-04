@@ -27,6 +27,7 @@ import type { UnitInstance } from '../../game/roles/defense/types.ts';
 import { BuildingCard } from '../cards/BuildingCard.tsx';
 import { HpPips } from './HpPips.tsx';
 import { UnitStack } from './UnitStack.tsx';
+import { useReducedMotion } from '../layout/useReducedMotion.ts';
 
 export interface BuildingTileProps {
   building: DomesticBuilding;
@@ -56,17 +57,21 @@ export function BuildingTile({
   // re-renders with a new HP value.
   const prevHpRef = useRef<number>(building.hp);
   const [flash, setFlash] = useState<FlashState>(null);
+  // Defense redesign 3.9 — respect prefers-reduced-motion. With reduced
+  // motion the flash never fires; the HP pip swap (and the contextual
+  // tooltip) is enough to communicate the state change.
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     const prev = prevHpRef.current;
     const next = building.hp;
     if (next < prev) {
-      setFlash('damage');
+      setFlash(reducedMotion ? null : 'damage');
     } else if (next > prev) {
-      setFlash('repair');
+      setFlash(reducedMotion ? null : 'repair');
     }
     prevHpRef.current = next;
-  }, [building.hp]);
+  }, [building.hp, reducedMotion]);
 
   useEffect(() => {
     if (flash === null) return;

@@ -8,7 +8,7 @@
 // current / next card so the table can read "we're in phase 4 right
 // now" at a glance.
 
-import { Box, Typography } from '@mui/material';
+import { Box, Tooltip, Typography } from '@mui/material';
 
 export interface PhaseMarkerProps {
   phase: number;
@@ -20,55 +20,68 @@ export interface PhaseMarkerProps {
 
 export function PhaseMarker({ phase, active = false, boss = false }: PhaseMarkerProps) {
   const label = boss ? 'Boss' : `P${phase}`;
+  // Defense redesign 3.9 — plain-English tooltip per phase. Boss has its
+  // own copy because the table reads it as different from a regular
+  // phase marker; non-boss phases share a difficulty hint that scales
+  // with the phase number.
+  const tooltip = boss
+    ? 'Phase 10 — boss flips here. Each met threshold drops one boss attack.'
+    : `Phase ${phase} of 10 — difficulty climbs each phase, with the boss at phase 10.`;
   return (
-    <Box
-      role="status"
-      aria-label={boss ? 'Boss phase marker' : `Phase ${phase} marker`}
-      data-phase={phase}
-      data-active={active ? 'true' : 'false'}
-      data-boss={boss ? 'true' : 'false'}
-      sx={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        px: 0.75,
-        py: 0.25,
-        borderRadius: 999,
-        minWidth: 28,
-        height: 18,
-        border: '1px solid',
-        borderColor: (t) =>
+    <Tooltip title={tooltip} placement="top">
+      <Box
+        role="status"
+        aria-label={
           boss
-            ? t.palette.track.boss
-            : t.palette.track.phaseMarkers[Math.max(0, Math.min(9, phase - 1))]!,
-        bgcolor: (t) =>
-          active
-            ? boss
-              ? t.palette.track.boss
-              : t.palette.track.phaseMarkers[Math.max(0, Math.min(9, phase - 1))]!
-            : 'transparent',
-        color: (t) =>
-          active
-            ? t.palette.card.text
-            : boss
+            ? 'Boss phase marker (phase 10)'
+            : `Phase ${phase} of 10 marker${active ? ', active' : ''}`
+        }
+        data-phase={phase}
+        data-active={active ? 'true' : 'false'}
+        data-boss={boss ? 'true' : 'false'}
+        sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          px: 0.75,
+          py: 0.25,
+          borderRadius: 999,
+          minWidth: 28,
+          height: 18,
+          border: '1px solid',
+          borderColor: (t) =>
+            boss
               ? t.palette.track.boss
               : t.palette.track.phaseMarkers[Math.max(0, Math.min(9, phase - 1))]!,
-        transition: 'background-color 150ms ease, border-color 150ms ease',
-      }}
-    >
-      <Typography
-        variant="caption"
-        sx={{
-          fontWeight: 700,
-          fontSize: '0.6rem',
-          letterSpacing: '0.06em',
-          lineHeight: 1,
-          textTransform: 'uppercase',
+          bgcolor: (t) =>
+            active
+              ? boss
+                ? t.palette.track.boss
+                : t.palette.track.phaseMarkers[Math.max(0, Math.min(9, phase - 1))]!
+              : 'transparent',
+          color: (t) =>
+            active
+              ? t.palette.card.text
+              : boss
+                ? t.palette.track.boss
+                : t.palette.track.phaseMarkers[Math.max(0, Math.min(9, phase - 1))]!,
+          transition: 'background-color 150ms ease, border-color 150ms ease',
         }}
       >
-        {label}
-      </Typography>
-    </Box>
+        <Typography
+          variant="caption"
+          sx={{
+            fontWeight: 700,
+            fontSize: '0.6rem',
+            letterSpacing: '0.06em',
+            lineHeight: 1,
+            textTransform: 'uppercase',
+          }}
+        >
+          {label}
+        </Typography>
+      </Box>
+    </Tooltip>
   );
 }
 

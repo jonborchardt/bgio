@@ -20,6 +20,7 @@
 // via a wrapping Tooltip + a status caption below; we never communicate
 // disabled state via color alone (CLAUDE.md a11y rule).
 
+import { useEffect } from 'react';
 import { Box, Button, Stack, Tooltip, Typography } from '@mui/material';
 import { flipTrackDisabledReason } from './flipTrackLogic.ts';
 
@@ -42,6 +43,37 @@ export function FlipTrackButton({
     upcomingCount,
   });
   const disabled = reason !== null;
+
+  // Defense redesign 3.9 — keyboard shortcut. Pressing **F** anywhere
+  // outside an editable field fires the flip move when the button is
+  // currently enabled. We mount a `keydown` listener on the document so
+  // the shortcut works regardless of which panel has focus, and we
+  // gate on the same disabled / enabled signal the click path uses so
+  // the keyboard never bypasses the move's preconditions.
+  useEffect(() => {
+    if (disabled) return;
+    const handler = (evt: globalThis.KeyboardEvent): void => {
+      // Ignore when modifier keys are held — those are usually browser
+      // / OS shortcuts (Ctrl-F find, etc.) and we don't want to fight
+      // them.
+      if (evt.altKey || evt.ctrlKey || evt.metaKey || evt.shiftKey) return;
+      if (evt.key !== 'f' && evt.key !== 'F') return;
+      // Don't hijack typing in inputs / textareas / contenteditable
+      // surfaces.
+      const target = evt.target as HTMLElement | null;
+      if (target !== null) {
+        const tag = target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        if ((target as HTMLElement & { isContentEditable?: boolean }).isContentEditable) return;
+      }
+      evt.preventDefault();
+      onFlip();
+    };
+    window.addEventListener('keydown', handler);
+    return () => {
+      window.removeEventListener('keydown', handler);
+    };
+  }, [disabled, onFlip]);
 
   // The "ready to flip" state is when the button is enabled — flag it
   // for the test surface so screen readers / e2e can find it.
@@ -67,14 +99,17 @@ export function FlipTrackButton({
       data-flip-track-control="true"
       sx={{ alignItems: 'flex-start' }}
     >
-      <Tooltip title={reason ?? ''} disableHoverListener={!disabled}>
+      <Tooltip
+        title={reason ?? 'Flip the next track card. Keyboard: F.'}
+      >
         <Box component="span" sx={{ display: 'inline-flex' }}>
           <Button
             variant="contained"
             size="large"
             disabled={disabled}
             onClick={onFlip}
-            aria-label="Flip the next track card"
+            aria-label="Flip the next track card. Keyboard shortcut F."
+            aria-keyshortcuts="F"
             data-flip-track-button="true"
             data-flip-track-disabled={disabled ? 'true' : 'false'}
             data-flip-track-status={status}
@@ -90,7 +125,7 @@ export function FlipTrackButton({
               },
             }}
           >
-            Flip Track
+            Flip Track <Box component="span" aria-hidden sx={{ opacity: 0.7, ml: 1, fontSize: '0.75rem' }}>(F)</Box>
           </Button>
         </Box>
       </Tooltip>

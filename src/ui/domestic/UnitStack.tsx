@@ -100,32 +100,42 @@ function UnitChip({ unit }: UnitChipProps) {
         </Box>
         <Stack direction="row" spacing={0.3} sx={{ alignItems: 'center' }}>
           {drilled ? (
-            <Box
-              component="span"
-              data-drill="true"
-              aria-label="Drilled"
-              sx={{
-                color: (t) => t.palette.status.warning,
-                fontWeight: 700,
-                lineHeight: 1,
-              }}
+            <Tooltip
+              title="Drilled — this unit's next fire deals +1 strength. The marker is consumed on use."
+              placement="top"
             >
-              ✦
-            </Box>
+              <Box
+                component="span"
+                data-drill="true"
+                aria-label="Drilled — next fire +1 strength"
+                sx={{
+                  color: (t) => t.palette.status.warning,
+                  fontWeight: 700,
+                  lineHeight: 1,
+                }}
+              >
+                ✦
+              </Box>
+            </Tooltip>
           ) : null}
           {taughtSkills.length > 0 ? (
-            <Box
-              component="span"
-              data-taught-count={taughtSkills.length}
-              aria-label={`${taughtSkills.length} taught skill${taughtSkills.length === 1 ? '' : 's'}`}
-              sx={{
-                fontSize: '0.6rem',
-                color: (t) => t.palette.role.science.light,
-                fontWeight: 700,
-              }}
+            <Tooltip
+              title={`Taught skills (durable): ${taughtSkills.join(', ')}`}
+              placement="top"
             >
-              +{taughtSkills.length}
-            </Box>
+              <Box
+                component="span"
+                data-taught-count={taughtSkills.length}
+                aria-label={`${taughtSkills.length} taught skill${taughtSkills.length === 1 ? '' : 's'}: ${taughtSkills.join(', ')}`}
+                sx={{
+                  fontSize: '0.6rem',
+                  color: (t) => t.palette.role.science.light,
+                  fontWeight: 700,
+                }}
+              >
+                +{taughtSkills.length}
+              </Box>
+            </Tooltip>
           ) : null}
           <Box component="span" sx={{ opacity: 0.85 }}>
             {unit.hp}

@@ -22,7 +22,7 @@
 // renders. No moves are dispatched here; click affordances are
 // reserved for sub-phase 3.6 (red-tech track manipulation).
 
-import { useMemo } from 'react';
+import { useCallback, useMemo, useRef, type KeyboardEvent } from 'react';
 import { Box, Stack, Typography } from '@mui/material';
 import type { TrackCardDef } from '../../data/index.ts';
 import { TrackCardView } from './TrackCardView.tsx';
@@ -110,10 +110,56 @@ export function TrackStrip({
     [],
   );
 
+  // Defense redesign 3.9 — keyboard navigation. The card row is
+  // explicitly focusable (each TrackCardView has `tabIndex={0}`); arrow
+  // keys (Left / Right) move focus across siblings, Home / End jump to
+  // the first / last focusable card. Up / Down are intentional no-ops
+  // because the strip is one-dimensional. We intercept the event at the
+  // strip level (rather than per card) so adjacent cards don't have to
+  // know about each other — the strip queries DOM siblings at the
+  // moment the key fires.
+  const cardRowRef = useRef<HTMLDivElement | null>(null);
+  const handleCardRowKeyDown = useCallback((evt: KeyboardEvent<HTMLDivElement>) => {
+    const row = cardRowRef.current;
+    if (row === null) return;
+    const target = evt.target as HTMLElement | null;
+    if (target === null) return;
+    // Only react when focus is on a track-card child.
+    if (target.dataset.trackCard !== 'true') return;
+    const cards = Array.from(
+      row.querySelectorAll<HTMLElement>('[data-track-card="true"]'),
+    );
+    if (cards.length === 0) return;
+    const idx = cards.indexOf(target);
+    let nextIdx = idx;
+    switch (evt.key) {
+      case 'ArrowRight':
+        nextIdx = Math.min(cards.length - 1, idx + 1);
+        break;
+      case 'ArrowLeft':
+        nextIdx = Math.max(0, idx - 1);
+        break;
+      case 'Home':
+        nextIdx = 0;
+        break;
+      case 'End':
+        nextIdx = cards.length - 1;
+        break;
+      default:
+        return;
+    }
+    if (nextIdx === idx) return;
+    evt.preventDefault();
+    const nextCard = cards[nextIdx];
+    if (nextCard === undefined) return;
+    nextCard.focus();
+  }, []);
+
   return (
     <Box
       data-testid="track-strip"
-      aria-label="Global event track"
+      role="region"
+      aria-label="Global event track. Use arrow keys to move between past, current, and next cards."
       sx={{
         width: '100%',
         py: 1,
@@ -151,8 +197,11 @@ export function TrackStrip({
         {/* Card row. Horizontal scroll on overflow so the strip never
             forces the page wider than the play area. */}
         <Stack
+          ref={cardRowRef}
           direction="row"
           spacing={1}
+          data-testid="track-strip-cards"
+          onKeyDown={handleCardRowKeyDown}
           sx={{ overflowX: 'auto', minWidth: 0, alignItems: 'center' }}
         >
           {truncatedPast > 0 ? (

@@ -16,8 +16,16 @@
 // The component is intentionally presentational — damage / repair
 // flashes are owned by `BuildingTile` (which sees the hp delta between
 // renders and tints the surrounding tile, not the pips themselves).
+//
+// Defense-redesign 3.9 polish:
+//   - HP state is communicated by **shape + color**: critical pips render
+//     with an inner "X" mark, warning pips with an inner "!" stroke, and
+//     healthy pips stay as plain filled circles. Color-blind users can
+//     read the state without depending on the green / amber / red ramp.
+//   - The whole row is wrapped in a `Tooltip` whose plain-English label
+//     explains what the pips mean ("3/4 hp — damaged but stable").
 
-import { Box, Stack } from '@mui/material';
+import { Box, Stack, Tooltip } from '@mui/material';
 import type { Theme } from '@mui/material/styles';
 
 export interface HpPipsProps {
@@ -37,6 +45,84 @@ const fillTokenForState = (current: number, max: number) => (t: Theme): string =
   return t.palette.status.warning;
 };
 
+// Plain-English description of the HP state. Surfaced in the tooltip
+// so non-developers can read the row without inferring from color.
+const stateLabel = (current: number, max: number): string => {
+  if (current >= max) return 'fully healed';
+  if (current <= 1) return 'critical — one more hit destroys this slot of capacity';
+  if (current * 2 <= max) return 'damaged — yields are halved or worse';
+  return 'damaged but stable';
+};
+
+// Defense redesign 3.9 — color-blind-safe shape variants. The pip always
+// reads as a circle but the *state* is reinforced by an inner shape:
+//   - healthy  → solid circle (no overlay)
+//   - warning  → "!" stroke for "watch this"
+//   - critical → "x" stroke for "about to break"
+// Empty pips render as a hollow ring with no inner shape; the row's
+// total length still communicates max hp at a glance.
+type PipShape = 'healthy' | 'warning' | 'critical' | 'empty';
+
+const shapeFor = (filled: boolean, current: number, max: number): PipShape => {
+  if (!filled) return 'empty';
+  if (current >= max) return 'healthy';
+  if (current <= 1) return 'critical';
+  return 'warning';
+};
+
+interface PipShapeOverlayProps {
+  shape: PipShape;
+  size: number;
+}
+
+function PipShapeOverlay({ shape, size }: PipShapeOverlayProps) {
+  if (shape === 'healthy' || shape === 'empty') return null;
+  // Ratio of inner mark to pip diameter — keeps the silhouette readable
+  // even at the default 8px pip size.
+  const inset = size * 0.25;
+  const innerSize = size - inset * 2;
+  return (
+    <Box
+      component="span"
+      aria-hidden
+      sx={{
+        position: 'absolute',
+        top: inset,
+        left: inset,
+        width: innerSize,
+        height: innerSize,
+        pointerEvents: 'none',
+        // Inner mark contrasts with the filled pip color.
+        color: (t) => t.palette.card.text,
+      }}
+    >
+      <svg viewBox="0 0 8 8" width={innerSize} height={innerSize}>
+        {shape === 'critical' ? (
+          <path
+            d="M2 2 L6 6 M6 2 L2 6"
+            stroke="currentColor"
+            strokeWidth={1.4}
+            strokeLinecap="round"
+            fill="none"
+          />
+        ) : (
+          // warning — exclamation stroke
+          <>
+            <path
+              d="M4 1.5 L4 4.5"
+              stroke="currentColor"
+              strokeWidth={1.4}
+              strokeLinecap="round"
+              fill="none"
+            />
+            <circle cx={4} cy={6.2} r={0.7} fill="currentColor" />
+          </>
+        )}
+      </svg>
+    </Box>
+  );
+}
+
 export function HpPips({ current, max, size = 8 }: HpPipsProps) {
   // Clamp inputs defensively — the theme tokens still resolve to a
   // sensible state if the caller hands us out-of-range values (we'd
@@ -51,45 +137,57 @@ export function HpPips({ current, max, size = 8 }: HpPipsProps) {
     pips.push({ key: i, filled: i < clampedCurrent });
   }
 
+  const stateName =
+    clampedCurrent >= clampedMax
+      ? 'healthy'
+      : clampedCurrent <= 1
+        ? 'critical'
+        : 'warning';
+  const tooltip = `HP ${clampedCurrent} / ${clampedMax} — ${stateLabel(
+    clampedCurrent,
+    clampedMax,
+  )}`;
+
   return (
-    <Stack
-      direction="row"
-      spacing={0.4}
-      role="img"
-      aria-label={`HP ${clampedCurrent} of ${clampedMax}`}
-      data-hp-current={clampedCurrent}
-      data-hp-max={clampedMax}
-      data-hp-state={
-        clampedCurrent >= clampedMax
-          ? 'healthy'
-          : clampedCurrent <= 1
-            ? 'critical'
-            : 'warning'
-      }
-      sx={{ alignItems: 'center', flexShrink: 0 }}
-    >
-      {pips.map((pip) => (
-        <Box
-          key={pip.key}
-          data-hp-pip={pip.filled ? 'filled' : 'empty'}
-          sx={{
-            width: size,
-            height: size,
-            borderRadius: '50%',
-            // Filled pips read state via the bg color. Empty pips show
-            // a faint ring so the maxHp track is still legible at a
-            // glance.
-            bgcolor: pip.filled
-              ? fillToken
-              : 'transparent',
-            border: '1px solid',
-            borderColor: (t) =>
-              pip.filled ? fillToken(t) : t.palette.status.muted,
-            boxSizing: 'border-box',
-          }}
-        />
-      ))}
-    </Stack>
+    <Tooltip title={tooltip} placement="top">
+      <Stack
+        direction="row"
+        spacing={0.4}
+        role="img"
+        aria-label={`HP ${clampedCurrent} of ${clampedMax}, ${stateName}`}
+        data-hp-current={clampedCurrent}
+        data-hp-max={clampedMax}
+        data-hp-state={stateName}
+        sx={{ alignItems: 'center', flexShrink: 0 }}
+      >
+        {pips.map((pip) => {
+          const shape = shapeFor(pip.filled, clampedCurrent, clampedMax);
+          return (
+            <Box
+              key={pip.key}
+              data-hp-pip={pip.filled ? 'filled' : 'empty'}
+              data-hp-pip-shape={shape}
+              sx={{
+                position: 'relative',
+                width: size,
+                height: size,
+                borderRadius: '50%',
+                // Filled pips read state via the bg color. Empty pips show
+                // a faint ring so the maxHp track is still legible at a
+                // glance.
+                bgcolor: pip.filled ? fillToken : 'transparent',
+                border: '1px solid',
+                borderColor: (t) =>
+                  pip.filled ? fillToken(t) : t.palette.status.muted,
+                boxSizing: 'border-box',
+              }}
+            >
+              <PipShapeOverlay shape={shape} size={size} />
+            </Box>
+          );
+        })}
+      </Stack>
+    </Tooltip>
   );
 }
 

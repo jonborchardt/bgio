@@ -71,9 +71,11 @@ describe('TechCard', () => {
     // When costBag is rendered as tokens, the redundant `cost` string is
     // suppressed so the same cost doesn't appear twice on the card.
     expect(html).not.toContain('3 wood + 1 gold');
-    // ResourceToken renders title="<count> <resource>"
-    expect(html).toContain('title="3 wood"');
-    expect(html).toContain('title="1 gold"');
+    // ResourceToken renders title="<count> <Resource>" (title-cased
+    // resource name) — defense-redesign 3.9 polish: aligned with the
+    // canonical token markup used everywhere else.
+    expect(html).toContain('title="3 Wood"');
+    expect(html).toContain('title="1 Gold"');
   });
 
   it('renders all four per-role panels with their lines populated', () => {

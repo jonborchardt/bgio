@@ -104,22 +104,28 @@ function UnitRow({ unit }: UnitRowProps) {
           sx={{ flexWrap: 'wrap', rowGap: 0.25, alignItems: 'center' }}
         >
           {taughtSkills.map((skillID) => (
-            <Box
+            <Tooltip
               key={skillID}
-              component="span"
-              data-defense-inplay-skill={skillID}
-              sx={{
-                px: 0.6,
-                py: 0.1,
-                borderRadius: 0.75,
-                bgcolor: (t) => t.palette.role.science.dark,
-                color: (t) => t.palette.role.science.contrastText,
-                fontSize: '0.7rem',
-                fontWeight: 700,
-              }}
+              title={`Taught skill ${skillID} — permanent on this unit until it dies.`}
+              placement="top"
             >
-              {skillID}
-            </Box>
+              <Box
+                component="span"
+                data-defense-inplay-skill={skillID}
+                aria-label={`Taught skill: ${skillID}`}
+                sx={{
+                  px: 0.6,
+                  py: 0.1,
+                  borderRadius: 0.75,
+                  bgcolor: (t) => t.palette.role.science.dark,
+                  color: (t) => t.palette.role.science.contrastText,
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                }}
+              >
+                {skillID}
+              </Box>
+            </Tooltip>
           ))}
         </Stack>
       ) : null}

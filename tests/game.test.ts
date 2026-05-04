@@ -19,15 +19,22 @@ describe('game smoke', () => {
     // behavior; 02.1's phase skeleton pins active players to specific seats
     // (chiefPhase -> chief seat only) so a cycle from 0 -> 1 is no longer
     // legal. We just check that `pass` resolves without error and leaves the
-    // game in chiefPhase with the chief still active.
+    // game in chiefPhase. Defense-redesign 3.9 polish: the chief phase now
+    // marks every seat active in `Stage.NULL` so non-chief seats can call
+    // the stage-agnostic `requestHelp` while they wait — each "real" move
+    // self-gates by role, so non-chief seats can't actually drive chief
+    // actions. So we expect every seat in `activePlayers`, with the chief
+    // still the `currentPlayer`.
     const client = makeClient();
     expect(client.getState()!.ctx.currentPlayer).toBe('0');
     expect(client.getState()!.ctx.phase).toBe('chiefPhase');
     runMoves(client, [{ player: '0', move: 'pass' }]);
     const after = client.getState()!;
     expect(after.ctx.phase).toBe('chiefPhase');
-    // Chief seat (player '0' in a 2-player game) remains the lone active seat.
-    expect(Object.keys(after.ctx.activePlayers ?? {})).toEqual(['0']);
+    expect(after.ctx.currentPlayer).toBe('0');
+    // Every seat is active in Stage.NULL during chiefPhase (so non-chief
+    // seats can request help). Only the chief can drive chief moves.
+    expect(Object.keys(after.ctx.activePlayers ?? {}).sort()).toEqual(['0', '1']);
   });
 });
 

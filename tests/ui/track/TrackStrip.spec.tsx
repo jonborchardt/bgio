@@ -79,8 +79,20 @@ describe('TrackStrip (3.1)', () => {
       phase: 1,
     });
     // All ten phase markers render regardless of game state.
+    // Defense-redesign 3.9 polish: aria-labels now include the
+    // total ("Phase 1 of 10 marker") so screen readers can position
+    // the user inside the strip without inferring from the count;
+    // the active phase appends ", active" so the user hears the
+    // marker that indicates the live phase. Phase 1 is the active
+    // phase in this empty-state render, so its aria-label includes
+    // that suffix.
     for (let p = 1; p <= 10; p += 1) {
-      const aria = p === 10 ? 'Boss phase marker' : `Phase ${p} marker`;
+      const aria =
+        p === 10
+          ? 'Boss phase marker (phase 10)'
+          : p === 1
+            ? 'Phase 1 of 10 marker, active'
+            : `Phase ${p} of 10 marker`;
       expect(html).toContain(`aria-label="${aria}"`);
     }
     // Empty hint visible.

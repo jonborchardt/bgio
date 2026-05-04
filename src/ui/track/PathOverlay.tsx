@@ -24,6 +24,7 @@
 import { useContext, useMemo } from 'react';
 import { Box } from '@mui/material';
 import { ResolveAnimationContext } from './resolveAnimationContext.tsx';
+import { useReducedMotion } from '../layout/useReducedMotion.ts';
 
 export interface PathOverlayProps {
   /** Optional — when not supplied, the overlay calculates its own
@@ -62,6 +63,12 @@ const computeOverlayBounds = (
 
 export function PathOverlay({ bounds }: PathOverlayProps) {
   const { current } = useContext(ResolveAnimationContext);
+  // Defense redesign 3.9 — respect `prefers-reduced-motion`. When set,
+  // the overlay drops its keyframe animation and lingers at full
+  // opacity for a single frame instead of pulsing through fade-in /
+  // fade-out. The trace is still painted so the table reads "where the
+  // threat went," but no motion plays.
+  const reducedMotion = useReducedMotion();
 
   // No active animation → render nothing. The wrapper is hidden so the
   // overlay also doesn't reserve layout space when idle.
@@ -119,6 +126,7 @@ export function PathOverlay({ bounds }: PathOverlayProps) {
     >
       <Box
         component="svg"
+        data-reduced-motion={reducedMotion ? 'true' : 'false'}
         viewBox={`0 0 ${cols} ${rows}`}
         preserveAspectRatio="none"
         sx={{
@@ -128,9 +136,14 @@ export function PathOverlay({ bounds }: PathOverlayProps) {
           height: '100%',
           // CSS animation: the path fades in then out within
           // ANIMATION_DURATION_MS. Keyframe is inline via sx so we don't
-          // need a separate stylesheet.
-          opacity: 0.85,
-          animation: 'pathOverlayPulse 350ms ease-out forwards',
+          // need a separate stylesheet. Defense-redesign 3.9: when the
+          // user prefers reduced motion the overlay drops the keyframe
+          // and just lights up at full opacity for the trace's
+          // duration — the SVG still renders so the path is visible.
+          opacity: reducedMotion ? 0.85 : 0.85,
+          animation: reducedMotion
+            ? 'none'
+            : 'pathOverlayPulse 350ms ease-out forwards',
           '@keyframes pathOverlayPulse': {
             '0%': { opacity: 0 },
             '20%': { opacity: 0.85 },

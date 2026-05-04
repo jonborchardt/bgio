@@ -37,6 +37,7 @@ import {
   RESOURCE_DISPLAY,
 } from '../../game/resources/types.ts';
 import { ResourceToken } from '../resources/ResourceToken.tsx';
+import { useReducedMotion } from '../layout/useReducedMotion.ts';
 
 /** Total time a single burn entry stays on screen, in ms. The plan
  *  asks for ~3s; long enough to read both lines, short enough that
@@ -117,6 +118,7 @@ export function CenterBurnBanner({
   displayMs = BANNER_DISPLAY_MS,
   initialEntry,
 }: CenterBurnBannerProps) {
+  const reducedMotion = useReducedMotion();
   const [active, setActive] = useState<BurnEntry | null>(
     initialEntry ?? null,
   );
@@ -190,6 +192,7 @@ export function CenterBurnBanner({
   return (
     <Box
       data-testid="center-burn-banner"
+      data-reduced-motion={reducedMotion ? 'true' : 'false'}
       role="status"
       aria-live="polite"
       sx={(t) => ({
@@ -212,7 +215,14 @@ export function CenterBurnBanner({
         maxWidth: '32rem',
         // Fade-in / fade-out animation. Sums to roughly the configured
         // displayMs so the visible window matches the timer.
-        animation: 'centerBurnBannerFade 3s ease-in-out forwards',
+        // Defense-redesign 3.9: respect prefers-reduced-motion — when
+        // set, the banner appears static at full opacity (the queue
+        // timer still advances so the banner still cycles, just without
+        // the slide / fade keyframes).
+        opacity: 1,
+        animation: reducedMotion
+          ? 'none'
+          : 'centerBurnBannerFade 3s ease-in-out forwards',
         '@keyframes centerBurnBannerFade': {
           '0%': { opacity: 0, transform: 'translate(-50%, -8px)' },
           '10%': { opacity: 1, transform: 'translate(-50%, 0)' },
