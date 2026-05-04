@@ -16,7 +16,7 @@ export type SampleCardKind =
   | 'placedVillage'
   | 'scienceCard'
   | 'scienceAdvanced'
-  | 'foreignUnit'
+  | 'defenseUnit'
   | 'army'
   | 'chiefTech'
   | 'chiefTechGrant';
@@ -27,7 +27,7 @@ export type SampleCard =
   | { kind: 'placedVillage'; def: BuildingDef; count: number }
   | { kind: 'scienceCard'; def: CanonicalScienceCardDef }
   | { kind: 'scienceAdvanced'; def: CanonicalScienceCardDef }
-  | { kind: 'foreignUnit'; def: UnitDef }
+  | { kind: 'defenseUnit'; def: UnitDef }
   | { kind: 'army'; def: UnitDef; count: number }
   | { kind: 'chiefTech'; def: TechnologyDef }
   | { kind: 'chiefTechGrant'; def: TechnologyDef };
@@ -68,7 +68,7 @@ export const SAMPLE_LABELS: Record<SampleCardKind, string> = {
   placedVillage: 'Placed village (multi-copy)',
   scienceCard: 'Science — beginner cell',
   scienceAdvanced: 'Science — advanced cell',
-  foreignUnit: 'Foreign — basic unit',
+  defenseUnit: 'Defense — basic unit',
   army: 'Army (multi-unit, with reqs)',
   chiefTech: 'Chief — tech (resources only)',
   chiefTechGrant: 'Chief — tech (grants cards)',

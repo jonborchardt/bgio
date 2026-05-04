@@ -28,7 +28,7 @@ const ROLE_LABEL: Record<Role, string> = {
   chief: 'Chief',
   science: 'Science',
   domestic: 'Domestic',
-  foreign: 'Foreign',
+  defense: 'Defense',
 };
 
 // Card-backed targetIds use the canonical `<kind>:<name>` form from

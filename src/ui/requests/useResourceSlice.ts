@@ -16,7 +16,7 @@ export interface ResourceSliceArgs {
   G: SettlementState;
   /** The seat that would be performing the action. */
   fromSeat: PlayerID;
-  /** The seat's role (chief / science / domestic / foreign). */
+  /** The seat's role (chief / science / domestic / defense). */
   fromRole: Role;
   /** What the action would charge. */
   cost: Partial<ResourceBag>;

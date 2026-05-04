@@ -21,7 +21,7 @@
 //   chief    → gold
 //   science  → blue
 //   domestic → green
-//   foreign  → red
+//   defense  → red
 //
 // The round-end hook `events:reset-played-this-round` clears
 // `playedThisRound` so each seat is free to play one card of each color
@@ -52,7 +52,7 @@ const ROLE_TO_COLOR: Record<Role, EventColor> = {
   chief: 'gold',
   science: 'blue',
   domestic: 'green',
-  foreign: 'red',
+  defense: 'red',
 };
 
 const ALL_COLORS: readonly EventColor[] = ['gold', 'blue', 'green', 'red'] as const;

@@ -35,24 +35,24 @@ const setupG = (numPlayers: 1 | 2 | 3 | 4): SettlementState => {
 };
 
 describe('buildBotMap (11.7)', () => {
-  it('2-player solo, humanRole=chief: bot covers seat 1 (domestic+foreign)', () => {
+  it('2-player solo, humanRole=chief: bot covers seat 1 (domestic+defense)', () => {
     const map = buildBotMap({ numPlayers: 2, humanRole: 'chief' });
-    // assignRoles(2): seat 0 = chief+science, seat 1 = domestic+foreign.
+    // assignRoles(2): seat 0 = chief+science, seat 1 = domestic+defense.
     // humanRole=chief lives at seat 0 → only seat 1 has a bot.
     expect(Object.keys(map).sort()).toEqual(['1']);
     expect(typeof map['1']).toBe('function');
   });
 
-  it('2-player solo, humanRole=foreign: bot covers seat 0 (chief+science)', () => {
-    const map = buildBotMap({ numPlayers: 2, humanRole: 'foreign' });
-    // humanRole=foreign lives at seat 1 → only seat 0 has a bot.
+  it('2-player solo, humanRole=defense: bot covers seat 0 (chief+science)', () => {
+    const map = buildBotMap({ numPlayers: 2, humanRole: 'defense' });
+    // humanRole=defense lives at seat 1 → only seat 0 has a bot.
     expect(Object.keys(map).sort()).toEqual(['0']);
     expect(typeof map['0']).toBe('function');
   });
 
   it('4-player solo, humanRole=domestic: 3 bot seats, one per non-domestic role', () => {
     const map = buildBotMap({ numPlayers: 4, humanRole: 'domestic' });
-    // assignRoles(4): seats 0/1/2/3 = chief / science / domestic / foreign.
+    // assignRoles(4): seats 0/1/2/3 = chief / science / domestic / defense.
     // Human is seat 2; bots cover seats 0, 1, 3.
     expect(Object.keys(map).sort()).toEqual(['0', '1', '3']);
     for (const seat of ['0', '1', '3'] as const) {
@@ -66,37 +66,23 @@ describe('buildBotMap (11.7)', () => {
   });
 
   it('composed bot returns the first non-null move from owned roles', () => {
-    // 2p solo, humanRole=chief → seat 1 holds domestic+foreign.
-    // We force a state where domesticBot returns null (seat 1 isn't in
-    // domesticTurn) but foreignBot returns a move (seat 1 is in
-    // foreignTurn with a non-empty hand). The composed bot's iteration
-    // order is the role order recorded in `assignRoles(2)['1']`, which
-    // is `['domestic', 'foreign']` — domestic returns null first, then
-    // foreign supplies the candidate.
+    // 2p solo, humanRole=chief → seat 1 holds domestic+defense.
+    // The composed bot's iteration order is the role order recorded in
+    // `assignRoles(2)['1']`, which is `['domestic', 'defense']`. With
+    // seat 1 sitting in `defenseTurn`, domesticBot returns null
+    // (wrong stage) and defenseBot supplies the candidate.
     const map = buildBotMap({ numPlayers: 2, humanRole: 'chief' });
     const seatBot = map['1'];
     expect(seatBot).toBeDefined();
 
     const G = setupG(2);
-    // foreignBot.play in `foreignTurn` returns either an upkeep,
-    // recruit, or null move — all the upkeep path requires is wallet
-    // state. The setup-baked foreign hand is non-empty, so once upkeep
-    // is paid recruiting cheapest will fire. Set `_upkeepPaid` first
-    // so the foreign bot's first branch falls through to recruit.
-    if (G.foreign === undefined) throw new Error('expected foreign state');
-    G.foreign._upkeepPaid = true;
-    // Make sure seat 1's wallet can afford the cheapest hand unit.
-    const wallet = G.mats['1']?.stash;
-    if (!wallet) throw new Error('expected wallet for seat 1');
-    wallet.gold = 99;
 
-    const ctx = ctxFor('othersPhase', { '1': 'foreignTurn' }, 2);
+    const ctx = ctxFor('othersPhase', { '1': 'defenseTurn' }, 2);
     const action = seatBot!({ G, ctx, playerID: '1' });
     expect(action).not.toBeNull();
-    // The first non-null candidate from the iteration order
-    // (domestic → foreign) must come from foreignBot since seat 1
-    // is in foreignTurn, not domesticTurn.
-    expect(action?.move).toMatch(/^foreign/);
+    // The first non-null candidate must come from defenseBot since
+    // seat 1 is in defenseTurn, not domesticTurn.
+    expect(action?.move).toBe('defenseSeatDone');
   });
 
   it.todo(

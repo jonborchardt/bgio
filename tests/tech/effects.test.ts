@@ -21,7 +21,6 @@ import {
 } from '../../src/game/tech/effects.ts';
 import { chiefPlayTech } from '../../src/game/roles/chief/playTech.ts';
 import { domesticPlayTech } from '../../src/game/roles/domestic/playTech.ts';
-import { foreignPlayTech } from '../../src/game/roles/foreign/playTech.ts';
 import { dispatch } from '../../src/game/events/dispatcher.ts';
 import {
   fromBgio,
@@ -60,7 +59,7 @@ const build4pState = (
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
   return {
     bank: bagOf({}),
-    centerMat: { tradeRequest: null },
+    centerMat: {},
     roleAssignments,
     round: 1,
     settlementsJoined: 0,
@@ -409,65 +408,13 @@ describe('playTechStub cost-charging', () => {
     expect(G).toEqual(before);
   });
 
-  it('non-chief play debits the seat stash by costBag and credits the bank', () => {
-    const tech = baseTech({
-      branch: 'Fighting',
-      name: 'Field Drill',
-      costBag: { gold: 2 },
-      onPlayEffects: [
-        { kind: 'gainResource', bag: { gold: 1 }, target: 'bank' },
-      ],
-    });
-    const G = build4pState({
-      bank: bagOf({ gold: 0 }),
-      foreign: {
-        hand: [],
-        techHand: [tech],
-        inPlay: [],
-        battleDeck: [],
-        tradeDeck: [],
-        inFlight: { battle: null, committed: [] },
-      },
-    });
-    // Seat 3 is foreign in the 4-player layout — fund their stash.
-    G.mats['3']!.stash = bagOf({ gold: 5 });
-
-    const result = callMove(foreignPlayTech, G, '3', 'Field Drill');
-    expect(result).toBeUndefined();
-    expect(G.mats['3']!.stash.gold).toBe(3); // 5 - 2 spent
-    expect(G.bank.gold).toBe(3); // +2 stash spend, +1 onPlay credit
-    expect(G.foreign!.techHand!.length).toBe(0);
-  });
-
-  it('non-chief play returns INVALID_MOVE when stash cannot afford the costBag', () => {
-    const tech = baseTech({
-      branch: 'Fighting',
-      name: 'Pricey Drill',
-      costBag: { gold: 5 },
-      onPlayEffects: [{ kind: 'gainResource', bag: { gold: 1 }, target: 'bank' }],
-    });
-    const G = build4pState({
-      bank: bagOf({}),
-      foreign: {
-        hand: [],
-        techHand: [tech],
-        inPlay: [],
-        battleDeck: [],
-        tradeDeck: [],
-        inFlight: { battle: null, committed: [] },
-      },
-    });
-    G.mats['3']!.stash = bagOf({ gold: 1 });
-    const before = JSON.parse(JSON.stringify(G));
-
-    const result = callMove(foreignPlayTech, G, '3', 'Pricey Drill');
-    expect(result).toBe(INVALID_MOVE);
-    expect(G).toEqual(before);
-  });
+  // Non-chief play paths covered by domesticPlayTech tests above. The
+  // defense play-tech move was retired in 1.4 (D14); Phase 2.5 will
+  // reintroduce it with the new defense card economy.
 });
 
 describe('applyTechOnPlay grants unlocks', () => {
-  it('pushes named building unlocks into G.domestic.hand and named units into G.foreign.hand', () => {
+  it('pushes named building unlocks into G.domestic.hand and named units into G.defense.hand', () => {
     // Use real building / unit names so the registry lookup in
     // grantTechUnlocks resolves them.
     const tech = baseTech({
@@ -478,19 +425,16 @@ describe('applyTechOnPlay grants unlocks', () => {
     });
     const G = build4pState({
       domestic: { hand: [], grid: {}, techHand: [tech] },
-      foreign: {
+      defense: {
         hand: [],
         inPlay: [],
-        battleDeck: [],
-        tradeDeck: [],
-        inFlight: { battle: null, committed: [] },
       },
     });
     // Seat 2 is domestic in 4-player.
     const result = callMove(domesticPlayTech, G, '2', 'Bartering');
     expect(result).toBeUndefined();
     expect(G.domestic!.hand.map((b) => b.name)).toContain('Trading Post');
-    expect(G.foreign!.hand.map((u) => u.name)).toContain('Scout');
+    expect(G.defense!.hand.map((u) => u.name)).toContain('Scout');
     // Tech is consumed.
     expect(G.domestic!.techHand!.length).toBe(0);
   });
@@ -518,8 +462,8 @@ describe('applyTechOnPlay grants unlocks', () => {
 });
 
 describe('domesticPlayTech wrong-role rejection (08.6)', () => {
-  it('domesticPlayTech on a red tech (in foreign techHand) returns INVALID_MOVE', () => {
-    // Place the red tech in foreign.techHand — it never reaches
+  it('domesticPlayTech on a red tech (in defense techHand) returns INVALID_MOVE', () => {
+    // Place the red tech in defense.techHand — it never reaches
     // domestic.techHand.
     const redTech = baseTech({
       branch: 'Fighting',
@@ -529,13 +473,10 @@ describe('domesticPlayTech wrong-role rejection (08.6)', () => {
       ],
     });
     const G = build4pState({
-      foreign: {
+      defense: {
         hand: [],
         techHand: [redTech],
         inPlay: [],
-        battleDeck: [],
-        tradeDeck: [],
-        inFlight: { battle: null, committed: [] },
       },
       domestic: { hand: [], grid: {}, techHand: [] },
     });

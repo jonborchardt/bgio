@@ -20,10 +20,10 @@ import type { TechnologyDef } from '../data/schema.ts';
 // runtime cycle with `./roles/science/setup.ts`, which imports `RandomAPI`
 // and `registerRoundEndHook` back from this package.
 import type { ScienceState } from './roles/science/setup.ts';
-// Same trick for the Foreign role state — type-only edge so there is no
-// runtime cycle with `./roles/foreign/decks.ts`, which imports `RandomAPI`
-// back from this package.
-import type { ForeignState } from './roles/foreign/decks.ts';
+// Same trick for the Defense role state (1.4 — defense redesign). The
+// `./roles/defense/types.ts` module is type-only, so the import is purely
+// nominal.
+import type { DefenseState } from './roles/defense/types.ts';
 // Same trick for the Domestic role state (06.1) — `./roles/domestic/types.ts`
 // re-imports `PlayerID` from this file at the type level only.
 import type { DomesticState } from './roles/domestic/types.ts';
@@ -45,7 +45,7 @@ import type { WanderState } from './opponent/wanderDeck.ts';
 // keeps the cycle erased.
 import type { HelpRequest } from './requests/types.ts';
 
-export type Role = 'chief' | 'science' | 'domestic' | 'foreign';
+export type Role = 'chief' | 'science' | 'domestic' | 'defense';
 
 // boardgame.io identifies seats as string indices: '0', '1', '2', '3'.
 export type PlayerID = string;
@@ -55,7 +55,7 @@ export type {
   CenterMat,
   PlayerMat,
   ScienceState,
-  ForeignState,
+  DefenseState,
   EventsState,
   DomesticState,
   WanderState,
@@ -74,10 +74,13 @@ export interface SettlementState {
   roleAssignments: Record<PlayerID, Role[]>;
   round: number;
 
-  // Total number of settlements the village has joined / absorbed. Source of
-  // truth for the win condition (08.5): the game ends in a win when this
-  // reaches 10. Incremented by 07.4 (Foreign battle wins flagged `joins`)
-  // and 07.5 (Foreign tribute trade completion). Initialized to 0 by setup.
+  // Total number of settlements the village has joined / absorbed.
+  // Defense redesign 1.4: the old battle / trade loops that ticked
+  // this counter are gone, so the value stays at 0 in a 1.4 build. Phase 2
+  // will retire `settlementsJoined >= 10` as the win condition entirely
+  // (D25 — boss-resolved becomes the win); 1.5 retires the field. We keep
+  // the slot here for one sub-phase so `endIf` and the persistence hook
+  // don't have to cross multiple sub-phases at once.
   settlementsJoined: number;
 
   // Per-match override for the round-count time-up cap (08.5). When unset,
@@ -139,11 +142,12 @@ export interface SettlementState {
   // remain source-compatible; hooks and moves that touch it must guard.
   science?: ScienceState;
 
-  // Foreign role state — Battle and Trade decks (top-of-deck = lowest number)
-  // plus the Foreign hand. Built at setup by 07.1; refined by 07.2-07.4.
-  // Optional so older test fixtures that pre-date 07.1 remain source-
-  // compatible; moves and the playerView redactor must guard for `undefined`.
-  foreign?: ForeignState;
+  // Defense role state — Phase 2 will repopulate this with real units in
+  // play, hand of unit cards, and (via 05.3) the red-color tech hand. For
+  // 1.4 it's a stub: empty hand, empty inPlay. Optional so older test
+  // fixtures that pre-date 1.4 remain source-compatible; moves and the
+  // playerView redactor must guard for `undefined`.
+  defense?: DefenseState;
 
   // Cross-cutting events state (08.x): per-color decks, per-seat hands /
   // used / playedThisRound. Built at setup by 08.1. Optional so older test
@@ -168,7 +172,7 @@ export interface SettlementState {
     chief?: boolean;
     science?: boolean;
     domestic?: boolean;
-    foreign?: boolean;
+    defense?: boolean;
   };
 
   // 08.2 — modifier stack pushed by the event-effect dispatcher. Effects
@@ -185,17 +189,6 @@ export interface SettlementState {
   // the effect with the payload, and clears the entry. Optional for the
   // same reason as `_modifiers`.
   _awaitingInput?: Record<PlayerID, EventEffect>;
-
-  // 07.5 — set by `placeOrInterruptTrade` when a Foreign-flipped trade
-  // card lands on top of an already-occupied `centerMat.tradeRequest` slot.
-  // The pending TradeCardDef itself is held in `G.foreign.pendingTrade`;
-  // this boolean is the cross-cutting "chief, please decide" flag the
-  // `chiefDecideTradeDiscard` move gates on. V1 simplification: bgio's
-  // `setStage` only acts on the calling seat, so we don't try to push the
-  // chief into the `awaitingChiefDecision` stage from inside a foreign
-  // move — the flag is the contract instead. Cleared by
-  // `chiefDecideTradeDiscard`.
-  _awaitingChiefTradeDiscard?: boolean;
 
   // Chief-role-specific runtime state — worker token reserve, etc. Filled
   // out incrementally as chief features land (04.3 introduces `workers`).

@@ -99,13 +99,13 @@ const ROLE_LABEL: Record<Role, string> = {
   chief: 'Chief',
   science: 'Science',
   domestic: 'Domestic',
-  foreign: 'Foreign',
+  defense: 'Defense',
 };
 
 const ROLE_BY_SCIENCE_COLOR: Record<EventColor, Role> = {
   blue: 'science',
   green: 'domestic',
-  red: 'foreign',
+  red: 'defense',
   gold: 'chief',
 };
 
@@ -214,8 +214,8 @@ export function unitDisplay(def: UnitDef, count?: number): DisplayCard {
   const bag = def.costBag ?? { gold: def.cost };
   const result: DisplayCard = {
     kind: isArmy ? 'army' : 'unit',
-    role: 'foreign',
-    roleLabel: ROLE_LABEL.foreign,
+    role: 'defense',
+    roleLabel: ROLE_LABEL.defense,
     title: def.name,
     kindLabel: isArmy ? 'Army' : 'Unit',
     subtitle: isArmy ? `Army × ${count}` : 'Unit',
@@ -283,7 +283,7 @@ export function techDisplay(
         def.greenEvent && def.greenEvent.trim() ? def.greenEvent : undefined,
     },
     {
-      role: 'foreign',
+      role: 'defense',
       color: 'red',
       units: def.units && def.units.trim() ? def.units : undefined,
       resources:

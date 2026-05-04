@@ -63,10 +63,10 @@ export const SAMPLE_SEATS: ReadonlyArray<MatSample> = [
     active: true,
   },
   {
-    id: 'foreign-idle',
-    label: 'Foreign — idle, only stash',
+    id: 'defense-idle',
+    label: 'Defense — idle, only stash',
     seat: '3',
-    roles: ['foreign'],
+    roles: ['defense'],
     mat: {
       in: bag({}),
       out: bag({}),
@@ -75,10 +75,10 @@ export const SAMPLE_SEATS: ReadonlyArray<MatSample> = [
     waitingFor: 'Chief',
   },
   {
-    id: 'foreign-empty',
-    label: 'Foreign — completely empty',
+    id: 'defense-empty',
+    label: 'Defense — completely empty',
     seat: '3',
-    roles: ['foreign'],
+    roles: ['defense'],
     mat: {
       in: bag({}),
       out: bag({}),

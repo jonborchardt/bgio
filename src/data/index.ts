@@ -36,11 +36,11 @@ export const buildingCost = (
 ): Partial<ResourceBag> => def.costBag ?? { gold: def.cost };
 
 /**
- * Single source of truth for "what does recruiting one of this unit cost?"
+ * Single source of truth for "what does buying one of this unit cost?"
  * Mirrors `buildingCost`: returns `def.costBag` when present, else
- * `{ gold: def.cost }`. Domestic-side recruit-cost modifiers (Forge: -1
- * gold) are layered on top in [src/game/roles/foreign/recruit.ts] — this
- * helper is the **base** cost, before any in-play discount.
+ * `{ gold: def.cost }`. Domestic-side recruit-cost modifiers were retired
+ * in 1.4 (D14 / D18); per-unit placement bonuses live on the unit card
+ * itself in Phase 2.
  */
 export const unitCost = (
   def: _UnitDef,

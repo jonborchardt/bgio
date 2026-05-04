@@ -27,7 +27,7 @@ export const LiveShellRenderer: Renderer = ({ card, size }: RendererProps) => {
     case 'scienceCard':
     case 'scienceAdvanced':
       return <V9CardShell display={scienceDisplay(card.def)} size={size} />;
-    case 'foreignUnit':
+    case 'defenseUnit':
       return <V9CardShell display={unitDisplay(card.def)} size={size} />;
     case 'army':
       return (

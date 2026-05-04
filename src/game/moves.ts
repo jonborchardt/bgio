@@ -16,28 +16,16 @@ import { domesticBuyBuilding } from './roles/domestic/buy.ts';
 import { domesticUpgradeBuilding } from './roles/domestic/upgrade.ts';
 import { domesticProduce } from './roles/domestic/produce.ts';
 import { domesticRepair } from './roles/domestic/repair.ts';
-import { foreignPlayRedEvent } from './roles/foreign/playRedEvent.ts';
-import { foreignRecruit } from './roles/foreign/recruit.ts';
-import { foreignUpkeep } from './roles/foreign/upkeep.ts';
-import { foreignReleaseUnit } from './roles/foreign/release.ts';
-import {
-  foreignFlipBattle,
-  foreignFlipTrade,
-} from './roles/foreign/flip.ts';
 import { undoLast } from './undo.ts';
-import { foreignAssignDamage } from './roles/foreign/assignDamage.ts';
-import { foreignTradeFulfill } from './roles/foreign/tradeFulfill.ts';
-import { chiefDecideTradeDiscard } from './roles/chief/decideTradeDiscard.ts';
 import { scienceContribute } from './roles/science/contribute.ts';
 import { scienceComplete } from './roles/science/complete.ts';
 import { eventResolve } from './events/resolveMove.ts';
 import { chiefPlayTech } from './roles/chief/playTech.ts';
 import { sciencePlayTech } from './roles/science/playTech.ts';
 import { domesticPlayTech } from './roles/domestic/playTech.ts';
-import { foreignPlayTech } from './roles/foreign/playTech.ts';
 import { scienceSeatDone } from './roles/science/seatDone.ts';
 import { domesticSeatDone } from './roles/domestic/seatDone.ts';
-import { foreignSeatDone } from './roles/foreign/seatDone.ts';
+import { defenseSeatDone } from './roles/defense/seatDone.ts';
 import { requestHelp } from './requests/move.ts';
 
 export const pass: Move<SettlementState> = () => {
@@ -55,7 +43,6 @@ export {
   chiefEndPhase,
   chiefPlaceWorker,
   chiefPlayGoldEvent,
-  chiefDecideTradeDiscard,
 };
 
 // Science role moves (05.2 contribute, 05.3 complete). The Science seat
@@ -65,11 +52,11 @@ export {
 // stage.
 export { scienceContribute, scienceComplete };
 
-// Per-color event-card moves (05.4 / 06.6 / 07.6). Near-clones of 04.4
-// chiefPlayGoldEvent — they share the `playEventStub` factory in
-// `src/game/events/playEventStub.ts`. Each owns role-gating, per-round
-// bookkeeping, and (08.3) effect dispatch via the typed dispatcher.
-export { sciencePlayBlueEvent, domesticPlayGreenEvent, foreignPlayRedEvent };
+// Per-color event-card moves (05.4 / 06.6). Defense's red event move is
+// retired in 1.4 (D14) — the trade / battle effects it dispatched are gone.
+// Phase 2 will reintroduce a defense event-card play move atop the new
+// track / unit economy.
+export { sciencePlayBlueEvent, domesticPlayGreenEvent };
 
 // 08.3 — `eventResolve` is the follow-up move for play*Event-dispatched
 // `awaitInput` effects (e.g. `swapTwoScienceCards`). It reads the parked
@@ -80,41 +67,21 @@ export { eventResolve };
 
 // 08.6 — Per-role tech-play moves. Each gates on the caller holding the
 // matching role and on the named card existing in that role's tech-card
-// hand with non-empty `onPlayEffects`. All four share the
-// `playTechStub` factory under `tech/playTechStub.ts`.
+// hand with non-empty `onPlayEffects`. All three share the
+// `playTechStub` factory under `tech/playTechStub.ts`. Defense's tech-play
+// move is retired in 1.4 (the red tech onPlayEffects today are battle-
+// resolver hooks that no longer exist); Phase 2.5 reintroduces it once
+// the new defense card economy lands.
 export {
   chiefPlayTech,
   sciencePlayTech,
   domesticPlayTech,
-  foreignPlayTech,
 };
-
-// Foreign role unit moves (07.2): recruit / upkeep / release. Stage gating
-// is enforced inside each move against `ctx.activePlayers?.[playerID] ===
-// 'foreignTurn'`, so the bgio-level stage config only has to authorize the
-// foreign seat in that stage.
-export { foreignRecruit, foreignUpkeep, foreignReleaseUnit };
 
 // Generic single-slot undo for the seat's most recent card-play / recruit
 // action. See `./undo.ts` for the contract; the move is stage-agnostic and
 // gates internally on `_lastAction.seat === playerID`.
 export { undoLast };
-
-// Foreign flip-flow moves (07.4) and trade-request placement (07.5).
-// `foreignFlipBattle` puts the seat into `foreignAwaitingDamage`, which
-// `foreignAssignDamage` resolves; `foreignFlipTrade` either drops the
-// drawn card straight into the mat slot or stashes it for the chief to
-// resolve via `chiefDecideTradeDiscard` (registered above with the other
-// chief moves). `foreignTradeFulfill` completes the active trade
-// request — chief-only: the chief pays `required` from the bank to the
-// off-table trader, receives `reward` back into the bank, and bumps
-// `settlementsJoined` by 1.
-export {
-  foreignFlipBattle,
-  foreignAssignDamage,
-  foreignFlipTrade,
-  foreignTradeFulfill,
-};
 
 // Domestic role moves (06.2 buy / upgrade, 06.4 produce, 1.3 repair).
 // Stage gating is enforced inside each move against
@@ -137,9 +104,8 @@ export {
 // after the seat finishes its work in `othersPhase`; bgio re-evaluates
 // `othersPhase.endIf` after the move and transitions to `endOfRound`
 // once every non-chief seat has flipped. The chief uses `chiefEndPhase`
-// for the analogous transition out of `chiefPhase`. Replaces the
-// review-fix-#1-gated `__testSetOthersDone` for production play.
-export { scienceSeatDone, domesticSeatDone, foreignSeatDone };
+// for the analogous transition out of `chiefPhase`.
+export { scienceSeatDone, domesticSeatDone, defenseSeatDone };
 
 // Help-request toggle. Stage-agnostic — any seat can ask another for
 // help with a currently-disabled action at any time. The recipient

@@ -56,7 +56,7 @@ describe('enumerate (11.2)', () => {
   it('in scienceTurn stage returns science candidates and not chief candidates', () => {
     const G = setupG();
     // 2-player layout: seat 0 holds chief+science, seat 1 holds
-    // domestic+foreign. enumerate the science seat in `othersPhase` /
+    // domestic+defense. enumerate the science seat in `othersPhase` /
     // `scienceTurn`.
     const ctx = ctxFor('othersPhase', { '0': 'scienceTurn' });
     const candidates = enumerate(G, ctx, '0');

@@ -1,7 +1,7 @@
 // 08.6 — Shared "play one tech card of <role>" factory.
 //
-// Each of the four `<role>PlayTech` moves (chief / science / domestic /
-// foreign) only differs in (role, hand-slot accessor). Centralizing the
+// Each of the `<role>PlayTech` moves (chief / science / domestic) only
+// differs in (role, hand-slot accessor). Centralizing the
 // validation + dispatch loop keeps the four moves in lockstep.
 //
 // Validations (in order):

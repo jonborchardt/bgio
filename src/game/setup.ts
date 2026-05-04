@@ -3,8 +3,8 @@
 // Returns a flat single-phase initial state. Phases, real decks, and
 // per-player private hands arrive in 02.x / 03.x; until then `hands` is
 // an empty placeholder and the bank is seeded with the default starter
-// `gold: 3` (per 03.2). The center mat (03.3) builds one circle per
-// non-chief seat and an empty trade-request slot. The Science role's 3×4
+// `gold: 3` (per 03.2). The center mat (03.3) is empty in 1.4 — Phase 2
+// will populate it with the global event track. The Science role's 3×4
 // grid + per-cell tech stacks land in 05.1.
 
 import type { Ctx } from 'boardgame.io';
@@ -15,8 +15,6 @@ import type { BankLogEntry } from './resources/bankLog.ts';
 import { initialCenterMat } from './resources/centerMat.ts';
 import { initialMats } from './resources/playerMat.ts';
 import { setupScience } from './roles/science/setup.ts';
-import { buildBattleDeck, buildTradeDeck } from './roles/foreign/decks.ts';
-import { UNITS } from '../data/index.ts';
 import { setupDomestic } from './roles/domestic/grid.ts';
 import { setupEvents } from './events/state.ts';
 import { setupWanderDeck } from './opponent/wanderDeck.ts';
@@ -132,9 +130,10 @@ export const setup = (
     centerMat: initialCenterMat(),
     roleAssignments,
     round: 0,
-    // 08.5 win condition: the village hasn't absorbed any settlements yet.
-    // Incremented later by Foreign 07.4 / 07.5 outcomes. `endIf` ends the
-    // game in a win once this reaches 10.
+    // Defense redesign 1.4 — `settlementsJoined` is no longer ticked by any
+    // move (the old battle / trade loops that ticked it are retired).
+    // The win check still reads the field via 1.5's win-condition placeholder
+    // pass; here we initialize it to 0 and never advance it.
     settlementsJoined: 0,
     // 08.5 time-up cap: per-match override from `setupData.turnCap`, default
     // 80. Stored on G so `endIf` doesn't need to look back at setupData.
@@ -162,18 +161,11 @@ export const setup = (
     _stageStack: {},
     // Science role: built above so we could derive `techsAlreadyUsedBy`.
     science,
-    // Foreign role: Battle and Trade decks per game-design.md §Setup.Foreign.
-    // The hand seeds with the level-0 Militia unit cards (07.2). UnitDef
-    // doesn't carry a `level` field yet, so per the 07.2 plan we treat the
-    // first 3 entries of `UNITS` as Militia. `inPlay` starts empty;
-    // `inFlight` has no flipped card yet — both fill in via the recruit /
-    // flip-flow moves.
-    foreign: {
-      hand: [...UNITS.slice(0, 3)],
+    // Defense role (1.4): stub — empty hand, empty inPlay. Phase 2 will
+    // repopulate with starter unit cards and the new placement state.
+    defense: {
+      hand: [],
       inPlay: [],
-      battleDeck: buildBattleDeck(r),
-      tradeDeck: buildTradeDeck(r),
-      inFlight: { battle: null, committed: [] },
     },
     // Domestic role (06.1): pile of buildings + empty placement grid.
     domestic: setupDomestic(techsAlreadyUsedBy),

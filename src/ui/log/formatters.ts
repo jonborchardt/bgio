@@ -16,8 +16,8 @@
 import type { SettlementState, Role } from '../../game/types.ts';
 import type { ResourceBag } from '../../game/resources/types.ts';
 import { RESOURCES } from '../../game/resources/types.ts';
-import { BUILDINGS, UNITS } from '../../data/index.ts';
-import { idForBuilding, idForUnit } from '../../cards/registry.ts';
+import { BUILDINGS } from '../../data/index.ts';
+import { idForBuilding } from '../../cards/registry.ts';
 import type { ActivityPart } from './types.ts';
 import { card, res } from './types.ts';
 
@@ -102,15 +102,6 @@ export const FORMATTERS: Record<string, Formatter> = {
     };
   },
 
-  chiefDecideTradeDiscard: (args) => ({
-    role: 'chief',
-    parts: [
-      args[0] === 'new'
-        ? 'Kept new trade request, discarded existing'
-        : 'Discarded incoming trade request',
-    ],
-  }),
-
   // ---- Science ------------------------------------------------------------
   scienceContribute: (args) => {
     const cardID = String(args[0] ?? '');
@@ -167,50 +158,6 @@ export const FORMATTERS: Record<string, Formatter> = {
   domesticProduce: () => ({ role: 'domestic', parts: ['Produced'] }),
 
   // ---- Foreign ------------------------------------------------------------
-  foreignRecruit: (args) => {
-    const defID = String(args[0] ?? '');
-    const n = typeof args[1] === 'number' ? (args[1] as number) : 1;
-    const def = UNITS.find((u) => u.name === defID);
-    const parts: ActivityPart[] = ['Recruited '];
-    if (def !== undefined) parts.push(card(idForUnit(def), defID));
-    else parts.push(defID);
-    if (n > 1) parts.push(` ×${n}`);
-    return { role: 'foreign', parts };
-  },
-
-  foreignReleaseUnit: (args) => {
-    const defID = String(args[0] ?? '');
-    const n = typeof args[1] === 'number' ? (args[1] as number) : 1;
-    const def = UNITS.find((u) => u.name === defID);
-    const parts: ActivityPart[] = ['Released '];
-    if (def !== undefined) parts.push(card(idForUnit(def), defID));
-    else parts.push(defID);
-    if (n > 1) parts.push(` ×${n}`);
-    return { role: 'foreign', parts };
-  },
-
-  foreignUpkeep: () => ({ role: 'foreign', parts: ['Paid upkeep'] }),
-
-  foreignFlipBattle: () => ({
-    role: 'foreign',
-    parts: ['Flipped a battle card'],
-  }),
-
-  foreignFlipTrade: () => ({
-    role: 'foreign',
-    parts: ['Flipped a trade request'],
-  }),
-
-  foreignAssignDamage: () => ({
-    role: 'foreign',
-    parts: ['Resolved battle'],
-  }),
-
-  foreignTradeFulfill: () => ({
-    role: 'chief',
-    parts: ['Fulfilled active trade request'],
-  }),
-
   // ---- Per-color event-card plays (non-chief) -----------------------------
   sciencePlayBlueEvent: (args) => {
     const cardID = String(args[0] ?? '');
@@ -226,14 +173,6 @@ export const FORMATTERS: Record<string, Formatter> = {
       parts: ['Played event: ', card(`event:${cardID}`, cardID)],
     };
   },
-  foreignPlayRedEvent: (args) => {
-    const cardID = String(args[0] ?? '');
-    return {
-      role: 'foreign',
-      parts: ['Played event: ', card(`event:${cardID}`, cardID)],
-    };
-  },
-
   // ---- Per-role tech plays ------------------------------------------------
   chiefPlayTech: (args) => {
     const name = String(args[0] ?? '');
@@ -256,20 +195,12 @@ export const FORMATTERS: Record<string, Formatter> = {
       parts: ['Played tech: ', card(`tech:${name}`, name)],
     };
   },
-  foreignPlayTech: (args) => {
-    const name = String(args[0] ?? '');
-    return {
-      role: 'foreign',
-      parts: ['Played tech: ', card(`tech:${name}`, name)],
-    };
-  },
-
   // ---- Misc ---------------------------------------------------------------
   eventResolve: () => ({ parts: ['Resolved event input'] }),
 
   scienceSeatDone: () => ({ role: 'science', parts: ['Done with my turn'] }),
   domesticSeatDone: () => ({ role: 'domestic', parts: ['Done with my turn'] }),
-  foreignSeatDone: () => ({ role: 'foreign', parts: ['Done with my turn'] }),
+  defenseSeatDone: () => ({ role: 'defense', parts: ['Done with my turn'] }),
 
   requestHelp: (args) => {
     const payload = args[0] as

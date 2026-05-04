@@ -12,8 +12,6 @@ import { TechCard } from './TechCard.tsx';
 import { ScienceCard } from './ScienceCard.tsx';
 import { WanderCard } from './WanderCard.tsx';
 import { EventCard } from './EventCard.tsx';
-import { TradeCard } from './TradeCard.tsx';
-import { BattleCard } from './BattleCard.tsx';
 import type { CardSize } from './sizes.ts';
 
 export interface AnyCardProps {
@@ -35,10 +33,6 @@ export function AnyCard({ entry, size = 'normal' }: AnyCardProps) {
       return <WanderCard def={entry.def} size={size} />;
     case 'event':
       return <EventCard def={entry.def} size={size} />;
-    case 'trade':
-      return <TradeCard def={entry.def} size={size} />;
-    case 'battle':
-      return <BattleCard def={entry.def} size={size} />;
   }
 }
 

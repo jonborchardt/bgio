@@ -2,7 +2,7 @@
 // `paid` ledger covers its `cost`. Per game-design.md §Science:
 //   - Resources move from the paid ledger into the bank (they are spent).
 //   - The 4 face-down tech cards under the science card are distributed by
-//     color: red → Foreign, gold → Chief, green → Domestic, blue → Science.
+//     color: red → Defense, gold → Chief, green → Domestic, blue → Science.
 //   - At most one science card may be completed per round (per-round
 //     counter, reset by the `science:reset-completions` hook at endOfRound).
 
@@ -108,7 +108,7 @@ export const scienceComplete: Move<SettlementState> = (
     Number: () => 0,
   };
   const r = fromBgio((random as BgioRandomLike | undefined) ?? fallbackRandom);
-  const trySeatOf = (role: 'chief' | 'science' | 'domestic' | 'foreign'): PlayerID | null => {
+  const trySeatOf = (role: 'chief' | 'science' | 'domestic' | 'defense'): PlayerID | null => {
     try {
       return seatOfRole(G.roleAssignments, role);
     } catch {
@@ -117,20 +117,20 @@ export const scienceComplete: Move<SettlementState> = (
   };
   switch (card.color) {
     case 'red': {
-      // Foreign role. Red techs go into `foreign.techHand` — distinct from
-      // `foreign.hand` (units to recruit). 05.3 originally piggy-backed on
+      // Defense role. Red techs go into `defense.techHand` — distinct from
+      // `defense.hand` (units to buy/place). 05.3 originally piggy-backed on
       // `hand` while it was typed loosely; the dedicated slot landed when
       // the play-tech UI was wired so the unit and tech lists could render
       // separately under one PlayableHand.
-      if (G.foreign === undefined) {
+      if (G.defense === undefined) {
         throw new Error(
-          'scienceComplete: G.foreign is undefined; cannot deliver red tech cards',
+          'scienceComplete: G.defense is undefined; cannot deliver red tech cards',
         );
       }
-      if (G.foreign.techHand === undefined) G.foreign.techHand = [];
-      const recipient = trySeatOf('foreign');
+      if (G.defense.techHand === undefined) G.defense.techHand = [];
+      const recipient = trySeatOf('defense');
       for (const tech of techStack) {
-        G.foreign.techHand.push(tech);
+        G.defense.techHand.push(tech);
         if (recipient !== null) applyTechOnAcquire(G, ctx, r, recipient, tech);
       }
       break;

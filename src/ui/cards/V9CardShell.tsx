@@ -31,7 +31,7 @@ const ROLE_LABEL_SHORT: Record<Role, string> = {
   chief: 'Chief',
   science: 'Science',
   domestic: 'Domestic',
-  foreign: 'Foreign',
+  defense: 'Defense',
 };
 
 function StatBox({ label, value }: { label: string; value: string }) {

@@ -90,23 +90,10 @@ const stubEnumerate = (
     out.push({ move: 'domesticProduce', args: [] });
   }
 
-  // Foreign.
-  if (G.foreign !== undefined) {
-    const firstUnit = G.foreign.hand[0];
-    if (firstUnit !== undefined) {
-      out.push({ move: 'foreignRecruit', args: [firstUnit.name] });
-      out.push({ move: 'foreignReleaseUnit', args: [firstUnit.name] });
-    }
-    out.push({ move: 'foreignUpkeep', args: [] });
-    out.push({ move: 'foreignFlipBattle', args: [] });
-    out.push({ move: 'foreignFlipTrade', args: [] });
-    // foreignAssignDamage with an empty allocation list is INVALID_MOVE
-    // (resolver returns 'mid'); harmless to try.
-    out.push({ move: 'foreignAssignDamage', args: [[]] });
+  // Defense (1.4 stub — no recruit / battle / trade moves).
+  if (G.defense !== undefined) {
+    out.push({ move: 'defenseSeatDone', args: [] });
   }
-
-  // Trade discard (no-op when not awaiting).
-  out.push({ move: 'chiefDecideTradeDiscard', args: ['existing'] });
 
   return out;
 };

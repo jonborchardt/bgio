@@ -18,7 +18,7 @@ import type { Resource, ResourceBag } from '../../src/game/resources/types.ts';
  *
  * Throws an `Error` with a human-readable path on the first violation so a
  * fuzz failure points directly at the offending bag. Other potential
- * negative-count surfaces (foreign unit `count`, chief `workers`) aren't
+ * negative-count surfaces (chief `workers`) aren't
  * resource bags — they have their own per-move guards and aren't bundled
  * here.
  */

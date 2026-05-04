@@ -90,7 +90,7 @@ export const setupScience = (random: RandomAPI): ScienceState => {
 
   // Use all 4 science colors — every tech branch (and therefore every role
   // that receives a tech card on completion) gets a column on the grid.
-  // Columns are fixed in role order — chief, science, domestic, foreign —
+  // Columns are fixed in role order — chief, science, domestic, defense —
   // which maps to colors gold, blue, green, red (the same role→color
   // mapping used for event hands).
   const selectedColors: ScienceColor[] = ['gold', 'blue', 'green', 'red'];

@@ -130,10 +130,12 @@ export const seedWithBuilding = (
 };
 
 /**
- * Add (or increment) a `UnitInstance` row on `G.foreign.inPlay`. The
- * `defID` must match an entry in `UNITS` so future tests can resolve
- * combat stats by name. Existing rows with the same `defID` get their
- * `count` bumped — this matches the recruit-move invariant.
+ * Add a placed unit to `G.defense.inPlay`. The `defID` must match an
+ * entry in `UNITS`. For the 1.4 stub shape, each call appends one
+ * UnitInstance per requested copy — there is no count-collapsed entry
+ * any more (Phase 2 needs per-instance state for HP / drill / taught
+ * skills). `cellKey` defaults to the synthetic center tile so callers
+ * that just want a body in play don't have to seed a building first.
  */
 export const seedWithUnit = (
   defID: string,
@@ -144,14 +146,18 @@ export const seedWithUnit = (
   if (!def) {
     throw new Error(`seedWithUnit: unknown UnitDef.name '${defID}'`);
   }
-  if (!base.foreign) {
-    throw new Error('seedWithUnit: base state has no foreign slice');
+  if (!base.defense) {
+    throw new Error('seedWithUnit: base state has no defense slice');
   }
-  const existing = base.foreign.inPlay.find((u) => u.defID === defID);
-  if (existing) {
-    existing.count += count;
-  } else {
-    base.foreign.inPlay.push({ defID, count });
+  const start = base.defense.inPlay.length;
+  for (let i = 0; i < count; i += 1) {
+    base.defense.inPlay.push({
+      id: `unit:${defID}:${start + i}`,
+      defID,
+      cellKey: '0,0',
+      hp: def.hp,
+      placementOrder: start + i,
+    });
   }
   return base;
 };

@@ -31,10 +31,6 @@ import { WANDER_CARDS } from '../data/wanderCards.ts';
 import type { WanderCardDef } from '../data/wanderCards.ts';
 import { EVENT_CARDS } from '../data/events.ts';
 import type { EventCardDef } from '../data/events.ts';
-import { TRADE_CARDS } from '../data/tradeCards.ts';
-import type { TradeCardDef } from '../data/tradeCards.ts';
-import { BATTLE_CARDS } from '../data/battleCards.ts';
-import type { BattleCardDef } from '../data/battleCards.ts';
 
 export type CardKind =
   | 'building'
@@ -42,9 +38,7 @@ export type CardKind =
   | 'tech'
   | 'science'
   | 'wander'
-  | 'event'
-  | 'trade'
-  | 'battle';
+  | 'event';
 
 export const CARD_KINDS: ReadonlyArray<CardKind> = [
   'building',
@@ -53,8 +47,6 @@ export const CARD_KINDS: ReadonlyArray<CardKind> = [
   'science',
   'wander',
   'event',
-  'trade',
-  'battle',
 ];
 
 export const CARD_KIND_LABELS: Record<CardKind, string> = {
@@ -64,8 +56,6 @@ export const CARD_KIND_LABELS: Record<CardKind, string> = {
   science: 'Science',
   wander: 'Wander',
   event: 'Events',
-  trade: 'Trade',
-  battle: 'Battle',
 };
 
 export type AnyCardEntry =
@@ -74,9 +64,7 @@ export type AnyCardEntry =
   | { id: string; kind: 'tech'; def: TechnologyDef }
   | { id: string; kind: 'science'; def: CanonicalScienceCardDef }
   | { id: string; kind: 'wander'; def: WanderCardDef }
-  | { id: string; kind: 'event'; def: EventCardDef }
-  | { id: string; kind: 'trade'; def: TradeCardDef }
-  | { id: string; kind: 'battle'; def: BattleCardDef };
+  | { id: string; kind: 'event'; def: EventCardDef };
 
 // Stable id format: `${kind}:${name-or-id}`. Buildings, units and techs
 // use `name` (no `id` field in their JSON); the rest use the def's `id`.
@@ -94,8 +82,6 @@ export const idForScience = (
 ): string => `science:${canonicalScienceCardId(def)}`;
 export const idForWander = (def: WanderCardDef): string => `wander:${def.id}`;
 export const idForEvent = (def: EventCardDef): string => `event:${def.id}`;
-export const idForTrade = (def: TradeCardDef): string => `trade:${def.id}`;
-export const idForBattle = (def: BattleCardDef): string => `battle:${def.id}`;
 
 const buildingEntries: AnyCardEntry[] = BUILDINGS.map((def) => ({
   id: idForBuilding(def),
@@ -127,16 +113,6 @@ const eventEntries: AnyCardEntry[] = EVENT_CARDS.map((def) => ({
   kind: 'event' as const,
   def,
 }));
-const tradeEntries: AnyCardEntry[] = TRADE_CARDS.map((def) => ({
-  id: idForTrade(def),
-  kind: 'trade' as const,
-  def,
-}));
-const battleEntries: AnyCardEntry[] = BATTLE_CARDS.map((def) => ({
-  id: idForBattle(def),
-  kind: 'battle' as const,
-  def,
-}));
 
 export const ALL_CARDS: ReadonlyArray<AnyCardEntry> = Object.freeze([
   ...buildingEntries,
@@ -145,8 +121,6 @@ export const ALL_CARDS: ReadonlyArray<AnyCardEntry> = Object.freeze([
   ...scienceEntries,
   ...wanderEntries,
   ...eventEntries,
-  ...tradeEntries,
-  ...battleEntries,
 ]);
 
 const byId: ReadonlyMap<string, AnyCardEntry> = (() => {
@@ -180,10 +154,6 @@ export const cardName = (entry: AnyCardEntry): string => {
       return entry.def.name;
     case 'event':
       return entry.def.name;
-    case 'trade':
-      return `Trade #${entry.def.id}`;
-    case 'battle':
-      return `Battle #${entry.def.id}`;
   }
 };
 

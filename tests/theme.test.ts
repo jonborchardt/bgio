@@ -21,7 +21,7 @@ import type { EventColor } from '../src/data/events.ts';
 
 const HEX = /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/;
 
-const ROLES: readonly Role[] = ['chief', 'science', 'domestic', 'foreign'];
+const ROLES: readonly Role[] = ['chief', 'science', 'domestic', 'defense'];
 const TIERS: readonly ('beginner' | 'intermediate' | 'advanced')[] = [
   'beginner',
   'intermediate',

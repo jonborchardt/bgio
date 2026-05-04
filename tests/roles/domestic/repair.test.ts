@@ -31,7 +31,7 @@ import {
 } from '../../../src/game/roles/domestic/grid.ts';
 import { initialMats } from '../../../src/game/resources/playerMat.ts';
 
-// 2-player layout: seat '0' = chief+science, seat '1' = domestic+foreign.
+// 2-player layout: seat '0' = chief+science, seat '1' = domestic+defense.
 const build2pState = (
   walletOf: Partial<ResourceBag>,
   domestic: DomesticState,
@@ -234,7 +234,7 @@ describe('domesticRepair (defense redesign D17)', () => {
     );
     const ctx = {
       phase: 'othersPhase',
-      activePlayers: { '1': 'foreignTurn' },
+      activePlayers: { '1': 'defenseTurn' },
     } as unknown as Ctx;
 
     const result = callRepair(G, '1', ctx, 0, 1, 1);

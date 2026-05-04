@@ -20,7 +20,7 @@ import type { DomesticBuilding } from '../../../src/game/roles/domestic/types.ts
 import { cellKey } from '../../../src/game/roles/domestic/grid.ts';
 import { initialMats } from '../../../src/game/resources/playerMat.ts';
 
-// 2-player layout: seat '1' = domestic+foreign.
+// 2-player layout: seat '1' = domestic+defense.
 const build2pState = (
   walletOf: Partial<ResourceBag>,
   domestic: DomesticState,

@@ -8,7 +8,7 @@
 
   { "name": "Barracks", "cost": 13, "benefit": "attack +1", "note": "Requires Stick fighting. Drill ground and a roof for the spears.", "maxHp": 3 },
   { "name": "Library", "cost": 13, "benefit": "2 science", "note": "Requires Library (tech) + Reading. Shelf, ledger, lamp.", "maxHp": 2 },
-  { "name": "Walls", "cost": 13, "benefit": "decrease unit maintenance by 2", "note": "Requires Walls (tech) + masonry. Soldiers stationed inside cost less to feed.", "maxHp": 4 },
+  { "name": "Walls", "cost": 13, "benefit": "+1 defense", "note": "Requires Walls (tech) + masonry. Stout earthworks rimming the village.", "maxHp": 4 },
   { "name": "Mill", "cost": 13, "benefit": "2 food and 1 production", "note": "Requires mill + Farming. Grinds grain and saws lumber off the same wheel.", "maxHp": 2 },
   { "name": "Tavern", "cost": 14, "benefit": "+2 happiness", "note": "Requires beer brewing. Cheap drink, loud songs, fewer fights at dawn.", "maxHp": 2 },
   { "name": "Watchtower", "cost": 13, "costBag": { "gold": 6, "wood": 2, "stone": 3 }, "benefit": "+1 defense and +1 happiness", "note": "Requires Town Watch. Visible safety calms the settlement.", "maxHp": 3 },
@@ -21,11 +21,11 @@
   { "name": "Looms", "cost": 15, "costBag": { "gold": 8, "wood": 3, "production": 1 }, "benefit": "1 production and +1 happiness", "note": "Requires loom. Cloth into clothes, looms into cloth.", "maxHp": 2 },
 
   { "name": "Fight Circle", "cost": 17, "benefit": "+2 Happiness", "note": "Requires Stick fighting. A pit, a rope, and a payday for the bare-knuckle champ.", "maxHp": 2 },
-  { "name": "Stables", "cost": 17, "costBag": { "gold": 10, "wood": 3, "food": 2 }, "benefit": "+1 attack", "note": "Requires Horseback riding. Mounts ready when Foreign needs them.", "maxHp": 2 },
+  { "name": "Stables", "cost": 17, "costBag": { "gold": 10, "wood": 3, "food": 2 }, "benefit": "+1 attack", "note": "Requires Horseback riding. Mounts ready when Defense needs them.", "maxHp": 2 },
   { "name": "Quarry Camp", "cost": 17, "costBag": { "gold": 7, "wood": 2, "production": 3 }, "benefit": "2 production", "note": "Requires mining. Stone hauled out daily.", "maxHp": 2 },
   { "name": "Recycling Yard", "cost": 18, "costBag": { "gold": 9, "wood": 2, "production": 2 }, "benefit": "1 production and 1 gold", "note": "Requires Recycling + Salvage. One person's scrap is another's chassis.", "maxHp": 2 },
 
-  { "name": "Forge", "cost": 20, "benefit": "units cost 1 less", "note": "Requires metalworking + Smelting. Hammer, anvil, billet — the soldiers thank the forgemen.", "maxHp": 3 },
+  { "name": "Forge", "cost": 20, "benefit": "+1 attack", "note": "Requires metalworking + Smelting. Hammer, anvil, billet — the soldiers thank the forgemen.", "maxHp": 3 },
   { "name": "Market", "cost": 20, "benefit": "2 gold", "note": "Requires Markets. The day the merchants open is the day the streets fill.", "maxHp": 3 },
   { "name": "Mint", "cost": 20, "benefit": "2 gold", "note": "Requires Currency. Stamps a coin you can trust farther than the next valley.", "maxHp": 3 },
   { "name": "Workshop", "cost": 20, "costBag": { "gold": 12, "wood": 5, "stone": 2 }, "benefit": "2 production", "note": "Requires Apprenticeship. Tools beget tools.", "maxHp": 3 },
@@ -41,14 +41,14 @@
 
   { "name": "Armory", "cost": 27, "costBag": { "gold": 16, "stone": 3, "steel": 3 }, "benefit": "defence +2", "note": "Requires Armor + Blacksmithing. Racks of plate and shield.", "maxHp": 4 },
   { "name": "Cathedral", "cost": 28, "costBag": { "gold": 18, "stone": 6, "production": 3 }, "benefit": "+4 happiness", "note": "Requires Religion + masonry. Stained glass, taller than memory.", "maxHp": 3 },
-  { "name": "Garrison", "cost": 28, "costBag": { "gold": 16, "stone": 4, "steel": 2 }, "benefit": "decrease unit maintenance by 3", "note": "Requires Logistics. Beds, mess, drill — all under one roof.", "maxHp": 4 },
-  { "name": "Hospital Annex", "cost": 19, "costBag": { "gold": 11, "wood": 2, "stone": 2, "food": 2 }, "benefit": "1 food and decrease unit maintenance by 1", "note": "Requires Medicine. Convalescent rooms double as soldier billets.", "maxHp": 2 },
+  { "name": "Garrison", "cost": 28, "costBag": { "gold": 16, "stone": 4, "steel": 2 }, "benefit": "+2 defense", "note": "Requires Logistics. Beds, mess, drill — all under one roof.", "maxHp": 4 },
+  { "name": "Hospital Annex", "cost": 19, "costBag": { "gold": 11, "wood": 2, "stone": 2, "food": 2 }, "benefit": "1 food and +1 happiness", "note": "Requires Medicine. Convalescent rooms double as soldier billets.", "maxHp": 2 },
   { "name": "Generator Shed", "cost": 30, "costBag": { "gold": 15, "wood": 3, "steel": 4, "production": 3 }, "benefit": "2 production and 1 science", "note": "Requires Generators + Fix electronics. First electric lights in the settlement.", "maxHp": 3 },
 
   { "name": "Bank", "cost": 33, "benefit": "4 gold", "note": "Requires Banking + Currency. Where the loans live and the ledgers sleep.", "maxHp": 3 },
-  { "name": "Tower", "cost": 33, "costBag": { "gold": 18, "stone": 8, "production": 2 }, "benefit": "decrease unit maintenance by 4", "note": "Requires Walls (tech) + masonry. Tall enough to see the whole valley.", "maxHp": 4 },
+  { "name": "Tower", "cost": 33, "costBag": { "gold": 18, "stone": 8, "production": 2 }, "benefit": "+2 defense", "note": "Requires Walls (tech) + masonry. Tall enough to see the whole valley.", "maxHp": 4 },
   { "name": "Aqueduct", "cost": 35, "costBag": { "gold": 18, "stone": 8, "production": 4 }, "benefit": "2 food and +2 happiness", "note": "Requires Plumbing + Bridges. Clean water at every fountain.", "maxHp": 3 },
-  { "name": "Ironworks", "cost": 36, "costBag": { "gold": 18, "wood": 3, "stone": 3, "steel": 6 }, "benefit": "3 production and units cost 1 less", "note": "Requires Smelting + metalworking. Bigger billets, bigger blades.", "maxHp": 3 },
+  { "name": "Ironworks", "cost": 36, "costBag": { "gold": 18, "wood": 3, "stone": 3, "steel": 6 }, "benefit": "3 production and +1 attack", "note": "Requires Smelting + metalworking. Bigger billets, bigger blades.", "maxHp": 3 },
   { "name": "Temple", "cost": 40, "costBag": { "gold": 22, "stone": 6, "wood": 3, "production": 3 }, "benefit": "+3 happiness and 1 science", "note": "Requires Religion. Old gods, new theories.", "maxHp": 3 },
 
   { "name": "Windmill", "cost": 42, "costBag": { "gold": 24, "wood": 8, "stone": 2, "production": 2 }, "benefit": "2 production", "note": "Requires mill + Engineering. Wind on the high field; sails and gears below.", "maxHp": 3 },
@@ -58,13 +58,13 @@
   { "name": "Solar Array", "cost": 50, "costBag": { "gold": 26, "steel": 8, "production": 5, "science": 3 }, "benefit": "4 production and 1 science", "note": "Requires Solar panels + Power Grid. Panels squint at the dust.", "maxHp": 3 },
   { "name": "Grand Bazaar", "cost": 50, "costBag": { "gold": 30, "wood": 5, "stone": 5, "production": 3 }, "benefit": "3 gold and +2 happiness", "note": "Requires Markets + Tariffs. Every booth selling something different.", "maxHp": 3 },
 
-  { "name": "Citadel", "cost": 52, "costBag": { "gold": 28, "stone": 12, "steel": 6 }, "benefit": "+3 defense and decrease unit maintenance by 3", "note": "Requires Walls (tech) + Engineering. Headquarters on a hill.", "maxHp": 4 },
+  { "name": "Citadel", "cost": 52, "costBag": { "gold": 28, "stone": 12, "steel": 6 }, "benefit": "+3 defense", "note": "Requires Walls (tech) + Engineering. Headquarters on a hill.", "maxHp": 4 },
   { "name": "Factory", "cost": 60, "benefit": "4 production", "note": "Requires Factory working + Power Grid. The line runs three shifts a day.", "maxHp": 3 },
   { "name": "Hospital", "cost": 60, "costBag": { "gold": 32, "wood": 6, "stone": 6, "food": 8 }, "benefit": "5 food", "note": "Requires Public Health + Refrigeration. Wings on wings of cots and clean linens.", "maxHp": 3 },
   { "name": "Palace", "cost": 60, "costBag": { "gold": 36, "stone": 8, "wood": 4, "production": 4 }, "benefit": "+3 happiness and 4 gold", "note": "Requires Leadership + Architecture. The chief's actual house.", "maxHp": 4 },
-  { "name": "Arsenal", "cost": 60, "costBag": { "gold": 32, "stone": 6, "steel": 10, "production": 4 }, "benefit": "+4 attack and units cost 1 less", "note": "Requires Heavy Weapons + Bullet manufacturing. Every shelf a weapon, every rack a row.", "maxHp": 4 },
+  { "name": "Arsenal", "cost": 60, "costBag": { "gold": 32, "stone": 6, "steel": 10, "production": 4 }, "benefit": "+4 attack", "note": "Requires Heavy Weapons + Bullet manufacturing. Every shelf a weapon, every rack a row.", "maxHp": 4 },
   { "name": "Power Plant", "cost": 65, "costBag": { "gold": 32, "stone": 6, "steel": 8, "production": 6, "science": 3 }, "benefit": "5 production and 1 science", "note": "Requires Electricity + Power Grid. Hum and heat keep the lights on.", "maxHp": 3 },
 
   { "name": "Grand Theater", "cost": 65, "costBag": { "gold": 36, "wood": 6, "stone": 6, "production": 5 }, "benefit": "+5 happiness and 1 gold", "note": "Requires Theater (tech) + Architecture. Sold out, every season.", "maxHp": 3 },
-  { "name": "Fortress", "cost": 70, "costBag": { "gold": 32, "stone": 14, "steel": 8 }, "benefit": "+5 defense and decrease unit maintenance by 3", "note": "Requires Walls (tech) + Plate Armor. A keep thick enough to last a siege.", "maxHp": 4 }
+  { "name": "Fortress", "cost": 70, "costBag": { "gold": 32, "stone": 14, "steel": 8 }, "benefit": "+5 defense", "note": "Requires Walls (tech) + Plate Armor. A keep thick enough to last a siege.", "maxHp": 4 }
 ]

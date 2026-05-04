@@ -376,11 +376,9 @@
     "units": "Decoy",
     "blueEvent": "1 science",
     "greenEvent": "+1 happiness",
-    "redEvent": "redraw battle top",
+    "redEvent": "(retired in 1.4)",
     "goldEvent": "1 gold",
-    "onPlayEffects": [
-      { "kind": "redrawBattleTop" }
-    ]
+    "onPlayEffects": []
   },
   {
     "branch": "Fighting",
@@ -808,11 +806,9 @@
     "units": "Recon Drone, Drone Swarm",
     "blueEvent": "2 science",
     "greenEvent": "1 production",
-    "redEvent": "reveal next battle card",
+    "redEvent": "(retired in 1.4)",
     "goldEvent": "1 gold",
-    "onPlayEffects": [
-      { "kind": "redrawBattleTop" }
-    ]
+    "onPlayEffects": []
   },
 
   {
@@ -1429,11 +1425,9 @@
     "units": "",
     "blueEvent": "1 science",
     "greenEvent": "+2 happiness",
-    "redEvent": "tribute waiver",
+    "redEvent": "(retired in 1.4)",
     "goldEvent": "2 gold",
-    "onPlayEffects": [
-      { "kind": "tributeWaiver" }
-    ]
+    "onPlayEffects": []
   },
   {
     "branch": "Civic",

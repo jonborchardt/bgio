@@ -1,15 +1,15 @@
 // othersPhase — every non-chief seat acts (in parallel, eventually).
 //
 // 02.2 wires the real per-role stage map: each non-chief seat lands in
-// the stage matching its primary non-chief role (science/domestic/foreign);
+// the stage matching its primary non-chief role (science/domestic/defense);
 // the chief seat sits in `done`. The phase ends once every non-chief seat
 // has set its `G.othersDone[seat]` flag — the chief stage is `done` purely
 // to mark "no further action expected", not to gate the endIf.
 //
 // `turn.onBegin` also runs the **in→stash transfer**: every non-chief
 // seat's `in` bag (just-distributed by the chief) is drained into their
-// own `stash` so spend moves (Science contribute, Domestic buy, Foreign
-// recruit/upkeep) read from one canonical pool.
+// own `stash` so spend moves (Science contribute, Domestic buy, Defense
+// future actions) read from one canonical pool.
 //
 // After the in→stash sweep, every domestic seat auto-produces via
 // `runProduceForSeat`. Produce is deterministic and decision-free, so it

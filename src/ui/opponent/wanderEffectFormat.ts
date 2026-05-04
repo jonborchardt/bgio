@@ -33,10 +33,6 @@ export const ruleText = (effect: EventEffect): string | null => {
       return 'Science cannot complete a card this round.';
     case 'forceCheapestScience':
       return 'Science must pursue its cheapest option this round.';
-    case 'redrawBattleTop':
-      return 'Top of the battle deck is sent to the bottom.';
-    case 'tributeWaiver':
-      return 'A pending tribute is waived.';
     case 'addEventCard':
       return `Adds event card "${effect.cardID}" to its color deck.`;
     case 'swapTwoScienceCards':

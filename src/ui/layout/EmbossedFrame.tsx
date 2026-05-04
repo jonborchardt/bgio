@@ -1,7 +1,7 @@
 // EmbossedFrame — small role-tinted container with a repeating SVG
 // dot pattern (a dark disc + offset light highlight stacked, which
 // reads as raised bumps) plus the canonical inset emboss shadow.
-// Used for the Village (domestic) and Army (foreign) areas, and for
+// Used for the Village (domestic) and Army (defense) areas, and for
 // the empty-state rows shown when a hand has no cards yet.
 
 import { Box } from '@mui/material';

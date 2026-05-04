@@ -21,7 +21,6 @@ import { CircleEditor } from './CircleEditor.tsx';
 import { RolePanel } from '../layout/RolePanel.tsx';
 import { SectionHeading } from '../layout/SectionHeading.tsx';
 import { PlayableHand } from '../cards/PlayableHand.tsx';
-import { TradeRequestSlot } from '../mat/TradeRequestSlot.tsx';
 import { GraveyardButton } from '../layout/GraveyardButton.tsx';
 import { UndoButton } from '../layout/UndoButton.tsx';
 import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
@@ -108,13 +107,6 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
           canAct={isChiefPhase}
           onPlay={(name) => moves.chiefPlayTech(name)}
           emptyHint="No gold tech cards yet — complete a gold science card to add one."
-        />
-
-        <TradeRequestSlot
-          tradeRequest={G.centerMat.tradeRequest}
-          bank={G.bank}
-          canAct={isChiefPhase}
-          onFulfill={() => moves.foreignTradeFulfill()}
         />
 
         {isChiefPhase ? (

@@ -9,7 +9,7 @@ describe('game smoke', () => {
     const state = client.getState()!;
     expect(state.G.roleAssignments).toEqual({
       '0': ['chief', 'science'],
-      '1': ['domestic', 'foreign'],
+      '1': ['domestic', 'defense'],
     });
   });
 
@@ -37,15 +37,16 @@ describe('test helpers', () => {
     const G = client.getState()!.G;
     expect(G.roleAssignments).toEqual({
       '0': ['chief', 'science'],
-      '1': ['domestic', 'foreign'],
+      '1': ['domestic', 'defense'],
     });
     expect(G.bank.gold).toBe(3);
     expect(G.round).toBe(0);
     expect(Object.keys(G.hands).sort()).toEqual(['0', '1']);
     // Player mats: one per non-chief seat (2-player game → seat '1' is
-    // the only non-chief seat). centerMat just holds the trade slot.
+    // the only non-chief seat). centerMat is empty in 1.4 — Phase 2
+    // will repopulate it with the global event track.
     expect(Object.keys(G.mats).sort()).toEqual(['1']);
-    expect(G.centerMat.tradeRequest).toBeNull();
+    expect(G.centerMat).toEqual({});
   });
 
   it('runMoves with an unknown move leaves state unchanged', () => {

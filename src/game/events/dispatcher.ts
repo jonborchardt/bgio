@@ -43,7 +43,7 @@ const COLOR_TO_ROLE = {
   gold: 'chief',
   blue: 'science',
   green: 'domestic',
-  red: 'foreign',
+  red: 'defense',
 } as const;
 
 const addToBag = (
@@ -129,24 +129,6 @@ export const dispatch = (
         // Append into the matching color deck. `decks[color]` is the
         // master cycle-reset pool — see events/state.ts.
         G.events?.decks[def.color as EventColor].push(def);
-        break;
-      }
-
-      case 'redrawBattleTop': {
-        // Move the top of the battle deck to the bottom — "redraw" by
-        // forcing the next flip to draw the next card under it. No-op
-        // if there's nothing in the deck or the foreign slice is absent.
-        const foreign = G.foreign;
-        if (foreign === undefined || foreign.battleDeck.length === 0) break;
-        const top = foreign.battleDeck.shift()!;
-        foreign.battleDeck.push(top);
-        break;
-      }
-
-      case 'tributeWaiver': {
-        if (G.foreign !== undefined) {
-          G.foreign.pendingTribute = undefined;
-        }
         break;
       }
 

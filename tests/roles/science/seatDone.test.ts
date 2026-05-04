@@ -61,21 +61,21 @@ describe('scienceSeatDone (14.2)', () => {
     const chiefSeat = seatOfRole(assignments, 'chief');
     const scienceSeat = seatOfRole(assignments, 'science');
     const domesticSeat = seatOfRole(assignments, 'domestic');
-    const foreignSeat = seatOfRole(assignments, 'foreign');
+    const defenseSeat = seatOfRole(assignments, 'defense');
 
     // Get out of chiefPhase first.
     runMoves(client, [{ player: chiefSeat, move: 'chiefEndPhase' }]);
     expect(client.getState()!.ctx.phase).toBe('othersPhase');
 
-    // Science seat flips done — domestic and foreign still pending.
+    // Science seat flips done — domestic and defense still pending.
     runMoves(client, [{ player: scienceSeat, move: 'scienceSeatDone' }]);
     expect(client.getState()!.G.othersDone?.[scienceSeat]).toBe(true);
     expect(client.getState()!.ctx.phase).toBe('othersPhase');
 
-    // Now domestic + foreign — phase should transition through endOfRound
+    // Now domestic + defense — phase should transition through endOfRound
     // back to chiefPhase once the last seat flips.
     runMoves(client, [{ player: domesticSeat, move: 'domesticSeatDone' }]);
-    runMoves(client, [{ player: foreignSeat, move: 'foreignSeatDone' }]);
+    runMoves(client, [{ player: defenseSeat, move: 'defenseSeatDone' }]);
     expect(client.getState()!.ctx.phase).toBe('chiefPhase');
   });
 

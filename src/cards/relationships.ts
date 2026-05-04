@@ -38,9 +38,6 @@ export type EdgeKind =
   /** A building's `note` field says "Requires X" where X is a tech.
    *  Source = building, target = tech. */
   | 'building-requires-tech'
-  /** A battle card's `units` array names enemy unit defs.
-   *  Source = battle card, target = unit. */
-  | 'battle-needs-unit'
   /** A science card's color maps to a tech branch (red → Fighting,
    *  gold → Exploration, green → Civic, blue → Education — see
    *  src/game/roles/science/setup.ts). Only emitted from the **top
@@ -66,7 +63,6 @@ export const ALL_EDGE_KINDS: ReadonlyArray<EdgeKind> = [
   'building-adjacent',
   'tech-prereq-tech',
   'building-requires-tech',
-  'battle-needs-unit',
   'science-rewards-tech',
   'science-cell-prereq',
 ];
@@ -117,10 +113,6 @@ export const prereqDirection = (
     case 'tech-prereq-tech':
       // Source = the later tech, target = the prereq.
       return { prereq: edge.target, dependent: edge.source };
-    case 'battle-needs-unit':
-      // Source = battle card, target = unit. The unit is "depended on"
-      // (you need this unit to fight this battle), so it's the prereq.
-      return { prereq: edge.target, dependent: edge.source };
     case 'science-rewards-tech':
       // The science card "produces" the tech — semantically the science
       // card is upstream (a source of techs), so it sits as the prereq
@@ -145,7 +137,6 @@ export const EDGE_KIND_LABELS: Record<EdgeKind, string> = {
   'building-adjacent': 'Building ↔ Building (adj)',
   'tech-prereq-tech': 'Tech → Tech (order)',
   'building-requires-tech': 'Building → Tech (req)',
-  'battle-needs-unit': 'Battle → Unit',
   'science-rewards-tech': 'Science → Tech (rewards)',
   'science-cell-prereq': 'Science → Science (level)',
 };
@@ -427,32 +418,6 @@ export const buildCardGraph = (match?: MatchStateForGraph): CardGraph => {
         token,
         message: `Building "${building.name}" requires "${token}" which matches no tech.`,
       });
-    }
-  }
-
-  // Battle -> unit. Battle cards reference enemy units by name in
-  // `units[]`. Source = battle, target = unit.
-  for (const node of nodes) {
-    if (node.kind !== 'battle') continue;
-    const battle = node.entry.def as import('../data/battleCards.ts').BattleCardDef;
-    for (const ref of battle.units) {
-      const target = findUnitId(ref.name);
-      if (target) {
-        edges.push({
-          id: nextId(),
-          kind: 'battle-needs-unit',
-          source: node.id,
-          target,
-          label: ref.count > 1 ? `${ref.name} ×${ref.count}` : ref.name,
-        });
-      } else {
-        warnings.push({
-          sourceId: node.id,
-          kind: 'battle-needs-unit',
-          token: ref.name,
-          message: `Battle card "${battle.id}" references enemy unit "${ref.name}" which matches no unit.`,
-        });
-      }
     }
   }
 

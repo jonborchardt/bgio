@@ -39,14 +39,8 @@ export const resolveHint = ({
     if (stage === 'domesticTurn' && rolesAtSeat.includes('domestic')) {
       return 'Buy a building, produce, or end your turn.';
     }
-    if (stage === 'foreignTurn' && rolesAtSeat.includes('foreign')) {
-      return 'Pay upkeep, recruit, flip a battle, then end your turn.';
-    }
-    if (stage === 'foreignAwaitingDamage' && rolesAtSeat.includes('foreign')) {
-      return 'Allocate incoming damage.';
-    }
-    if (stage === 'awaitingChiefDecision' && rolesAtSeat.includes('chief')) {
-      return 'Decide whether to discard the pending trade card.';
+    if (stage === 'defenseTurn' && rolesAtSeat.includes('defense')) {
+      return 'Defense is on hold — coming in Phase 2. End your turn when ready.';
     }
   }
   return '';

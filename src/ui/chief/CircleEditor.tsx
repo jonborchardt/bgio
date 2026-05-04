@@ -29,7 +29,7 @@ const ROLE_ACCENT_PRIORITY: ReadonlyArray<Role> = [
   'chief',
   'science',
   'domestic',
-  'foreign',
+  'defense',
 ];
 
 const accentRoleFor = (roles: ReadonlyArray<Role>): Role | undefined =>

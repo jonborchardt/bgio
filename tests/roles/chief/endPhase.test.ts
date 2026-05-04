@@ -34,11 +34,11 @@ describe('chiefEndPhase (04.2)', () => {
 
     const active = client.getState()!.ctx.activePlayers ?? {};
 
-    // 4-player game: seat 0 chief, seat 1 science, seat 2 domestic, seat 3 foreign.
+    // 4-player game: seat 0 chief, seat 1 science, seat 2 domestic, seat 3 defense.
     expect(active[chiefSeat]).toBe(STAGES.done);
     expect(active['1']).toBe(STAGES.scienceTurn);
     expect(active['2']).toBe(STAGES.domesticTurn);
-    expect(active['3']).toBe(STAGES.foreignTurn);
+    expect(active['3']).toBe(STAGES.defenseTurn);
   });
 
   it('calling chiefEndPhase outside chiefPhase returns INVALID_MOVE', () => {

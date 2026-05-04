@@ -38,17 +38,17 @@ describe('activePlayersForOthers (02.2)', () => {
       '0': STAGES.done,
       '1': STAGES.scienceTurn,
       '2': STAGES.domesticTurn,
-      '3': STAGES.foreignTurn,
+      '3': STAGES.defenseTurn,
     });
   });
 
-  it('2-player: seat with domestic+foreign defaults to domesticTurn', () => {
-    // 2-player assignments: { '0': ['chief','science'], '1': ['domestic','foreign'] }
-    // Priority is science > domestic > foreign, so seat 1's primary
+  it('2-player: seat with domestic+defense defaults to domesticTurn', () => {
+    // 2-player assignments: { '0': ['chief','science'], '1': ['domestic','defense'] }
+    // Priority is science > domestic > defense, so seat 1's primary
     // non-chief role is `domestic`.
     //
     // The "swap helper" mentioned in the plan (toggling seat 1 to
-    // foreign) is part of 04.2; this test only covers the default
+    // defense) is part of 04.2; this test only covers the default
     // mapping.
     const client = makeClient({ numPlayers: 2 });
     const chiefSeat = seatOfRole(
@@ -69,17 +69,17 @@ describe('activePlayersForOthers (02.2)', () => {
     // 3-player assignments per src/game/roles.ts:
     //   '0': ['chief','science'] → chief seat → done
     //   '1': ['domestic']        → domesticTurn
-    //   '2': ['foreign']         → foreignTurn
+    //   '2': ['defense']         → defenseTurn
     // The chief seat also holds science but `chief` short-circuits to `done`.
     const map = activePlayersForOthers({
       '0': ['chief', 'science'],
       '1': ['domestic'],
-      '2': ['foreign'],
+      '2': ['defense'],
     });
     expect(map).toEqual({
       '0': STAGES.done,
       '1': STAGES.domesticTurn,
-      '2': STAGES.foreignTurn,
+      '2': STAGES.defenseTurn,
     });
   });
 });
@@ -90,7 +90,7 @@ describe('enterEventStage / exitEventStage (02.2)', () => {
   // strict-typed shape happy without booting a full client.
   const makeStubG = (): SettlementState => ({
     bank: { ...EMPTY_BAG },
-    centerMat: { tradeRequest: null },
+    centerMat: {},
     roleAssignments: { '0': ['chief'], '1': ['science'] },
     round: 0,
     settlementsJoined: 0,

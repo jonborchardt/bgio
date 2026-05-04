@@ -5,9 +5,9 @@
 // viewer switches seats in hot-seat play.
 //
 // `CenterMat` returns the tile row alone now; the trade-request slot
-// previously rendered here moved into ChiefPanel as a chief-private
-// "Trade Requests" section (Foreign-flipped trade cards are visible to
-// the chief only — see `playerView` redaction).
+// it previously rendered was retired by the defense redesign (D14:
+// trade requests are gone). Phase 2 will reintroduce the center mat as
+// the global event track strip (D19).
 //
 //   - Reads roles from `G.roleAssignments`,
 //   - reads each seat's player mat from `G.mats[seat]` (in / out / stash);
@@ -74,7 +74,7 @@ export function SeatTiles(props: BoardProps<SettlementState>) {
   };
 
   // Who is each seat waiting on?
-  //   - science / domestic / foreign can only ever wait on the chief
+  //   - science / domestic / defense can only ever wait on the chief
   //     (chiefPhase) or nobody (othersPhase — they act in parallel).
   //   - chief can wait on any subset of the other three roles
   //     (othersPhase, while non-chief seats are still acting).
@@ -86,18 +86,18 @@ export function SeatTiles(props: BoardProps<SettlementState>) {
     if (isSeatActing(seat)) return undefined;
     const seatRoles = G.roleAssignments[seat] ?? [];
     if (seatRoles.includes('chief')) {
-      const others: Array<'science' | 'domestic' | 'foreign'> = [];
+      const others: Array<'science' | 'domestic' | 'defense'> = [];
       for (const otherSeat of Object.keys(G.roleAssignments)) {
         if (otherSeat === seat) continue;
         if (!isSeatActing(otherSeat)) continue;
         for (const r of G.roleAssignments[otherSeat] ?? []) {
-          if (r === 'science' || r === 'domestic' || r === 'foreign') {
+          if (r === 'science' || r === 'domestic' || r === 'defense') {
             if (!others.includes(r)) others.push(r);
           }
         }
       }
       if (others.length === 0) return undefined;
-      const order = ['science', 'domestic', 'foreign'] as const;
+      const order = ['science', 'domestic', 'defense'] as const;
       return order
         .filter((r) => others.includes(r))
         .map(titleCase)

@@ -5,7 +5,7 @@
 // `Player ${ctx.currentPlayer + 1}'s turn`, but `ctx.currentPlayer`
 // is bgio's "default seat" — it advances after every pass-style
 // turn end and trails the actual active seat by an entire phase
-// once `setActivePlayers` is in play. After the foreign seat ends
+// once `setActivePlayers` is in play. After the defense seat ends
 // round 0 in our 4-player game, the engine transitions back to
 // `chiefPhase` for round 1; only the chief seat (Player 1) is
 // active, but `currentPlayer` is still '3' — so the header used to

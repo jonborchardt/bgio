@@ -79,7 +79,7 @@ describe('setupScience (05.1)', () => {
     }
   });
 
-  it('columns are ordered chief, science, domestic, foreign (gold, blue, green, red)', () => {
+  it('columns are ordered chief, science, domestic, defense (gold, blue, green, red)', () => {
     const science = setupScience(fromBgio(identityRandom));
     const colorOrder = science.grid.map((column) => column[0]!.color);
     expect(colorOrder).toEqual(['gold', 'blue', 'green', 'red']);
@@ -163,10 +163,10 @@ describe('setupScience (05.1)', () => {
         happiness: 0,
         worker: 0,
       },
-      centerMat: { tradeRequest: null },
+      centerMat: {},
       roleAssignments: { '0': ['chief'], '1': ['science'] } as Record<
         string,
-        ('chief' | 'science' | 'domestic' | 'foreign')[]
+        ('chief' | 'science' | 'domestic' | 'defense')[]
       >,
       round: 0,
       settlementsJoined: 0,

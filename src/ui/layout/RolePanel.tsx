@@ -1,5 +1,5 @@
 // RolePanel — shared shell for the four role panels (chief / science /
-// domestic / foreign). Owns the Paper container, role-themed border,
+// domestic / defense). Owns the Paper container, role-themed border,
 // and an optional right-aligned action row, so each panel only has to
 // provide its body content. The role name is no longer rendered here:
 // the panel sits beneath its seat tile (which already labels the role
@@ -8,13 +8,13 @@
 import { Box, Paper, Stack } from '@mui/material';
 import type { ReactNode } from 'react';
 
-export type RoleName = 'chief' | 'science' | 'domestic' | 'foreign';
+export type RoleName = 'chief' | 'science' | 'domestic' | 'defense';
 
 const ROLE_TITLES: Record<RoleName, string> = {
   chief: 'Chief',
   science: 'Science',
   domestic: 'Domestic',
-  foreign: 'Foreign',
+  defense: 'Defense',
 };
 
 export interface RolePanelProps {

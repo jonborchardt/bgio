@@ -29,7 +29,7 @@ import { assignRoles, rolesAtSeat, seatOfRole } from '../game/roles.ts';
 import { chiefBot } from '../game/ai/chiefBot.ts';
 import { scienceBot } from '../game/ai/scienceBot.ts';
 import { domesticBot } from '../game/ai/domesticBot.ts';
-import { foreignBot } from '../game/ai/foreignBot.ts';
+import { defenseBot } from '../game/ai/defenseBot.ts';
 import type { MoveCandidate } from '../game/ai/enumerate.ts';
 import type { Ctx } from 'boardgame.io';
 
@@ -53,7 +53,7 @@ const ROLE_BOTS: Record<
   chief: chiefBot,
   science: scienceBot,
   domestic: domesticBot,
-  foreign: foreignBot,
+  defense: defenseBot,
 };
 
 /** State shape passed into a composed bot. Mirrors the per-role bots'

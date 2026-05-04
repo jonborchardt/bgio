@@ -16,7 +16,7 @@ import type { SettlementState } from '../../../src/game/types.ts';
 import { initialMats } from '../../../src/game/resources/playerMat.ts';
 
 // Builds a 2-player state where seat '0' is chief+science and seat '1' is
-// domestic+foreign. The `inSlots` argument seeds `mats[seat].in` for any
+// domestic+defense. The `inSlots` argument seeds `mats[seat].in` for any
 // non-chief seat (used by the pull-back tests).
 const build2pState = (
   bank: Partial<ResourceBag> = {},
@@ -85,7 +85,7 @@ describe('chiefDistribute (04.1)', () => {
     const G = build2pState({ gold: 3 });
     const before = JSON.parse(JSON.stringify(G));
 
-    // Seat '1' is domestic+foreign — not the chief.
+    // Seat '1' is domestic+defense — not the chief.
     const result = callDistribute(G, '1', ctxAt('chiefPhase'), '1', { gold: 2 });
 
     expect(result).toBe(INVALID_MOVE);

@@ -105,7 +105,7 @@ const buildScienceState = (opts: {
 // non-chief seat has an empty mat (in / out / stash), and the seat holding
 // `science` is whatever the assignment table assigns. The science slice is
 // supplied directly. We seed empty hand fields on the chief / domestic /
-// foreign slices so the test can read them without `?.`.
+// defense slices so the test can read them without `?.`.
 const buildState = (
   numPlayers: 1 | 2 | 3 | 4,
   scienceState: ScienceState,
@@ -116,19 +116,16 @@ const buildState = (
 
   return {
     bank: bagOf({}),
-    centerMat: { tradeRequest: null },
+    centerMat: {},
     roleAssignments,
     round: 1,
     settlementsJoined: 0,
     hands,
     mats: initialMats(roleAssignments),
     science: scienceState,
-    foreign: {
+    defense: {
       hand: [],
       inPlay: [],
-      battleDeck: [],
-      tradeDeck: [],
-      inFlight: { battle: null, committed: [] },
     },
     chief: { workers: 0, hand: [] },
     domestic: { hand: [], grid: {}, techHand: [] },
@@ -158,7 +155,7 @@ const callComplete = (
 // the tables in src/game/roles.ts.
 const seatHoldingRole = (
   numPlayers: 1 | 2 | 3 | 4,
-  role: 'chief' | 'science' | 'domestic' | 'foreign',
+  role: 'chief' | 'science' | 'domestic' | 'defense',
 ): string => {
   const a = assignRoles(numPlayers);
   for (const [seat, roles] of Object.entries(a)) {
@@ -195,11 +192,11 @@ describe('scienceComplete (05.3)', () => {
       'blue-4',
     ]);
 
-    // Now drive a red completion to confirm Foreign-side delivery.
+    // Now drive a red completion to confirm Defense-side delivery.
     G.science!.perRoundCompletions = 0; // simulate a fresh round
     G.science!.paid['red-0'] = bagOf({ gold: 1 });
     callComplete(G, scienceSeat, ctxScienceTurn(scienceSeat), 'red-0');
-    expect(G.foreign!.techHand).toHaveLength(4);
+    expect(G.defense!.techHand).toHaveLength(4);
 
     // Gold completion → chief hand.
     G.science!.perRoundCompletions = 0;
@@ -281,28 +278,28 @@ describe('scienceComplete (05.3)', () => {
       expect(seat).toBe('0');
       callComplete(G, seat, ctxScienceTurn(seat), 'blue-0');
       // In 1p, the science seat holds every role — so the science hand,
-      // chief hand, domestic hand, and foreign hand all live on seat '0'.
+      // chief hand, domestic hand, and defense hand all live on seat '0'.
       expect(G.science!.hand).toHaveLength(4);
     }
 
-    // 2-player: seat '0' holds chief+science, seat '1' holds domestic+foreign.
+    // 2-player: seat '0' holds chief+science, seat '1' holds domestic+defense.
     {
       const science = buildScienceState({
         paid: { 'red-0': { gold: 1 } },
       });
       const G = buildState(2, science);
       const scienceSeat = seatHoldingRole(2, 'science');
-      const foreignSeat = seatHoldingRole(2, 'foreign');
+      const defenseSeat = seatHoldingRole(2, 'defense');
       expect(scienceSeat).toBe('0');
-      expect(foreignSeat).toBe('1');
+      expect(defenseSeat).toBe('1');
       callComplete(G, scienceSeat, ctxScienceTurn(scienceSeat), 'red-0');
-      // Red → Foreign → seat '1' owns G.foreign; the move pushes onto the
-      // shared Foreign techHand slice. We don't index by seat for the global
+      // Red → Defense → seat '1' owns G.defense; the move pushes onto the
+      // shared Defense techHand slice. We don't index by seat for the global
       // role slices (the role-holding seat owns the slice as a whole).
-      expect(G.foreign!.techHand).toHaveLength(4);
+      expect(G.defense!.techHand).toHaveLength(4);
     }
 
-    // 3-player: seat '0' chief+science, seat '1' domestic, seat '2' foreign.
+    // 3-player: seat '0' chief+science, seat '1' domestic, seat '2' defense.
     {
       const science = buildScienceState({
         paid: { 'green-0': { gold: 1 } },

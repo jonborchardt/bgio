@@ -53,7 +53,7 @@ export const techHasUnlocks = (tech: TechnologyDef): boolean =>
 
 /**
  * Grant the tech's `buildings` and `units` unlocks into the appropriate
- * role hands: BuildingDefs → `G.domestic.hand`, UnitDefs → `G.foreign.hand`.
+ * role hands: BuildingDefs → `G.domestic.hand`, UnitDefs → `G.defense.hand`.
  * Skips entries that don't resolve to a known def (so a typo in the JSON
  * is a silent no-op rather than a crash). Skips entries already present
  * in the destination hand so repeat plays don't stack duplicates.
@@ -76,9 +76,9 @@ export const grantTechUnlocks = (
   for (const name of splitNames(tech.units)) {
     const def = unitByName.get(name.toLowerCase());
     if (def === undefined) continue;
-    if (G.foreign === undefined) continue;
-    if (G.foreign.hand.some((u) => u.name === def.name)) continue;
-    G.foreign.hand.push(def);
+    if (G.defense === undefined) continue;
+    if (G.defense.hand.some((u) => u.name === def.name)) continue;
+    G.defense.hand.push(def);
     granted += 1;
   }
   return granted > 0;
@@ -195,8 +195,8 @@ export const applyTechOnPlay = (
  *   - `G.chief.hand`        — gold-distributed techs (05.3)
  *   - `G.science.hand`      — blue-distributed techs (05.3)
  *   - `G.domestic.techHand` — green-distributed techs (05.3)
- *   - `G.foreign.techHand`  — red-distributed techs (05.3); separate
- *                             from `G.foreign.hand` which holds units.
+ *   - `G.defense.techHand`  — red-distributed techs (05.3); separate
+ *                             from `G.defense.hand` which holds units.
  *
  * `holder` here is the seat — we resolve which roles that seat holds
  * via the role-assignment table on `G` and concat from the matching
@@ -225,7 +225,7 @@ export const techPassives = (
   if (roles.includes('chief')) collect(G.chief?.hand);
   if (roles.includes('science')) collect(G.science?.hand);
   if (roles.includes('domestic')) collect(G.domestic?.techHand);
-  if (roles.includes('foreign')) collect(G.foreign?.techHand);
+  if (roles.includes('defense')) collect(G.defense?.techHand);
 
   return out;
 };

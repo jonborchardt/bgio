@@ -30,24 +30,14 @@ describe('resolveHint (14.6)', () => {
     ).toMatch(/Buy a building/);
   });
 
-  it('othersPhase + foreignTurn + foreign', () => {
+  it('othersPhase + defenseTurn + defense', () => {
     expect(
       resolveHint({
         phase: 'othersPhase',
-        stage: 'foreignTurn',
-        rolesAtSeat: ['foreign'],
+        stage: 'defenseTurn',
+        rolesAtSeat: ['defense'],
       }),
-    ).toMatch(/Pay upkeep/);
-  });
-
-  it('othersPhase + foreignAwaitingDamage + foreign', () => {
-    expect(
-      resolveHint({
-        phase: 'othersPhase',
-        stage: 'foreignAwaitingDamage',
-        rolesAtSeat: ['foreign'],
-      }),
-    ).toMatch(/Allocate incoming damage/);
+    ).toMatch(/coming in Phase 2/);
   });
 
   it('done stage: waiting message', () => {

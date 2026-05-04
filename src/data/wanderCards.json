@@ -68,13 +68,13 @@
   {
     "id": "wan-012",
     "name": "Foe Repulsed",
-    "effects": [{ "kind": "redrawBattleTop" }],
+    "effects": [{ "kind": "gainResource", "bag": { "happiness": 1 }, "target": "bank" }],
     "flavor": "Scouts scatter the enemy vanguard before they take ground."
   },
   {
     "id": "wan-013",
     "name": "Tribute Forgiven",
-    "effects": [{ "kind": "tributeWaiver" }],
+    "effects": [{ "kind": "gainResource", "bag": { "gold": 1 }, "target": "bank" }],
     "flavor": "An envoy, charmed, departs without his usual demand."
   },
   {
@@ -133,7 +133,7 @@
   {
     "id": "wan-022",
     "name": "Sharpened Blades",
-    "effects": [{ "kind": "redrawBattleTop" }],
+    "effects": [{ "kind": "gainResource", "bag": { "production": 1 }, "target": "bank" }],
     "flavor": "The smiths work through the night."
   },
   {

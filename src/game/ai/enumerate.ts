@@ -11,13 +11,6 @@
 // `enumerate` via the same hook). RandomBot picks uniformly across this
 // list, so keeping it small and on-distribution helps random play be
 // vaguely sensible too.
-//
-// Combinatoric blow-up control: we cap the total candidate count at
-// MAX_CANDIDATES and, for moves that take a Partial<ResourceBag>, only
-// enumerate single-resource increments of 1. That's enough granularity for
-// MCTS to find the right *direction* — multi-resource bundles can be
-// reached by chaining single-resource calls when the game allows partial
-// credit.
 
 import type { Ctx } from 'boardgame.io';
 import type { PlayerID, SettlementState } from '../types.ts';
@@ -110,20 +103,6 @@ const enumerateChief = (
     }
   }
 
-  // chiefDecideTradeDiscard: only legal when the flag is on, but no harm
-  // listing both choices when it is.
-  if (G._awaitingChiefTradeDiscard === true) {
-    out.push({ move: 'chiefDecideTradeDiscard', args: ['existing'] });
-    out.push({ move: 'chiefDecideTradeDiscard', args: ['new'] });
-  }
-
-  // foreignTradeFulfill: chief-only (see tradeFulfill.ts) — the chief
-  // pays `required` from `G.bank` and receives `reward` back, ticking
-  // `settlementsJoined` toward the win condition.
-  if (G.centerMat.tradeRequest !== null) {
-    out.push({ move: 'foreignTradeFulfill', args: [] });
-  }
-
   // chiefPlayTech: one candidate per tech in the chief's hand with a non-
   // empty onPlayEffects.
   const chiefTechHand = G.chief?.hand ?? [];
@@ -195,6 +174,9 @@ const enumerateScience = (
       out.push({ move: 'sciencePlayTech', args: [tech.name] });
     }
   }
+
+  // scienceSeatDone: always a fallback so the bot can bail out cleanly.
+  out.push({ move: 'scienceSeatDone', args: [] });
 
   return out;
 };
@@ -277,60 +259,17 @@ const enumerateDomestic = (
     }
   }
 
+  // domesticSeatDone: always a fallback.
+  out.push({ move: 'domesticSeatDone', args: [] });
+
   return out;
 };
 
-const enumerateForeign = (
-  G: SettlementState,
-  playerID: PlayerID,
-): MoveCandidate[] => {
-  const out: MoveCandidate[] = [];
-  const foreign = G.foreign;
-  if (foreign === undefined) return out;
-
-  // foreignRecruit: one candidate per UnitDef in the hand.
-  for (const def of foreign.hand) {
-    out.push({ move: 'foreignRecruit', args: [def.name] });
-  }
-
-  // foreignUpkeep: a single candidate (no args). Idempotency gated by the
-  // move's per-stage `_upkeepPaid` flag.
-  out.push({ move: 'foreignUpkeep', args: [] });
-
-  // foreignReleaseUnit: one candidate per in-play entry.
-  for (const entry of foreign.inPlay) {
-    out.push({ move: 'foreignReleaseUnit', args: [entry.defID] });
-  }
-
-  // foreignFlipBattle: a single candidate. The move rejects when there's
-  // already a battle in flight or the deck is empty.
-  out.push({ move: 'foreignFlipBattle', args: [] });
-
-  // foreignFlipTrade: only legal after a winning battle, but listing it
-  // costs nothing — the move rejects when not.
-  out.push({ move: 'foreignFlipTrade', args: [] });
-
-  // foreignPlayRedEvent.
-  if (
-    G.events !== undefined &&
-    G._eventPlayedThisRound?.foreign !== true
-  ) {
-    const redHand = G.events.hands.red[playerID] ?? [];
-    for (const card of redHand) {
-      out.push({ move: 'foreignPlayRedEvent', args: [card.id] });
-    }
-  }
-
-  // foreignPlayTech. Red techs distributed by 05.3 live in
-  // `foreign.techHand` (separate from `foreign.hand`, which holds
-  // recruitable units).
-  for (const tech of foreign.techHand ?? []) {
-    if ((tech.onPlayEffects?.length ?? 0) > 0) {
-      out.push({ move: 'foreignPlayTech', args: [tech.name] });
-    }
-  }
-
-  return out;
+const enumerateDefense = (G: SettlementState): MoveCandidate[] => {
+  // 1.4 stub — the only defense action is ending the turn. Phase 2 will
+  // add buy / place / play-tech candidates over the new economy.
+  if (G.defense === undefined) return [];
+  return [{ move: 'defenseSeatDone', args: [] }];
 };
 
 const enumeratePlayingEvent = (
@@ -365,32 +304,6 @@ const enumeratePlayingEvent = (
   return out;
 };
 
-const enumerateForeignAwaitingDamage = (
-  G: SettlementState,
-): MoveCandidate[] => {
-  const foreign = G.foreign;
-  if (foreign === undefined) return [];
-
-  // V1: a single auto-allocation candidate. The DamageAllocation
-  // shape (07.3 battleResolver) is `{ byUnit: Record<defID, number> }`,
-  // not `{ sourceIdx, targetIdx, amount }`. The resolver consumes
-  // one allocation per incoming-damage event from enemy → player, so
-  // the simplest plan that doesn't deadlock the bot is "absorb the
-  // first hit by piling damage onto the lowest-HP committed unit".
-  // The resolver rejects under-allocations with `outcome: 'mid'` and
-  // assignDamage converts that to INVALID_MOVE, which is fine — MCTS
-  // collapses the branch and the foreignBot heuristic picks up next.
-  if (foreign.inFlight.committed.length === 0) return [];
-  const first = foreign.inFlight.committed[0];
-  if (first === undefined) return [];
-  return [
-    {
-      move: 'foreignAssignDamage',
-      args: [[{ byUnit: { [first.defID]: 1 } }]],
-    },
-  ];
-};
-
 /**
  * Inspects `ctx.phase` and `ctx.activePlayers?.[playerID]` and returns a
  * bounded list of plausible move candidates for `playerID`. `pass` is
@@ -413,10 +326,8 @@ export const enumerate = (
       out.push(...enumerateScience(G, playerID));
     } else if (stage === STAGES.domesticTurn && seatRoles.includes('domestic')) {
       out.push(...enumerateDomestic(G, playerID));
-    } else if (stage === STAGES.foreignTurn && seatRoles.includes('foreign')) {
-      out.push(...enumerateForeign(G, playerID));
-    } else if (stage === STAGES.foreignAwaitingDamage) {
-      out.push(...enumerateForeignAwaitingDamage(G));
+    } else if (stage === STAGES.defenseTurn && seatRoles.includes('defense')) {
+      out.push(...enumerateDefense(G));
     } else if (stage === STAGES.playingEvent) {
       out.push(...enumeratePlayingEvent(G, playerID));
     }

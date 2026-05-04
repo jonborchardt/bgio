@@ -47,7 +47,7 @@ const sparseTech: TechnologyDef = {
 
 const render = (
   def: TechnologyDef,
-  holderRole?: 'chief' | 'science' | 'domestic' | 'foreign',
+  holderRole?: 'chief' | 'science' | 'domestic' | 'defense',
 ): string =>
   renderToStaticMarkup(
     <ThemeProvider theme={theme}>
@@ -82,7 +82,7 @@ describe('TechCard', () => {
     expect(html).toContain('Chief');
     expect(html).toContain('Science');
     expect(html).toContain('Domestic');
-    expect(html).toContain('Foreign');
+    expect(html).toContain('Defense');
     // Buildings + Units appear under their owning role panels. Each
     // listed building/unit renders as its own chip (with a `?` button
     // when a CardInfoProvider is mounted), so we assert each name

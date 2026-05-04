@@ -17,7 +17,6 @@ import { INVALID_MOVE } from 'boardgame.io/core';
 import { chiefPlayGoldEvent } from '../../src/game/roles/chief/playGoldEvent.ts';
 import { sciencePlayBlueEvent } from '../../src/game/roles/science/playBlueEvent.ts';
 import { domesticPlayGreenEvent } from '../../src/game/roles/domestic/playGreenEvent.ts';
-import { foreignPlayRedEvent } from '../../src/game/roles/foreign/playRedEvent.ts';
 import { eventResolve } from '../../src/game/events/resolveMove.ts';
 import { bagOf } from '../../src/game/resources/bag.ts';
 import { assignRoles } from '../../src/game/roles.ts';
@@ -31,7 +30,7 @@ import type { ScienceState } from '../../src/game/roles/science/setup.ts';
 import { initialMats } from '../../src/game/resources/playerMat.ts';
 
 // 4-player layout puts every role on its own seat: chief='0',
-// science='1', domestic='2', foreign='3'. Removes any ambiguity about
+// science='1', domestic='2', defense='3'. Removes any ambiguity about
 // which seat a stash credit should land on.
 const FOUR_P = (): ReturnType<typeof assignRoles> => assignRoles(4);
 
@@ -44,7 +43,7 @@ const build4pState = (
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
   return {
     bank: bagOf({}),
-    centerMat: { tradeRequest: null },
+    centerMat: {},
     roleAssignments,
     round: 1,
     settlementsJoined: 0,
@@ -161,25 +160,8 @@ describe('play*Event end-to-end (08.3)', () => {
     expect(G._eventPlayedThisRound!.domestic).toBe(true);
   });
 
-  it('foreignPlayRedEvent: gainResource(target=wallet) credits the foreign seat\'s wallet', () => {
-    const card: EventCardDef = {
-      id: 'evt-red-test',
-      color: 'red',
-      name: 'Skirmish',
-      effects: [
-        { kind: 'gainResource', bag: { steel: 1 }, target: 'wallet' },
-      ],
-    };
-    const G = build4pState({ events: eventsWithOne('red', '3', card) });
-    const mv = foreignPlayRedEvent as unknown as MoveFn<[string]>;
-    const result = mv(
-      { G, ctx: ctxOthersWith({ '3': 'foreignTurn' }), playerID: '3' },
-      card.id,
-    );
-    expect(result).toBeUndefined();
-    expect(G.mats['3']!.stash.steel).toBe(1);
-    expect(G._eventPlayedThisRound!.foreign).toBe(true);
-  });
+  // The defense red play-event move is retired in 1.4 (D14);
+  // Phase 2 will reintroduce it once the new defense card economy lands.
 });
 
 describe('eventResolve (08.3)', () => {

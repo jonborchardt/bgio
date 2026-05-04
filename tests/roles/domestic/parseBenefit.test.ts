@@ -30,19 +30,10 @@ describe('parseBenefit', () => {
     });
   });
 
-  it('parses "decrease unit maintenance by 2" as a negative unitMaintenance effect', () => {
-    expect(parseBenefit('decrease unit maintenance by 2')).toEqual({
-      resources: {},
-      effects: [{ kind: 'unitMaintenance', amount: -2 }],
-    });
-  });
-
-  it('parses "units cost 1 less" as a negative unitCost effect', () => {
-    expect(parseBenefit('units cost 1 less')).toEqual({
-      resources: {},
-      effects: [{ kind: 'unitCost', amount: -1 }],
-    });
-  });
+  // The unitMaintenance / unitCost verbs were retired by the defense
+  // redesign (D14 / D18). Per-unit placement bonuses live on the unit
+  // card itself in Phase 2, so the parser no longer recognizes
+  // "decrease unit maintenance" or "units cost N less".
 
   it('parses every benefit string in buildings.json without throwing', () => {
     for (const building of BUILDINGS) {

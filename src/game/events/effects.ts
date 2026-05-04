@@ -11,7 +11,7 @@
 // dispatcher.ts. Effects fall into three buckets:
 //
 //   - Immediate / deterministic: applied directly during dispatch
-//     (`gainResource`, `addEventCard`, `redrawBattleTop`, `tributeWaiver`).
+//     (`gainResource`, `addEventCard`).
 //   - Modifier: pushed onto `G._modifiers` and consumed later by the move
 //     it conditions (`doubleScience`, `forbidBuy`, `forceCheapestScience`).
 //   - Awaiting-input: stashed on `G._awaitingInput[playerID]` and
@@ -26,7 +26,5 @@ export type EventEffect =
   | { kind: 'forbidBuy' } // sci can't complete a card this turn
   | { kind: 'forceCheapestScience' }
   | { kind: 'swapTwoScienceCards' } // requires user pick — uses awaitInput flow
-  | { kind: 'redrawBattleTop' }
-  | { kind: 'tributeWaiver' }
   | { kind: 'addEventCard'; cardID: string } // appends to a color deck
   | { kind: 'awaitInput'; prompt: string; payloadKind: string };

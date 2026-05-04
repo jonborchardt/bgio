@@ -20,7 +20,7 @@ import { rolesAtSeat } from './game/roles.ts';
 import { ChiefPanel } from './ui/chief/ChiefPanel.tsx';
 import { SciencePanel } from './ui/science/SciencePanel.tsx';
 import { DomesticPanel } from './ui/domestic/DomesticPanel.tsx';
-import { ForeignPanel } from './ui/foreign/ForeignPanel.tsx';
+import { DefensePanel } from './ui/defense/DefensePanel.tsx';
 import { GameOverBanner } from './ui/layout/GameOverBanner.tsx';
 import { pickActiveSeat } from './ui/layout/activeSeat.ts';
 import type { GameOutcome } from './game/endConditions.ts';
@@ -29,11 +29,11 @@ import { RelationshipsModalHost } from './ui/relationships/RelationshipsModalHos
 import { DevSidebar } from './ui/layout/DevSidebar.tsx';
 import { EventLogDrawer } from './ui/log/EventLogDrawer.tsx';
 
-const ROLE_TITLE: Record<'chief' | 'science' | 'domestic' | 'foreign', string> = {
+const ROLE_TITLE: Record<'chief' | 'science' | 'domestic' | 'defense', string> = {
   chief: 'Chief',
   science: 'Science',
   domestic: 'Domestic',
-  foreign: 'Foreign',
+  defense: 'Defense',
 };
 
 export function SettlementBoard(props: BoardProps<SettlementState>) {
@@ -51,7 +51,7 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
     ? rolesAtSeat(G.roleAssignments, playerID)
     : [];
   const isSolo = ctx.numPlayers === 1;
-  const expanded = (role: 'chief' | 'science' | 'domestic' | 'foreign') =>
+  const expanded = (role: 'chief' | 'science' | 'domestic' | 'defense') =>
     isSolo || localRoles.includes(role);
 
   // Build the single-line turn-status string the player sees under the
@@ -68,7 +68,7 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
   });
   const activeRolesAtSeat = G.roleAssignments[active.seat] ?? [];
   const activeRoleLabel = activeRolesAtSeat
-    .map((r) => ROLE_TITLE[r as 'chief' | 'science' | 'domestic' | 'foreign'])
+    .map((r) => ROLE_TITLE[r as 'chief' | 'science' | 'domestic' | 'defense'])
     .filter(Boolean)
     .join(' · ');
   const turnLine = gameOver
@@ -126,7 +126,7 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
           {expanded('chief') ? <ChiefPanel {...props} /> : null}
           {expanded('science') ? <SciencePanel {...props} /> : null}
           {expanded('domestic') ? <DomesticPanel {...props} /> : null}
-          {expanded('foreign') ? <ForeignPanel {...props} /> : null}
+          {expanded('defense') ? <DefensePanel {...props} /> : null}
         </Stack>
       </Stack>
 

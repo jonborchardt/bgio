@@ -1,49 +1,22 @@
-// Center mat — only the trade-request slot lives here now.
+// Center mat — empty slot in 1.4.
 //
-// The per-seat resource circles previously held by `circles[seat]` were
-// folded into `G.mats[seat].in` / `out` in the player-mat redesign.
-// What remains on the center mat is the single trade-request slot: a
-// flipped Trade card holding a `required`/`reward` offer that the
-// **chief** can fulfill from the bank (or discard via the interrupt
-// flow when a second flip collides with this slot). The `ownerSeat`
-// field is retained for audit / UI labeling — it does not gate
-// fulfillment.
+// The trade-request slot was retired by the defense redesign (D14: no
+// trade requests, no battle deck). Phase 2 will fill the center mat
+// back up with track cards (D19) — until then `CenterMat` is a placeholder
+// shape so existing code that reads `G.centerMat` doesn't have to guard
+// for an absent slot. The `initialCenterMat()` factory keeps its name so
+// `setup.ts` doesn't need a touch-up; the returned object is empty.
+//
+// Phase 2.4 will add the global event track (next-card / current-card /
+// past-cards strip) under this same `centerMat` slot.
 
-import type { PlayerID } from '../types.ts';
-import type { ResourceBag } from './types.ts';
+// Empty interface kept so Phase 2 can widen the shape (track-strip
+// state, current / next track card, etc.) without churning every
+// consumer that already references the named type. The eslint disable
+// is intentional: there are no fields *yet*. `Record<string, never>`
+// would be too narrow — older test fixtures still rely on the open
+// shape via `as Record<string, unknown>` casts.
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface CenterMat {}
 
-export interface TradeRequest {
-  id: string;
-  // The seat acting as the trading partner (the Foreign-flipping seat).
-  ownerSeat: PlayerID;
-  required: ResourceBag;
-  reward: ResourceBag;
-}
-
-export interface CenterMat {
-  // 0 or 1 active trade request at any time. Persists across rounds.
-  tradeRequest: TradeRequest | null;
-}
-
-export const initialCenterMat = (): CenterMat => ({
-  tradeRequest: null,
-});
-
-// Sets the (single) trade-request slot. Throws if a request already sits
-// there — callers must call `clearTradeRequest` first. This invariant
-// lets downstream code treat the slot as "writes are checked" rather
-// than racing.
-export const setTradeRequest = (mat: CenterMat, req: TradeRequest): void => {
-  if (mat.tradeRequest !== null) {
-    throw new Error(
-      `setTradeRequest: a trade request is already present (id='${mat.tradeRequest.id}'); clear it first`,
-    );
-  }
-  mat.tradeRequest = req;
-};
-
-// Clears the trade-request slot. Idempotent — clearing an empty slot is a
-// no-op rather than an error.
-export const clearTradeRequest = (mat: CenterMat): void => {
-  mat.tradeRequest = null;
-};
+export const initialCenterMat = (): CenterMat => ({});

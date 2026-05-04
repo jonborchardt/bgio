@@ -37,9 +37,9 @@ export interface RelationshipsGraphProps {
   onSelectCard?: (cardId: string) => void;
 }
 
-const EDGE_COLOR_TOKEN: Record<EdgeKind, 'role.science' | 'role.domestic' | 'role.foreign' | 'role.chief' | 'status.muted' | 'status.active'> = {
+const EDGE_COLOR_TOKEN: Record<EdgeKind, 'role.science' | 'role.domestic' | 'role.defense' | 'role.chief' | 'status.muted' | 'status.active'> = {
   'tech-unlocks-building': 'role.domestic',
-  'tech-unlocks-unit': 'role.foreign',
+  'tech-unlocks-unit': 'role.defense',
   'tech-event-link': 'role.science',
   'unit-requires-tech': 'role.chief',
   'unit-requires-building': 'status.muted',
@@ -48,8 +48,6 @@ const EDGE_COLOR_TOKEN: Record<EdgeKind, 'role.science' | 'role.domestic' | 'rol
   'tech-prereq-tech': 'role.science',
   // Building → its enabling tech reads as domestic infrastructure.
   'building-requires-tech': 'role.domestic',
-  // Battle → unit reads as a foreign / military relationship.
-  'battle-needs-unit': 'role.foreign',
   // Science → tech rewards: science role accent.
   'science-rewards-tech': 'role.science',
   // Cell-to-cell chain within a color column: muted, since the chain

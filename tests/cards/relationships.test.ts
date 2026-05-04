@@ -66,11 +66,6 @@ describe('cards/relationships', () => {
     expect(has).toBe(true);
   });
 
-  it('extracts at least one battle-needs-unit edge from battle cards', () => {
-    const has = graph.edges.some((e) => e.kind === 'battle-needs-unit');
-    expect(has).toBe(true);
-  });
-
   it('chains science cells by level (one science-cell-prereq per gap)', () => {
     const has = graph.edges.some((e) => e.kind === 'science-cell-prereq');
     expect(has).toBe(true);
@@ -152,7 +147,6 @@ describe('cards/relationships', () => {
         case 'unit-requires-building':
         case 'building-requires-tech':
         case 'tech-prereq-tech':
-        case 'battle-needs-unit':
         case 'science-cell-prereq':
           prereq = e.target;
           dependent = e.source;

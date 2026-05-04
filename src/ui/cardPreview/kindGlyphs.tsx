@@ -56,7 +56,7 @@ const PATHS: Record<
     extra: 'M11 4 L21 4 M13 14 L19 14 M16 18 L16 22',
   },
   // Helmeted soldier head + spear.
-  foreignUnit: {
+  defenseUnit: {
     viewBox: '0 0 32 32',
     d: 'M9 15 Q9 8 16 8 Q23 8 23 15 L23 18 L19 18 L19 22 Q16 23 13 22 L13 18 L9 18 Z',
     extra: 'M16 23 L16 28 M8 6 L24 6',

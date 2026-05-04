@@ -231,7 +231,7 @@ const role: Record<Role, PaletteColor> = {
   chief: pc(ramps.yellow),
   science: pc(ramps.blueScience),
   domestic: pc(ramps.green),
-  foreign: pc(ramps.red),
+  defense: pc(ramps.red),
 };
 
 const tier: Record<'beginner' | 'intermediate' | 'advanced', PaletteColor> = {

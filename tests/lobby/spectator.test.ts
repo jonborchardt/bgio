@@ -40,7 +40,7 @@ describe('spectatorClient (10.8)', () => {
     'a spectator Client cannot dispatch moves (server rejects)',
   );
   it.todo(
-    'playerView(G, ctx, null) redacts foreign deck order but keeps bank visible',
+    'playerView(G, ctx, null) redacts defense hand contents but keeps bank visible',
   );
   it.todo('spectator can leave and rejoin without affecting seat metadata');
 });

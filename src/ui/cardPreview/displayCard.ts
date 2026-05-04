@@ -27,16 +27,16 @@ export interface DisplayEffect {
 
 /** Card grants — buildings or units that get unlocked. Role-tagged so
  *  variations can render with per-role color (Buildings → domestic green,
- *  Units → foreign red). */
+ *  Units → defense red). */
 export interface DisplayGrant {
-  role: 'domestic' | 'foreign';
+  role: 'domestic' | 'defense';
   label: 'Buildings' | 'Units';
   items: string;
 }
 
 /** Per-role section for techs. Each entry collects everything the role
  *  receives from this tech: buildings unlocked (domestic only), units
- *  unlocked (foreign only), and the role's event line ("resources").
+ *  unlocked (defense only), and the role's event line ("resources").
  *  Variations that want a "by role" view consume this; variations that
  *  prefer a "by event-color" view ignore it and read `effects` instead. */
 export interface DisplayRoleSection {
@@ -95,8 +95,8 @@ const KIND_TO_ROLE: Record<SampleCardKind, Role> = {
   placedVillage: 'domestic',
   scienceCard: 'science',
   scienceAdvanced: 'science',
-  foreignUnit: 'foreign',
-  army: 'foreign',
+  defenseUnit: 'defense',
+  army: 'defense',
   chiefTech: 'chief',
   chiefTechGrant: 'chief',
 };
@@ -107,7 +107,7 @@ const KIND_TO_GLYPH: Record<SampleCardKind, string> = {
   placedVillage: 'V',
   scienceCard: 'S',
   scienceAdvanced: 'S',
-  foreignUnit: 'F',
+  defenseUnit: 'D',
   army: 'A',
   chiefTech: 'C',
   chiefTechGrant: 'C',
@@ -117,7 +117,7 @@ const ROLE_LABEL: Record<Role, string> = {
   chief: 'Chief',
   science: 'Science',
   domestic: 'Domestic',
-  foreign: 'Foreign',
+  defense: 'Defense',
 };
 
 const KIND_LABEL: Record<SampleCardKind, string> = {
@@ -126,7 +126,7 @@ const KIND_LABEL: Record<SampleCardKind, string> = {
   placedVillage: 'Village',
   scienceCard: 'Science',
   scienceAdvanced: 'Science',
-  foreignUnit: 'Unit',
+  defenseUnit: 'Unit',
   army: 'Army',
   chiefTech: 'Tech',
   chiefTechGrant: 'Tech',
@@ -139,7 +139,7 @@ const KIND_MOTIF: Record<SampleCardKind, string> = {
   placedVillage: '🏠',
   scienceCard: '⚗',
   scienceAdvanced: '🧪',
-  foreignUnit: '⚔',
+  defenseUnit: '⚔',
   army: '⚔',
   chiefTech: '👑',
   chiefTechGrant: '📜',
@@ -148,14 +148,14 @@ const KIND_MOTIF: Record<SampleCardKind, string> = {
 const COLOR_BY_ROLE: Record<Role, EventColor> = {
   science: 'blue',
   domestic: 'green',
-  foreign: 'red',
+  defense: 'red',
   chief: 'gold',
 };
 
 const ROLE_BY_SCIENCE_COLOR: Record<EventColor, Role> = {
   blue: 'science',
   green: 'domestic',
-  red: 'foreign',
+  red: 'defense',
   gold: 'chief',
 };
 
@@ -213,7 +213,7 @@ export function toDisplayCard(card: SampleCard): DisplayCard {
       }
       return result;
     }
-    case 'foreignUnit':
+    case 'defenseUnit':
     case 'army': {
       const def = card.def;
       const bag = def.costBag ?? { gold: def.cost };
@@ -286,7 +286,7 @@ export function toDisplayCard(card: SampleCard): DisplayCard {
       }
       // Surface buildings and units as structured DisplayGrant entries
       // so variations can render each with the matching role's color
-      // (Buildings → domestic green, Units → foreign red). Resource-only
+      // (Buildings → domestic green, Units → defense red). Resource-only
       // techs like Loot store leave this empty.
       const grants: DisplayGrant[] = [];
       if (def.buildings && def.buildings.trim()) {
@@ -297,11 +297,11 @@ export function toDisplayCard(card: SampleCard): DisplayCard {
         });
       }
       if (def.units && def.units.trim()) {
-        grants.push({ role: 'foreign', label: 'Units', items: def.units });
+        grants.push({ role: 'defense', label: 'Units', items: def.units });
       }
       // Per-role view: every role gets its event line; domestic also
-      // receives any granted buildings; foreign also receives any
-      // granted units. Order: chief → science → domestic → foreign so
+      // receives any granted buildings; defense also receives any
+      // granted units. Order: chief → science → domestic → defense so
       // variations can rely on a stable layout.
       const roleSections: DisplayRoleSection[] = [
         {
@@ -323,7 +323,7 @@ export function toDisplayCard(card: SampleCard): DisplayCard {
             def.greenEvent && def.greenEvent.trim() ? def.greenEvent : undefined,
         },
         {
-          role: 'foreign',
+          role: 'defense',
           color: 'red',
           units: def.units && def.units.trim() ? def.units : undefined,
           resources:

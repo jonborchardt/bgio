@@ -5,12 +5,12 @@ describe('role assignment', () => {
   it('assignRoles(2) matches the literal table from game-design.md §Players', () => {
     expect(assignRoles(2)).toEqual({
       '0': ['chief', 'science'],
-      '1': ['domestic', 'foreign'],
+      '1': ['domestic', 'defense'],
     });
   });
 
-  it('seatOfRole(assignRoles(3), "foreign") returns "2"', () => {
-    expect(seatOfRole(assignRoles(3), 'foreign')).toBe('2');
+  it('seatOfRole(assignRoles(3), "defense") returns "2"', () => {
+    expect(seatOfRole(assignRoles(3), 'defense')).toBe('2');
   });
 
   it('rolesAtSeat(assignRoles(1), "0") returns all four roles', () => {
@@ -18,7 +18,7 @@ describe('role assignment', () => {
       'chief',
       'science',
       'domestic',
-      'foreign',
+      'defense',
     ]);
   });
 

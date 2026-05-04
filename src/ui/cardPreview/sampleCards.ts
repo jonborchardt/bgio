@@ -60,7 +60,7 @@ export const SAMPLE_CARDS: Record<SampleCardKind, SampleCard> = {
     kind: 'scienceAdvanced',
     def: pickScience('red', 'advanced', 3),
   },
-  foreignUnit: { kind: 'foreignUnit', def: findUnit('Scout') },
+  defenseUnit: { kind: 'defenseUnit', def: findUnit('Scout') },
   army: { kind: 'army', def: findUnit('Spearman'), count: 3 },
   // Resource-only chief tech: every event line is a small bag of
   // resources. Useful baseline for "what does a minimal tech look like".
@@ -77,7 +77,7 @@ export const SAMPLE_KINDS: ReadonlyArray<SampleCardKind> = [
   'placedVillage',
   'scienceCard',
   'scienceAdvanced',
-  'foreignUnit',
+  'defenseUnit',
   'army',
   'chiefTech',
   'chiefTechGrant',

@@ -13,7 +13,7 @@
 // `domesticTurn`.
 //
 // `parsed.effects` are intentionally not applied here — they affect other
-// moves (Foreign upkeep / recruit, combat, happiness).
+// moves (combat, happiness).
 //
 // Idempotency: `producedThisRound` on `DomesticState`, cleared at
 // endOfRound by the `domestic:reset-produced` hook registered below.

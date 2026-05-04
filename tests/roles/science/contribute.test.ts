@@ -66,7 +66,7 @@ const buildScienceState = (
 };
 
 // Builds a 2-player state where seat '0' is chief+science and seat '1' is
-// domestic+foreign. The science seat (seat '0') gets a stash seeded by
+// domestic+defense. The science seat (seat '0') gets a stash seeded by
 // `walletOf` even though the canonical 2p layout puts science on the chief
 // seat (which normally has no mat) — for these tests we want the
 // contribute move to have something to draw from, so we bend the rule

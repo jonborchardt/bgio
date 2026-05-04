@@ -2,7 +2,7 @@
 //
 // `othersPhase` runs every non-chief seat in parallel via bgio's
 // `setActivePlayers` map. Each seat sits in the stage matching their
-// primary non-chief role (science > domestic > foreign), and any role
+// primary non-chief role (science > domestic > defense), and any role
 // can briefly pivot into the shared `playingEvent` stage to resolve an
 // event card without losing their place — `enterEventStage` /
 // `exitEventStage` push and pop the prior stage on a per-seat stack
@@ -14,14 +14,8 @@ import { seatOfRole } from '../roles.ts';
 export const STAGES = {
   scienceTurn: 'scienceTurn',
   domesticTurn: 'domesticTurn',
-  foreignTurn: 'foreignTurn',
-  // 07.4 — interrupt stage entered after `foreignFlipBattle` flips a battle
-  // card. The Foreign seat must call `foreignAssignDamage` next to resolve
-  // the fight; on resolution the seat returns to `foreignTurn` (win) or
-  // `done` (lose).
-  foreignAwaitingDamage: 'foreignAwaitingDamage',
+  defenseTurn: 'defenseTurn',
   playingEvent: 'playingEvent',
-  awaitingChiefDecision: 'awaitingChiefDecision',
   done: 'done',
 } as const;
 
@@ -34,13 +28,13 @@ type NonChiefRole = Exclude<Role, 'chief'>;
 const NON_CHIEF_PRIORITY: ReadonlyArray<NonChiefRole> = [
   'science',
   'domestic',
-  'foreign',
+  'defense',
 ];
 
 const ROLE_TO_STAGE: Record<NonChiefRole, StageName> = {
   science: STAGES.scienceTurn,
   domestic: STAGES.domesticTurn,
-  foreign: STAGES.foreignTurn,
+  defense: STAGES.defenseTurn,
 };
 
 /**
@@ -48,7 +42,7 @@ const ROLE_TO_STAGE: Record<NonChiefRole, StageName> = {
  * from the live role assignments:
  *   - chief seat → `done` (chief has already resolved their phase).
  *   - every other seat → the stage matching their highest-priority
- *     non-chief role, by `science > domestic > foreign`.
+ *     non-chief role, by `science > domestic > defense`.
  *
  * Pure: no boardgame.io imports, no mutation of `assignments`.
  */

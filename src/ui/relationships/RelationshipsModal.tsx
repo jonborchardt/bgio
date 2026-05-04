@@ -129,7 +129,7 @@ export function RelationshipsModal({
                 <Typography
                   variant="caption"
                   sx={{
-                    color: (t) => t.palette.role.foreign.main,
+                    color: (t) => t.palette.role.defense.main,
                     fontWeight: 700,
                   }}
                 >
