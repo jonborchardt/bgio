@@ -5,6 +5,111 @@
 import type { ResourceBag, Resource } from '../game/resources/types.ts';
 import { RESOURCES } from '../game/resources/types.ts';
 
+// Defense redesign 2.1 — Global Event Track card schema (D19, D20, D21).
+//
+// Phase 2 builds the track on top of this schema. Cards live in
+// `src/data/trackCards.json`, are loaded by `src/data/trackCards.ts`, and
+// surfaced via `TRACK_CARDS` from `src/data/index.ts`. Subsequent sub-phases
+// add the runtime track state (2.2) and the resolve algorithm (2.3) — this
+// sub-phase only ships the data path.
+//
+// Card kinds (D20):
+//   - 'threat': the most common card. Walks toward center along a column
+//     or row and resolves §3 of the spec.
+//   - 'boon': dispatches a friendly effect through the existing event-effect
+//     system. The dispatcher (Phase 2.3) casts `effect` to `EventEffect`
+//     and validates per-entry, mirroring how `EventCardDef.effects` works
+//     today.
+//   - 'modifier': pushes a one-round rule bend onto the modifier stack. Same
+//     `EventEffect`-typed shape as boons; the difference is purely how the
+//     resolver routes it. `durationRounds` is currently always 1; the field
+//     exists so a future "two-round storm" content card lands without a
+//     schema migration.
+//   - 'boss': the unique last card on the track. Three printed thresholds
+//     (science / economy / military) plus a `baseAttacks` count and a
+//     printed `attackPattern`. 2.7 implements the boss resolver.
+export type Direction = 'N' | 'E' | 'S' | 'W';
+
+const DIRECTIONS: ReadonlySet<Direction> = new Set(['N', 'E', 'S', 'W']);
+
+export interface TrackCardBase {
+  id: string;
+  name: string;
+  // 1..10 inclusive. Each phase pile is shuffled independently at setup
+  // and the track is built by concatenating the shuffled piles in order.
+  phase: number;
+  description: string;
+}
+
+export interface ThreatCard extends TrackCardBase {
+  kind: 'threat';
+  direction: Direction;
+  // Signed offset from center on the perpendicular axis. Threats from N or
+  // S walk down a column at offset (x = offset); threats from E or W walk
+  // along a row at offset (y = offset). Integer.
+  offset: number;
+  // Both HP (units chip it down) and damage (leftover hits the building,
+  // then continues toward center). D7. >= 1.
+  strength: number;
+  // Optional bank reward when killed. Same shape as elsewhere — a partial
+  // resource bag.
+  reward?: Partial<ResourceBag>;
+  // Free-text matchup tags read by the resolver (e.g. "Cavalry", "Flier")
+  // — D10. Optional; absent means the card has no matchup keywords.
+  modifiers?: string[];
+}
+
+export interface ThreatPattern {
+  direction: Direction;
+  offset: number;
+  strength: number;
+}
+
+// Boon and Modifier effects reuse the existing `EventEffect` taxonomy (08.2,
+// `src/game/events/effects.ts`). The loader keeps `effect` as `unknown` —
+// the dispatcher in Phase 2.3 casts and validates per-entry, mirroring how
+// `EventCardDef.effects` is loaded as `unknown[]` today.
+export interface BoonCard extends TrackCardBase {
+  kind: 'boon';
+  effect: unknown;
+}
+
+export interface ModifierCard extends TrackCardBase {
+  kind: 'modifier';
+  // Typically 1; the field exists so a future multi-round modifier card
+  // can land without a schema migration. Integer >= 1.
+  durationRounds: number;
+  effect: unknown;
+}
+
+export interface BossThresholds {
+  // Completed science card count.
+  science: number;
+  // Bank gold.
+  economy: number;
+  // Sum of unit.strength on grid.
+  military: number;
+}
+
+export interface BossCard extends TrackCardBase {
+  kind: 'boss';
+  thresholds: BossThresholds;
+  // Attacks made if no thresholds are met. Each met threshold subtracts 1.
+  // Integer >= 1. (Spec §5: each *unmet* threshold adds 1, so authoring as
+  // baseAttacks and reading downward is equivalent for the V1 boss.)
+  baseAttacks: number;
+  // Sequence of strengths + directions for each attack. The resolver in
+  // 2.7 walks this list as the boss fires; entries beyond the boss's
+  // computed attack count are ignored.
+  attackPattern: ThreatPattern[];
+}
+
+export type TrackCardDef =
+  | ThreatCard
+  | BoonCard
+  | ModifierCard
+  | BossCard;
+
 export interface BuildingDef {
   name: string;
   // Gold-equivalent cost, used as a value heuristic (AI sort, refund math,
@@ -501,5 +606,263 @@ export const validateTechnologies = (raw: unknown): TechnologyDef[] => {
     if (unlockE !== undefined) tech.unlockEvents = unlockE;
 
     return tech;
+  });
+};
+
+// --- track cards (defense redesign 2.1) -----------------------------------
+
+const requireDirection = (
+  obj: Record<string, unknown>,
+  key: string,
+  index: number,
+  type: string,
+): Direction => {
+  const v = obj[key];
+  if (typeof v !== 'string' || !DIRECTIONS.has(v as Direction)) {
+    throw new Error(
+      `${type}[${index}]: field "${key}" must be one of N|E|S|W, got ${String(v)}`,
+    );
+  }
+  return v as Direction;
+};
+
+const requireInteger = (
+  obj: Record<string, unknown>,
+  key: string,
+  index: number,
+  type: string,
+): number => {
+  const v = obj[key];
+  if (typeof v !== 'number' || !Number.isInteger(v)) {
+    throw new Error(
+      `${type}[${index}]: field "${key}" must be an integer, got ${String(v)}`,
+    );
+  }
+  return v;
+};
+
+const optionalRewardBag = (
+  obj: Record<string, unknown>,
+  key: string,
+  index: number,
+  type: string,
+): Partial<ResourceBag> | undefined => {
+  const v = obj[key];
+  if (v === undefined) return undefined;
+  if (!isPlainObject(v)) {
+    throw new Error(
+      `${type}[${index}]: field "${key}" must be an object when present`,
+    );
+  }
+  const out: Partial<ResourceBag> = {};
+  for (const [resourceKey, value] of Object.entries(v)) {
+    if (!(RESOURCES as ReadonlyArray<string>).includes(resourceKey)) {
+      throw new Error(
+        `${type}[${index}]: ${key} key "${resourceKey}" is not a known resource`,
+      );
+    }
+    if (typeof value !== 'number' || value < 0 || !Number.isFinite(value)) {
+      throw new Error(
+        `${type}[${index}]: ${key}.${resourceKey} must be a non-negative number, got ${String(value)}`,
+      );
+    }
+    out[resourceKey as Resource] = value;
+  }
+  return out;
+};
+
+const optionalModifiersList = (
+  obj: Record<string, unknown>,
+  key: string,
+  index: number,
+  type: string,
+): string[] | undefined => {
+  const v = obj[key];
+  if (v === undefined) return undefined;
+  if (!Array.isArray(v)) {
+    throw new Error(
+      `${type}[${index}]: field "${key}" must be an array when present`,
+    );
+  }
+  return v.map((entry, ei) => {
+    if (typeof entry !== 'string' || entry.length === 0) {
+      throw new Error(
+        `${type}[${index}]: ${key}[${ei}] must be a non-empty string, got ${String(entry)}`,
+      );
+    }
+    return entry;
+  });
+};
+
+const validateAttackPattern = (
+  raw: unknown,
+  index: number,
+  type: string,
+): ThreatPattern[] => {
+  if (!Array.isArray(raw)) {
+    throw new Error(
+      `${type}[${index}]: field "attackPattern" must be an array, got ${typeof raw}`,
+    );
+  }
+  return raw.map((entry, ei): ThreatPattern => {
+    if (!isPlainObject(entry)) {
+      throw new Error(
+        `${type}[${index}]: attackPattern[${ei}] must be an object, got ${typeof entry}`,
+      );
+    }
+    const direction = entry.direction;
+    if (typeof direction !== 'string' || !DIRECTIONS.has(direction as Direction)) {
+      throw new Error(
+        `${type}[${index}]: attackPattern[${ei}].direction must be one of N|E|S|W, got ${String(direction)}`,
+      );
+    }
+    const offset = entry.offset;
+    if (typeof offset !== 'number' || !Number.isInteger(offset)) {
+      throw new Error(
+        `${type}[${index}]: attackPattern[${ei}].offset must be an integer, got ${String(offset)}`,
+      );
+    }
+    const strength = entry.strength;
+    if (typeof strength !== 'number' || !Number.isInteger(strength) || strength < 1) {
+      throw new Error(
+        `${type}[${index}]: attackPattern[${ei}].strength must be an integer >= 1, got ${String(strength)}`,
+      );
+    }
+    return {
+      direction: direction as Direction,
+      offset,
+      strength,
+    };
+  });
+};
+
+// Validates the track-card list. Per-card checks live here; cross-card
+// invariants (one boss in phase 10, all phases 1..10 covered, unique IDs)
+// are enforced by the loader (`src/data/trackCards.ts`) so the tests can
+// assert each invariant independently.
+export const validateTrackCards = (raw: unknown): TrackCardDef[] => {
+  const arr = requireArray(raw, 'TrackCardDef');
+  return arr.map((entry, i): TrackCardDef => {
+    const obj = requireObject(entry, i, 'TrackCardDef');
+    const id = requireString(obj, 'id', i, 'TrackCardDef');
+    if (id.length === 0) {
+      throw new Error(`TrackCardDef[${i}]: field "id" must be non-empty`);
+    }
+    const name = requireString(obj, 'name', i, 'TrackCardDef');
+    const description = requireString(obj, 'description', i, 'TrackCardDef');
+    const phase = requireInteger(obj, 'phase', i, 'TrackCardDef');
+    if (phase < 1 || phase > 10) {
+      throw new Error(
+        `TrackCardDef[${i}]: phase must be in [1, 10], got ${phase}`,
+      );
+    }
+    const kind = obj.kind;
+    if (typeof kind !== 'string') {
+      throw new Error(
+        `TrackCardDef[${i}]: field "kind" must be a string, got ${typeof kind}`,
+      );
+    }
+    if (kind === 'threat') {
+      const direction = requireDirection(obj, 'direction', i, 'TrackCardDef');
+      const offset = requireInteger(obj, 'offset', i, 'TrackCardDef');
+      const strength = requireInteger(obj, 'strength', i, 'TrackCardDef');
+      if (strength < 1) {
+        throw new Error(
+          `TrackCardDef[${i}]: threat strength must be >= 1, got ${strength}`,
+        );
+      }
+      const card: ThreatCard = {
+        kind: 'threat',
+        id,
+        name,
+        phase,
+        description,
+        direction,
+        offset,
+        strength,
+      };
+      const reward = optionalRewardBag(obj, 'reward', i, 'TrackCardDef');
+      if (reward !== undefined) card.reward = reward;
+      const modifiers = optionalModifiersList(obj, 'modifiers', i, 'TrackCardDef');
+      if (modifiers !== undefined) card.modifiers = modifiers;
+      return card;
+    }
+    if (kind === 'boon') {
+      const effect = obj.effect;
+      if (effect === undefined) {
+        throw new Error(
+          `TrackCardDef[${i}]: boon card requires an "effect" field`,
+        );
+      }
+      return { kind: 'boon', id, name, phase, description, effect };
+    }
+    if (kind === 'modifier') {
+      const durationRounds = requireInteger(
+        obj,
+        'durationRounds',
+        i,
+        'TrackCardDef',
+      );
+      if (durationRounds < 1) {
+        throw new Error(
+          `TrackCardDef[${i}]: modifier durationRounds must be >= 1, got ${durationRounds}`,
+        );
+      }
+      const effect = obj.effect;
+      if (effect === undefined) {
+        throw new Error(
+          `TrackCardDef[${i}]: modifier card requires an "effect" field`,
+        );
+      }
+      return {
+        kind: 'modifier',
+        id,
+        name,
+        phase,
+        description,
+        durationRounds,
+        effect,
+      };
+    }
+    if (kind === 'boss') {
+      const baseAttacks = requireInteger(obj, 'baseAttacks', i, 'TrackCardDef');
+      if (baseAttacks < 1) {
+        throw new Error(
+          `TrackCardDef[${i}]: boss baseAttacks must be >= 1, got ${baseAttacks}`,
+        );
+      }
+      const thresholdsRaw = obj.thresholds;
+      if (!isPlainObject(thresholdsRaw)) {
+        throw new Error(
+          `TrackCardDef[${i}]: boss requires a "thresholds" object`,
+        );
+      }
+      const science = requireInteger(thresholdsRaw, 'science', i, 'TrackCardDef.thresholds');
+      const economy = requireInteger(thresholdsRaw, 'economy', i, 'TrackCardDef.thresholds');
+      const military = requireInteger(thresholdsRaw, 'military', i, 'TrackCardDef.thresholds');
+      if (science < 0 || economy < 0 || military < 0) {
+        throw new Error(
+          `TrackCardDef[${i}]: boss thresholds must be non-negative integers`,
+        );
+      }
+      const attackPattern = validateAttackPattern(
+        obj.attackPattern,
+        i,
+        'TrackCardDef',
+      );
+      return {
+        kind: 'boss',
+        id,
+        name,
+        phase,
+        description,
+        baseAttacks,
+        thresholds: { science, economy, military },
+        attackPattern,
+      };
+    }
+    throw new Error(
+      `TrackCardDef[${i}]: unknown kind "${String(kind)}" — expected threat|boon|modifier|boss`,
+    );
   });
 };

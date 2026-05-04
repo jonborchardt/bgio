@@ -1,0 +1,360 @@
+[
+  {
+    "id": "trk-p1-001",
+    "kind": "threat",
+    "name": "Stray Wolves",
+    "phase": 1,
+    "description": "A small pack tests the perimeter from the north.",
+    "direction": "N",
+    "offset": 0,
+    "strength": 2,
+    "modifiers": ["Beast"]
+  },
+  {
+    "id": "trk-p1-002",
+    "kind": "boon",
+    "name": "Foraging Run",
+    "phase": 1,
+    "description": "Foragers return with extra wood for the bank.",
+    "effect": { "kind": "gainResource", "bag": { "wood": 2 }, "target": "bank" }
+  },
+  {
+    "id": "trk-p1-003",
+    "kind": "modifier",
+    "name": "Calm Winds",
+    "phase": 1,
+    "description": "Steady weather lets the science seat work doubly hard this round.",
+    "durationRounds": 1,
+    "effect": { "kind": "doubleScience" }
+  },
+
+  {
+    "id": "trk-p2-001",
+    "kind": "threat",
+    "name": "Bandit Scouts",
+    "phase": 2,
+    "description": "Light raiders sniff out the eastern road.",
+    "direction": "E",
+    "offset": 0,
+    "strength": 3,
+    "modifiers": ["Bandit"]
+  },
+  {
+    "id": "trk-p2-002",
+    "kind": "threat",
+    "name": "Wild Boars",
+    "phase": 2,
+    "description": "Boars charge in from the south column.",
+    "direction": "S",
+    "offset": -1,
+    "strength": 4,
+    "modifiers": ["Beast", "Cavalry"],
+    "reward": { "food": 1 }
+  },
+  {
+    "id": "trk-p2-003",
+    "kind": "boon",
+    "name": "Travelling Mason",
+    "phase": 2,
+    "description": "A passing mason donates a load of stone to the bank.",
+    "effect": { "kind": "gainResource", "bag": { "stone": 2 }, "target": "bank" }
+  },
+
+  {
+    "id": "trk-p3-001",
+    "kind": "threat",
+    "name": "Highway Brigands",
+    "phase": 3,
+    "description": "Brigands strike from the west.",
+    "direction": "W",
+    "offset": 1,
+    "strength": 4,
+    "modifiers": ["Bandit"]
+  },
+  {
+    "id": "trk-p3-002",
+    "kind": "threat",
+    "name": "Wolf Pack",
+    "phase": 3,
+    "description": "A larger pack closes from the north.",
+    "direction": "N",
+    "offset": -1,
+    "strength": 5,
+    "modifiers": ["Beast"],
+    "reward": { "food": 2 }
+  },
+  {
+    "id": "trk-p3-003",
+    "kind": "boon",
+    "name": "Wandering Smith",
+    "phase": 3,
+    "description": "A travelling smith barters trinkets for tools.",
+    "effect": { "kind": "gainResource", "bag": { "production": 2 }, "target": "bank" }
+  },
+  {
+    "id": "trk-p3-004",
+    "kind": "modifier",
+    "name": "Whetstone Day",
+    "phase": 3,
+    "description": "Sharpening day in the village; science work doubles up.",
+    "durationRounds": 1,
+    "effect": { "kind": "doubleScience" }
+  },
+
+  {
+    "id": "trk-p4-001",
+    "kind": "threat",
+    "name": "Cavalry Raid",
+    "phase": 4,
+    "description": "Mounted raiders gallop down from the north.",
+    "direction": "N",
+    "offset": 1,
+    "strength": 5,
+    "modifiers": ["Cavalry"]
+  },
+  {
+    "id": "trk-p4-002",
+    "kind": "threat",
+    "name": "Armoured Marauders",
+    "phase": 4,
+    "description": "Heavy plate marches from the east.",
+    "direction": "E",
+    "offset": -1,
+    "strength": 6,
+    "modifiers": ["Armor"],
+    "reward": { "steel": 1 }
+  },
+  {
+    "id": "trk-p4-003",
+    "kind": "threat",
+    "name": "Slingers",
+    "phase": 4,
+    "description": "Skirmishers harass from the west.",
+    "direction": "W",
+    "offset": 0,
+    "strength": 5,
+    "modifiers": ["Skirmisher"]
+  },
+  {
+    "id": "trk-p4-004",
+    "kind": "boon",
+    "name": "River Trader",
+    "phase": 4,
+    "description": "A trader's barge unloads gold to the bank.",
+    "effect": { "kind": "gainResource", "bag": { "gold": 3 }, "target": "bank" }
+  },
+
+  {
+    "id": "trk-p5-001",
+    "kind": "threat",
+    "name": "Marauder Cavalry",
+    "phase": 5,
+    "description": "Hard-riding marauders aim for the centre.",
+    "direction": "S",
+    "offset": 0,
+    "strength": 6,
+    "modifiers": ["Cavalry"]
+  },
+  {
+    "id": "trk-p5-002",
+    "kind": "threat",
+    "name": "Siege Engineers",
+    "phase": 5,
+    "description": "Siege engineers bring rams from the east.",
+    "direction": "E",
+    "offset": 1,
+    "strength": 7,
+    "modifiers": ["Siege"],
+    "reward": { "production": 2 }
+  },
+  {
+    "id": "trk-p5-003",
+    "kind": "modifier",
+    "name": "Market Day",
+    "phase": 5,
+    "description": "A bustling market disrupts buying — chief can't approve trades.",
+    "durationRounds": 1,
+    "effect": { "kind": "forbidBuy" }
+  },
+
+  {
+    "id": "trk-p6-001",
+    "kind": "threat",
+    "name": "Iron Riders",
+    "phase": 6,
+    "description": "Armoured cavalry pours in from the north.",
+    "direction": "N",
+    "offset": 0,
+    "strength": 7,
+    "modifiers": ["Cavalry", "Armor"]
+  },
+  {
+    "id": "trk-p6-002",
+    "kind": "threat",
+    "name": "Trebuchet Crew",
+    "phase": 6,
+    "description": "A trebuchet rolls into range from the west.",
+    "direction": "W",
+    "offset": -1,
+    "strength": 8,
+    "modifiers": ["Siege"],
+    "reward": { "stone": 2 }
+  },
+  {
+    "id": "trk-p6-003",
+    "kind": "boon",
+    "name": "Refugee Caravan",
+    "phase": 6,
+    "description": "A caravan brings grain and tools.",
+    "effect": { "kind": "gainResource", "bag": { "food": 2, "production": 1 }, "target": "bank" }
+  },
+  {
+    "id": "trk-p6-004",
+    "kind": "modifier",
+    "name": "Drilling Yard",
+    "phase": 6,
+    "description": "Drilling exercises double science output this round.",
+    "durationRounds": 1,
+    "effect": { "kind": "doubleScience" }
+  },
+
+  {
+    "id": "trk-p7-001",
+    "kind": "threat",
+    "name": "Hired Mercenaries",
+    "phase": 7,
+    "description": "Professional swords from the south.",
+    "direction": "S",
+    "offset": 1,
+    "strength": 8,
+    "modifiers": ["Mercenary"]
+  },
+  {
+    "id": "trk-p7-002",
+    "kind": "threat",
+    "name": "Wyvern",
+    "phase": 7,
+    "description": "A wyvern circles before swooping from the east.",
+    "direction": "E",
+    "offset": 0,
+    "strength": 9,
+    "modifiers": ["Flier"],
+    "reward": { "gold": 2 }
+  },
+  {
+    "id": "trk-p7-003",
+    "kind": "boon",
+    "name": "Tribute Convoy",
+    "phase": 7,
+    "description": "A vassal pays tribute in coin.",
+    "effect": { "kind": "gainResource", "bag": { "gold": 4 }, "target": "bank" }
+  },
+
+  {
+    "id": "trk-p8-001",
+    "kind": "threat",
+    "name": "Heavy Cavalry",
+    "phase": 8,
+    "description": "Plate-armoured horsemen storm from the west.",
+    "direction": "W",
+    "offset": 0,
+    "strength": 9,
+    "modifiers": ["Cavalry", "Armor"]
+  },
+  {
+    "id": "trk-p8-002",
+    "kind": "threat",
+    "name": "Catapult Battery",
+    "phase": 8,
+    "description": "A catapult line drops shells from the north.",
+    "direction": "N",
+    "offset": 1,
+    "strength": 10,
+    "modifiers": ["Siege"],
+    "reward": { "steel": 2 }
+  },
+  {
+    "id": "trk-p8-003",
+    "kind": "threat",
+    "name": "Chosen Champions",
+    "phase": 8,
+    "description": "Elite enemy soldiers come up the southern path.",
+    "direction": "S",
+    "offset": -1,
+    "strength": 10,
+    "modifiers": ["Elite"]
+  },
+  {
+    "id": "trk-p8-004",
+    "kind": "modifier",
+    "name": "Forge Light",
+    "phase": 8,
+    "description": "Forges burn through the night; science work doubles.",
+    "durationRounds": 1,
+    "effect": { "kind": "doubleScience" }
+  },
+
+  {
+    "id": "trk-p9-001",
+    "kind": "threat",
+    "name": "Shock Cavalry",
+    "phase": 9,
+    "description": "Charge cavalry storms in from the east.",
+    "direction": "E",
+    "offset": 1,
+    "strength": 10,
+    "modifiers": ["Cavalry"]
+  },
+  {
+    "id": "trk-p9-002",
+    "kind": "threat",
+    "name": "Ironclad Phalanx",
+    "phase": 9,
+    "description": "An armoured phalanx grinds in from the south.",
+    "direction": "S",
+    "offset": 0,
+    "strength": 11,
+    "modifiers": ["Armor", "Elite"],
+    "reward": { "steel": 2 }
+  },
+  {
+    "id": "trk-p9-003",
+    "kind": "threat",
+    "name": "Fire Engines",
+    "phase": 9,
+    "description": "Burning engines roll up from the west.",
+    "direction": "W",
+    "offset": -1,
+    "strength": 12,
+    "modifiers": ["Siege", "Fire"],
+    "reward": { "production": 3 }
+  },
+  {
+    "id": "trk-p9-004",
+    "kind": "boon",
+    "name": "Allied Reinforcements",
+    "phase": 9,
+    "description": "Friendly banners arrive bearing supplies.",
+    "effect": { "kind": "gainResource", "bag": { "gold": 3, "food": 2 }, "target": "bank" }
+  },
+
+  {
+    "id": "trk-p10-boss",
+    "kind": "boss",
+    "name": "The Last Settlement",
+    "phase": 10,
+    "description": "The rival warlord himself arrives at the gates. Surviving his attacks ends the war in your favour.",
+    "thresholds": { "science": 6, "economy": 12, "military": 8 },
+    "baseAttacks": 4,
+    "attackPattern": [
+      { "direction": "N", "offset": 0, "strength": 6 },
+      { "direction": "E", "offset": 0, "strength": 6 },
+      { "direction": "S", "offset": 0, "strength": 6 },
+      { "direction": "W", "offset": 0, "strength": 6 },
+      { "direction": "N", "offset": 1, "strength": 7 },
+      { "direction": "E", "offset": -1, "strength": 7 },
+      { "direction": "S", "offset": 1, "strength": 7 },
+      { "direction": "W", "offset": -1, "strength": 7 }
+    ]
+  }
+]

@@ -19,7 +19,17 @@ export type {
   TechnologyDef,
   PlacementBonus,
   PlacementEffect,
+  TrackCardDef,
+  ThreatCard,
+  BoonCard,
+  ModifierCard,
+  BossCard,
+  ThreatPattern,
+  BossThresholds,
+  Direction,
 } from './schema.ts';
+
+export { TRACK_CARDS } from './trackCards.ts';
 
 import type { BuildingDef as _BuildingDef, UnitDef as _UnitDef } from './schema.ts';
 import type { ResourceBag } from '../game/resources/types.ts';
