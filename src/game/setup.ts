@@ -20,8 +20,23 @@ import { setupEvents } from './events/state.ts';
 import { setupWanderDeck } from './opponent/wanderDeck.ts';
 import { fromBgio, type BgioRandomLike } from './random.ts';
 import { TURN_CAP_DEFAULT } from './endConditions.ts';
-import { TRACK_CARDS } from '../data/index.ts';
+import { TRACK_CARDS, UNITS } from '../data/index.ts';
+import type { UnitDef } from '../data/schema.ts';
 import { buildTrack } from './track.ts';
+
+// Defense redesign 2.5 — starter unit hand for the defense seat. The
+// militia starters are the units in `units.json` with no `requires`
+// gate (Scout / Archer / Brute). They stay in the hand across recruit
+// calls so the seat can repeat-place the same unit; tech-driven
+// unlocks (`grantTechUnlocks`) push additional units onto the same
+// pile.
+const starterUnits = (): UnitDef[] => {
+  const out: UnitDef[] = [];
+  for (const def of UNITS) {
+    if ((def.requires ?? '').trim().length === 0) out.push(def);
+  }
+  return out;
+};
 
 // Per-match tunables passed through bgio's `Match.setupData` (or
 // directly to `setup({ ctx, random }, setupData)` in headless tests).
@@ -162,10 +177,14 @@ export const setup = (
     _stageStack: {},
     // Science role: built above so we could derive `techsAlreadyUsedBy`.
     science,
-    // Defense role (1.4): stub — empty hand, empty inPlay. Phase 2 will
-    // repopulate with starter unit cards and the new placement state.
+    // Defense redesign 2.5 — starter unit hand (game-design.md §12: "3
+    // starter Militia"). The hand is the pool of units the defense seat
+    // can recruit via `defenseBuyAndPlace`; recruits draw from the pool
+    // (the card stays in hand) so the seat can repeat-place the same
+    // unit. Subsequent units land via tech-driven `grantTechUnlocks`
+    // pushing onto `defense.hand`.
     defense: {
-      hand: [],
+      hand: starterUnits(),
       inPlay: [],
     },
     // Defense redesign 2.2 — Global Event Track. Built once at setup

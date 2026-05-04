@@ -47,9 +47,22 @@ export interface UnitInstance {
  *                (existing 05.3 plumbing).
  * - `inPlay`   : units currently on the village grid. Empty in 1.4 — no
  *                moves yet place anything.
+ * - `_placementSeq` : Defense redesign 2.5 — monotonic next-to-issue
+ *                `placementOrder` for new unit instances. Lazy-init in
+ *                `nextPlacementOrder`; survives across rounds so first-
+ *                in-first-killed stack ordering is unambiguous (D13).
+ *                Optional so older fixtures (1.4) stay source-compatible.
+ * - `_peeked`  : Defense redesign 2.5 — set of track-card ids the
+ *                defense seat has revealed via the red `peek` track-
+ *                modifier tech effect. Pure UI metadata (the underlying
+ *                `G.track.upcoming` is already public, per playerView);
+ *                the marker exists so the defense panel can call out
+ *                "you peeked these" vs. "next-up telegraph." Optional.
  */
 export interface DefenseState {
   hand: UnitDef[];
   techHand?: TechnologyDef[];
   inPlay: UnitInstance[];
+  _placementSeq?: number;
+  _peeked?: string[];
 }

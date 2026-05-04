@@ -17,6 +17,7 @@ import type { PlayerID, SettlementState } from '../types.ts';
 import type { Resource } from '../resources/types.ts';
 import { rolesAtSeat, seatOfRole } from '../roles.ts';
 import { STAGES } from '../phases/stages.ts';
+import { enumerateDefense as enumerateDefenseRole } from '../roles/defense/ai.ts';
 
 export interface MoveCandidate {
   move: string;
@@ -275,11 +276,17 @@ const enumerateDomestic = (
   return out;
 };
 
-const enumerateDefense = (G: SettlementState): MoveCandidate[] => {
-  // 1.4 stub — the only defense action is ending the turn. Phase 2 will
-  // add buy / place / play-tech candidates over the new economy.
+const enumerateDefense = (
+  G: SettlementState,
+  ctx: Ctx,
+  playerID: PlayerID,
+): MoveCandidate[] => {
+  // Defense redesign 2.5 — delegates to the role-local enumerator
+  // (`src/game/roles/defense/ai.ts`). Buy + place candidates are
+  // scored by "covers the telegraphed next card's path"; tech plays
+  // and the seat-done fallback are appended per the plan.
   if (G.defense === undefined) return [];
-  return [{ move: 'defenseSeatDone', args: [] }];
+  return enumerateDefenseRole(G, ctx, playerID);
 };
 
 const enumeratePlayingEvent = (
@@ -337,7 +344,7 @@ export const enumerate = (
     } else if (stage === STAGES.domesticTurn && seatRoles.includes('domestic')) {
       out.push(...enumerateDomestic(G, playerID));
     } else if (stage === STAGES.defenseTurn && seatRoles.includes('defense')) {
-      out.push(...enumerateDefense(G));
+      out.push(...enumerateDefense(G, ctx, playerID));
     } else if (stage === STAGES.playingEvent) {
       out.push(...enumeratePlayingEvent(G, playerID));
     }

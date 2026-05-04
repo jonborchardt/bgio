@@ -24,10 +24,17 @@ describe('setup (1.4 / 1.5 — defense redesign)', () => {
     expect((G.centerMat as Record<string, unknown>)[legacyKey]).toBeUndefined();
   });
 
-  it('defense slice exists with empty hand and inPlay (no battle/trade decks)', () => {
+  it('defense slice exists with starter hand (militia) and empty inPlay (no battle/trade decks)', () => {
     const G = setupFresh(4);
     expect(G.defense).toBeDefined();
-    expect(G.defense!.hand).toEqual([]);
+    // Defense redesign 2.5: starter hand is the militia pool — every
+    // unit in `units.json` whose `requires` is empty (Scout, Archer,
+    // Brute today). The 1.4 stub seeded an empty hand; 2.5 wires the
+    // starter cards so the defense seat can recruit on round 1.
+    expect(G.defense!.hand.length).toBeGreaterThan(0);
+    for (const card of G.defense!.hand) {
+      expect((card.requires ?? '').trim()).toBe('');
+    }
     expect(G.defense!.inPlay).toEqual([]);
     // Battle / trade deck fields are gone — they should not appear on
     // the defense slice at all.

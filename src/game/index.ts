@@ -27,6 +27,8 @@ import {
   scienceSeatDone,
   domesticSeatDone,
   defenseSeatDone,
+  defenseBuyAndPlace,
+  defensePlay,
   requestHelp,
   __testSetPhaseDone,
   __testSetOthersDone,
@@ -76,6 +78,8 @@ const productionMoves = {
   scienceSeatDone,
   domesticSeatDone,
   defenseSeatDone,
+  defenseBuyAndPlace,
+  defensePlay,
   requestHelp,
 };
 

@@ -27,6 +27,8 @@ import { domesticPlayTech } from './roles/domestic/playTech.ts';
 import { scienceSeatDone } from './roles/science/seatDone.ts';
 import { domesticSeatDone } from './roles/domestic/seatDone.ts';
 import { defenseSeatDone } from './roles/defense/seatDone.ts';
+import { defenseBuyAndPlace } from './roles/defense/buyAndPlace.ts';
+import { defensePlay } from './roles/defense/play.ts';
 import { requestHelp } from './requests/move.ts';
 
 export const pass: Move<SettlementState> = () => {
@@ -108,6 +110,14 @@ export {
 // once every non-chief seat has flipped. The chief uses `chiefEndPhase`
 // for the analogous transition out of `chiefPhase`.
 export { scienceSeatDone, domesticSeatDone, defenseSeatDone };
+
+// Defense redesign 2.5 — Defense seat moves over the new card economy.
+// `defenseBuyAndPlace` pays from stash and pushes a UnitInstance onto
+// `G.defense.inPlay` at the target building tile (D11). `defensePlay`
+// applies a red-tech card from `defense.techHand` — unit upgrades or
+// track-modifier effects (D24) — and consumes the card. Stage gating
+// is enforced inside each move against `defenseTurn`.
+export { defenseBuyAndPlace, defensePlay };
 
 // Help-request toggle. Stage-agnostic — any seat can ask another for
 // help with a currently-disabled action at any time. The recipient

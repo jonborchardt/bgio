@@ -1,18 +1,18 @@
-// 1.4 — DefenseBot stub.
+// DefenseBot — wraps the role-local enumerator from
+// `src/game/roles/defense/ai.ts`.
 //
-// Phase 2 will fill this in once the new defense card economy lands. For
-// 1.4 the bot just ends the seat's turn — there are no buy / place /
-// play-tech actions to take, and parking on `defenseTurn` would deadlock
-// the round.
-//
-// Mirrors the per-role bot contract from 11.3-11.6 so `buildBotMap`
-// (lobby/soloConfig.ts) can compose it alongside chiefBot / scienceBot /
-// domesticBot.
+// Defense redesign 2.5 — replaces the 1.4 stub. The composed bot picks
+// the first non-trivial candidate (preferring buy+place / tech plays
+// over `defenseSeatDone`) so a 4-bot run actually exercises the new
+// move surface. Mirrors the per-role bot contract from 11.3-11.6 so
+// `buildBotMap` (lobby/soloConfig.ts) composes it alongside chiefBot /
+// scienceBot / domesticBot.
 
 import type { Ctx } from 'boardgame.io';
 import type { PlayerID, SettlementState } from '../types.ts';
 import { rolesAtSeat } from '../roles.ts';
 import type { MoveCandidate } from './enumerate.ts';
+import { enumerateDefense } from '../roles/defense/ai.ts';
 
 export type BotAction = MoveCandidate;
 
@@ -29,9 +29,15 @@ const play = (state: BotState): BotAction | null => {
   }
   const stage = ctx.activePlayers?.[playerID];
   if (stage !== 'defenseTurn') return null;
-  // 1.4 stub: end the turn so the round can advance. Phase 2 will replace
-  // this with real heuristics (buy / place / play-tech).
-  return { move: 'defenseSeatDone', args: [] };
+
+  const candidates = enumerateDefense(G, ctx, playerID);
+  // Prefer buy+place / tech plays over seat-done so the bot exercises
+  // the new move surface — only end the turn when there's nothing
+  // else to do.
+  const nonTrivial = candidates.filter((c) => c.move !== 'defenseSeatDone');
+  if (nonTrivial.length > 0) return nonTrivial[0]!;
+  // Fall through to seat-done (always present) so the round advances.
+  return candidates.find((c) => c.move === 'defenseSeatDone') ?? null;
 };
 
 export const defenseBot: { play: (state: BotState) => BotAction | null } = {
