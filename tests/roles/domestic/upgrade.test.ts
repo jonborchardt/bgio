@@ -77,6 +77,8 @@ describe('domesticUpgradeBuilding (06.2)', () => {
       defID: 'Mill',
       upgrades: 0,
       worker: null,
+      hp: 2,
+      maxHp: 2,
     };
     const G = build2pState(
       { gold: 20 },

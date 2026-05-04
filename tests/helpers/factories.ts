@@ -123,6 +123,8 @@ export const seedWithBuilding = (
     defID,
     upgrades: 0,
     worker: null,
+    hp: def.maxHp,
+    maxHp: def.maxHp,
   };
   return base;
 };

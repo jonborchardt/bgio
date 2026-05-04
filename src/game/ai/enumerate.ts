@@ -233,10 +233,24 @@ const enumerateDomestic = (
     const y = Number(ys);
     if (Number.isFinite(x) && Number.isFinite(y)) {
       const placed = domestic.grid[key]!;
+      // The center tile (D2) is not upgradeable / repairable — skip it in
+      // both surfaces below so the bot doesn't keep trying a guaranteed
+      // INVALID_MOVE.
+      if (placed.isCenter === true) continue;
       out.push({
         move: 'domesticUpgradeBuilding',
         args: [x, y, placed.defID],
       });
+      // domesticRepair (1.3): one candidate per damaged cell. The amount
+      // is always 1 — chaining single-HP repairs reaches any larger
+      // restoration, and the move bottoms out on `missing <= 0` so an
+      // already-full cell harmlessly returns INVALID_MOVE.
+      if (placed.hp < placed.maxHp) {
+        out.push({
+          move: 'domesticRepair',
+          args: [x, y, 1],
+        });
+      }
     }
   }
 

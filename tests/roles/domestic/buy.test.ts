@@ -88,11 +88,14 @@ describe('domesticBuyBuilding (06.2)', () => {
     expect(G.bank).toEqual(bagOf({ gold: 8 }));
     // Card removed from hand.
     expect(G.domestic!.hand).toHaveLength(0);
-    // Building placed on grid.
+    // Building placed on grid; defense redesign D15 — placement seeds
+    // hp = maxHp from BuildingDef.maxHp (Granary: 1).
     const placed: DomesticBuilding = {
       defID: 'Granary',
       upgrades: 0,
       worker: null,
+      hp: 1,
+      maxHp: 1,
     };
     expect(G.domestic!.grid[cellKey(0, 0)]).toEqual(placed);
   });
@@ -105,6 +108,8 @@ describe('domesticBuyBuilding (06.2)', () => {
       defID: 'Market',
       upgrades: 0,
       worker: null,
+      hp: 3,
+      maxHp: 3,
     };
     const G = build2pState(
       { gold: 50 },

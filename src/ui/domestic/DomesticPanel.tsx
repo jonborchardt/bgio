@@ -20,7 +20,7 @@
 // again clears it.
 
 import { useContext, useState } from 'react';
-import { Button, Stack } from '@mui/material';
+import { Box, Button, Stack, Typography } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
 import type { SettlementState } from '../../game/types.ts';
 import { rolesAtSeat } from '../../game/roles.ts';
@@ -36,6 +36,7 @@ import { RequestHelpButton } from '../requests/RequestHelpButton.tsx';
 import { RequestsRow } from '../requests/RequestsRow.tsx';
 import { WanderEffectRow } from '../opponent/WanderEffectRow.tsx';
 import { buildResourceSlices } from '../requests/useResourceSlice.ts';
+import type { DomesticBuilding } from '../../game/roles/domestic/types.ts';
 import { idForBuilding, idForTech } from '../../cards/registry.ts';
 import { buildingCost } from '../../data/index.ts';
 
@@ -183,8 +184,40 @@ export function DomesticPanel(props: BoardProps<SettlementState>) {
           activeCard={activeCard}
           onPlace={handlePlace}
         />
+        <DamageSummary grid={domestic.grid} />
       </Stack>
     </RolePanel>
+  );
+}
+
+// Defense redesign 1.3 — console-readable HP stub. Phase 3 replaces this
+// with a per-tile pip row + repair affordance; until then we surface a
+// flat list of damaged buildings beneath the grid so the table can see
+// repair targets even when the cell tooltips are hidden. Center tiles
+// (D2) are skipped — they're never destroyed and have no `BuildingDef`.
+function DamageSummary({
+  grid,
+}: {
+  grid: Record<string, DomesticBuilding>;
+}) {
+  const damaged: Array<{ key: string; defID: string; hp: number; maxHp: number }> = [];
+  for (const [key, cell] of Object.entries(grid)) {
+    if (cell.isCenter === true) continue;
+    if (cell.hp >= cell.maxHp) continue;
+    damaged.push({ key, defID: cell.defID, hp: cell.hp, maxHp: cell.maxHp });
+  }
+  if (damaged.length === 0) return null;
+  return (
+    <Box aria-label="Damaged buildings" sx={{ mt: 0.5 }}>
+      <Typography
+        variant="caption"
+        sx={{ color: (t) => t.palette.status.muted, fontStyle: 'italic' }}
+      >
+        Damaged: {damaged
+          .map((d) => `${d.defID} (${d.key}) ${d.hp}/${d.maxHp}`)
+          .join(', ')}
+      </Typography>
+    </Box>
   );
 }
 

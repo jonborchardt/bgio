@@ -77,7 +77,7 @@ describe('chiefPlaceWorker (04.3 stub)', () => {
       domestic: {
         hand: [],
         grid: {
-          '0,0': { defID: 'farm', upgrades: 0, worker: null },
+          '0,0': { defID: 'farm', upgrades: 0, worker: null, hp: 1, maxHp: 1 },
         },
       },
     });
@@ -90,6 +90,8 @@ describe('chiefPlaceWorker (04.3 stub)', () => {
       defID: 'farm',
       upgrades: 0,
       worker: { ownerSeat: '0' },
+      hp: 1,
+      maxHp: 1,
     });
   });
 
@@ -101,7 +103,7 @@ describe('chiefPlaceWorker (04.3 stub)', () => {
         hand: [],
         // Only (0,0) exists — (1,1) does not.
         grid: {
-          '0,0': { defID: 'farm', upgrades: 0, worker: null },
+          '0,0': { defID: 'farm', upgrades: 0, worker: null, hp: 1, maxHp: 1 },
         },
       },
     });
@@ -120,7 +122,7 @@ describe('chiefPlaceWorker (04.3 stub)', () => {
       domestic: {
         hand: [],
         grid: {
-          '0,0': { defID: 'farm', upgrades: 0, worker: null },
+          '0,0': { defID: 'farm', upgrades: 0, worker: null, hp: 1, maxHp: 1 },
         },
       },
     });

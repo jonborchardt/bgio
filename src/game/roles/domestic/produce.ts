@@ -24,12 +24,42 @@ import type { SettlementState } from '../../types.ts';
 import { rolesAtSeat } from '../../roles.ts';
 import { BUILDINGS } from '../../../data/index.ts';
 import { add } from '../../resources/bag.ts';
-import { EMPTY_BAG } from '../../resources/types.ts';
-import type { ResourceBag } from '../../resources/types.ts';
+import { EMPTY_BAG, RESOURCES } from '../../resources/types.ts';
+import type { Resource, ResourceBag } from '../../resources/types.ts';
 import { registerRoundEndHook } from '../../hooks.ts';
 import { placeIntoOut } from '../../resources/playerMat.ts';
 import { parseBenefit, type BenefitYield } from './parseBenefit.ts';
 import { adjacencyRules, yieldAdjacencyBonus } from './adjacency.ts';
+
+/**
+ * Defense redesign D16 — prorates a parsed building's yield bag by its
+ * current HP / maxHp. The **loss** side rounds up: `yieldLost = ceil(raw *
+ * damagePct)`, with `damagePct = (maxHp - hp) / maxHp`. Effective yield
+ * per resource is `max(0, raw - yieldLost)`. The ceiling-on-loss reading
+ * (vs. floor-on-keep) is intentional: it ensures even 1 HP off a 4-yield
+ * building shaves 1 from the yield, where the floor-on-keep alternative
+ * would silently round small damage to nothing.
+ *
+ * `maxHp <= 0` is defensive: shouldn't happen in practice, but if it
+ * did the math would NaN — clamping to "no damage" keeps the bag valid.
+ */
+const prorateResources = (
+  raw: Partial<ResourceBag>,
+  hp: number,
+  maxHp: number,
+): Partial<ResourceBag> => {
+  if (maxHp <= 0 || hp >= maxHp) return raw;
+  const damagePct = (maxHp - hp) / maxHp;
+  const out: Partial<ResourceBag> = {};
+  for (const r of RESOURCES) {
+    const v = raw[r as Resource];
+    if (v === undefined || v === 0) continue;
+    const lost = Math.ceil(v * damagePct);
+    const kept = Math.max(0, v - lost);
+    if (kept > 0) out[r as Resource] = kept;
+  }
+  return out;
+};
 
 /**
  * Pure produce step: sums building yields (with worker doubling and
@@ -69,9 +99,21 @@ export const runProduceForSeat = (
       parseCache.set(placed.defID, parsed);
     }
 
-    runningYield = add(runningYield, parsed.resources);
+    // Defense redesign D16 — prorate this cell's yield by the building's
+    // current damage. `damagePct = (maxHp - hp) / maxHp`, and the **loss**
+    // side rounds up: `yieldLost = ceil(rawYield * damagePct)`. Even one
+    // HP missing visibly bites (a 4-yield Mill at HP-3-of-4 produces 3,
+    // not 4). Worker doubling is applied to the prorated yield so a
+    // damaged building stays damaged regardless of whether it's worker-
+    // boosted that round.
+    const proratedResources = prorateResources(
+      parsed.resources,
+      placed.hp,
+      placed.maxHp,
+    );
+    runningYield = add(runningYield, proratedResources);
     if (placed.worker !== null) {
-      runningYield = add(runningYield, parsed.resources);
+      runningYield = add(runningYield, proratedResources);
     }
   }
 

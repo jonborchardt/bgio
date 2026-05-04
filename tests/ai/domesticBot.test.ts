@@ -57,6 +57,8 @@ describe('domesticBot (11.5)', () => {
       defID: 'Granary',
       upgrades: 0,
       worker: null,
+      hp: 1,
+      maxHp: 1,
     };
     G.domestic!.producedThisRound = false;
     // Empty wallet → no buy is possible either. Bot should return null
@@ -110,6 +112,8 @@ describe('domesticBot (11.5)', () => {
       defID: 'Granary',
       upgrades: 0,
       worker: null,
+      hp: 1,
+      maxHp: 1,
     };
     G.domestic!.producedThisRound = true; // skip the produce branch
 

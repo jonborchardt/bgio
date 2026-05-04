@@ -134,6 +134,8 @@ describe('foreignUpkeep (07.2)', () => {
       defID: 'Walls',
       upgrades: 0,
       worker: null,
+      hp: 4,
+      maxHp: 4,
     };
     const G = build2pState(
       { gold: 5 },

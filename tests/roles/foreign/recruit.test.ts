@@ -173,6 +173,8 @@ describe('foreignRecruit (07.2)', () => {
       defID: 'Forge',
       upgrades: 0,
       worker: null,
+      hp: 3,
+      maxHp: 3,
     };
     const G = build2pState(
       { gold: 5 },

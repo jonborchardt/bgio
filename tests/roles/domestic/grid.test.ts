@@ -20,12 +20,16 @@ const building = (defID: string): DomesticBuilding => ({
   defID,
   upgrades: 0,
   worker: null,
+  hp: 1,
+  maxHp: 1,
 });
 
 const centerCell = (): DomesticBuilding => ({
   defID: CENTER_DEF_ID,
   upgrades: 0,
   worker: null,
+  hp: 99,
+  maxHp: 99,
   isCenter: true,
 });
 

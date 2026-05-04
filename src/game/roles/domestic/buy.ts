@@ -77,10 +77,16 @@ export const domesticBuyBuilding: Move<SettlementState> = (
   markUndoable(G, `Build ${cardName}`, playerID);
   payFromStash(G, playerID, cost);
   domestic.hand.splice(handIndex, 1);
+  // Defense redesign D15 — placed buildings ship with full HP. `maxHp`
+  // is read off the BuildingDef once at placement; subsequent reads come
+  // off the placed cell so a future upgrade that raises maxHp doesn't
+  // have to backfill on every consumer.
   domestic.grid[cellKey(x, y)] = {
     defID: cardName,
     upgrades: 0,
     worker: null,
+    hp: def.maxHp,
+    maxHp: def.maxHp,
   };
   pushGraveyard(G, playerID, {
     cardId: idForBuilding(def),

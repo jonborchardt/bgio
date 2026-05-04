@@ -90,6 +90,15 @@ export function CellSlot({
         <span key="upgrades">{`Upgrades: +${building.upgrades}`}</span>,
       );
     }
+    // Defense redesign 1.3 — surface current HP / maxHp on the tooltip so
+    // damage state is visible while Phase 3 ships the full UI. The Phase 3
+    // pass will replace this with a pip row + repair affordance; until
+    // then, the tooltip + aria-label is the console-readable stub.
+    if (building && building.isCenter !== true) {
+      tooltipNodes.push(
+        <span key="hp">{`HP: ${building.hp}/${building.maxHp}`}</span>,
+      );
+    }
   }
   const tooltip: ReactNode =
     tooltipNodes.length === 0 ? (
@@ -115,7 +124,9 @@ export function CellSlot({
       tabIndex={clickable ? 0 : -1}
       aria-label={
         occupied
-          ? `Cell ${x},${y} — ${building.defID}`
+          ? building.isCenter === true
+            ? `Cell ${x},${y} — ${building.defID}`
+            : `Cell ${x},${y} — ${building.defID} (HP ${building.hp}/${building.maxHp})`
           : `Cell ${x},${y} — empty`
       }
       onClick={clickable ? onClick : undefined}

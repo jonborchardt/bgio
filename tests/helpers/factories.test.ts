@@ -77,6 +77,8 @@ describe('seedWithBuilding', () => {
       defID: def!.name,
       upgrades: 0,
       worker: null,
+      hp: def!.maxHp,
+      maxHp: def!.maxHp,
     });
     expect(() => assertNoNegativeResources(G)).not.toThrow();
   });

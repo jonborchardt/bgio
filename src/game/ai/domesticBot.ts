@@ -114,6 +114,8 @@ const bestCellFor = (
       defID: card.name,
       upgrades: 0,
       worker: null,
+      hp: card.maxHp,
+      maxHp: card.maxHp,
     };
     const bonusBag = yieldAdjacencyBonus(draft, adjacencyRules);
     const bonus = sumBag(bonusBag);

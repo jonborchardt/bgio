@@ -34,6 +34,18 @@ export interface DomesticBuilding {
   // `ownerSeat` is the seat that placed the worker (always the chief seat
   // today, but kept explicit so multi-chief variants stay representable).
   worker: { ownerSeat: PlayerID } | null;
+  // Defense redesign D15 — current HP. Initialized to `maxHp` at placement
+  // time. Phase 2's combat resolver chips this down when threats break
+  // through; `domesticRepair` (1.3) restores it. Buildings cannot be
+  // destroyed; the resolver clamps `hp` at a floor of 1. The center tile
+  // (D2) carries `hp = maxHp = 99` purely for shape uniformity — produce /
+  // repair / combat all skip it via `isCenter`.
+  hp: number;
+  // Defense redesign D15 — maximum HP, fixed at placement time from the
+  // matching `BuildingDef.maxHp`. Stored on the placed cell rather than
+  // re-derived from `BUILDINGS` on every read so future upgrades that
+  // might raise `maxHp` don't have to refactor every consumer.
+  maxHp: number;
   // Defense redesign D2 — the seeded `(0, 0)` village-vault tile is flagged
   // here. Set on exactly one cell, and only on that cell — every other
   // grid entry omits the field. Code paths that care (production / repair

@@ -123,14 +123,17 @@ export const setupDomestic = (
   // real building must be orthogonally adjacent to it), and in Phase 2
   // it becomes the terminal target for any threat path. The synthetic
   // defID `'Center'` does NOT correspond to a `BuildingDef`; consumers
-  // identify it via `isCenter: true`. The HP fields are ignored — the
-  // center is never destroyed (D3) — but kept on the shape so the field
-  // stays present alongside the building HP that lands in 1.3.
+  // identify it via `isCenter: true`. `hp` / `maxHp` are set to 99 (D3
+  // — the center is never destroyed, so a non-trivial maxHp keeps any
+  // accidental damagePct math from producing NaN). Production / repair
+  // / combat paths skip it via `isCenter` regardless.
   const grid: Record<string, DomesticBuilding> = {};
   grid[CENTER_CELL_KEY] = {
     defID: CENTER_DEF_ID,
     upgrades: 0,
     worker: null,
+    hp: 99,
+    maxHp: 99,
     isCenter: true,
   };
 
