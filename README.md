@@ -4,18 +4,22 @@ A four-role co-op-ish strategy game built on **[boardgame.io](https://boardgame.
 **React** + **TypeScript** + **Vite**, with a sibling **Koa** server under `server/` for
 networked play.
 
-> **Status: V1 engine + UI complete; hot-seat single-tab end-to-end playable.**
-> 490+ tests, typecheck + lint clean, Playwright smoke green. The hot-seat board ships
-> clickable seat tiles on the center mat (the local viewer drives any seat from there),
-> per-role "End my turn" buttons, an `activePlayers`-driven "It's your turn — Round N"
-> header, a game-over banner, a favicon, and a per-event damage absorber UI for Foreign
-> battles. Per-seat resources live on a player mat (`in` / `out` / `stash`); the chief
-> sweeps `out` into the bank at every chief turn, drops resources into seats' `in`, and
-> `in` empties into `stash` automatically when a seat begins its turn. Domestic produce
-> auto-fires at othersPhase entry. Trade fulfillment is chief-only — the chief pays
-> `required` from the bank to an off-table trader and receives `reward` back, ticking
-> `settlementsJoined`. The networked stack assembles end-to-end (lobby + accounts + chat
-> + idle bot takeover) but the live two-tab playtest hasn't been driven through yet.
+> **Status: V1 engine + UI complete; defense redesign fully landed; hot-seat single-tab
+> end-to-end playable.** Typecheck + lint clean, Playwright smoke green. The hot-seat
+> board ships a seat picker (the local viewer drives any seat), per-role "End my turn"
+> buttons, an `activePlayers`-driven "It's your turn — Round N" header, a game-over
+> banner, and a unified **central board** that frames the global event track strip on
+> top of the village (domestic) grid; per-seat resources live on a player mat
+> (`in` / `out` / `stash`) with the chief sweeping `out` into the bank each chief turn,
+> dropping resources into seats' `in`, and `in` emptying into `stash` automatically
+> when a seat begins its turn. Domestic produce auto-fires at othersPhase entry. The
+> defense role replaces the retired Foreign loop: the chief flips one track card per
+> round, threats walk a path into the village and are intercepted by units the Defense
+> seat recruited onto building tiles, and the village wins by surviving the terminal
+> **boss** card (its two thresholds — Science completions and the running-max bank
+> gold — each cancel one boss attack). The networked stack assembles end-to-end
+> (lobby + accounts + chat + idle bot takeover) but the live two-tab playtest hasn't
+> been driven through yet.
 
 ## Two ways to play
 
@@ -73,15 +77,21 @@ Python 3 / make / a C++ toolchain. The Dockerfile installs them automatically.
 │   │   ├── roles.ts           # assignRoles / seatOfRole / rolesAtSeat
 │   │   ├── phases/            # chief / others / endOfRound / stages
 │   │   ├── resources/         # bag / bank / centerMat / playerMat / bankLog / moves / types
-│   │   ├── events/            # event deck, dispatcher, eventResolve
-│   │   ├── opponent/          # wander deck
+│   │   ├── events/            # per-color event decks, dispatcher, eventResolve
+│   │   ├── track.ts track/    # Global Event Track runtime + path / resolver / boss / centerBurn
 │   │   ├── tech/              # tech-card effects
+│   │   ├── requests/          # cross-seat help-request rows
 │   │   ├── ai/                # enumerate + per-role bot heuristics
-│   │   └── roles/{chief,science,domestic,foreign}/  # per-role moves
-│   ├── data/                  # JSON + typed loaders (BUILDINGS / UNITS / TECHNOLOGIES / EVENT_CARDS / WANDER_CARDS / ADJACENCY_RULES / SCIENCE_CARDS / battle / trade decks)
-│   ├── ui/                    # MUI panels + cards + chat + chrome
-│   │   ├── layout/            # RolePanel, GameOverBanner, PhaseHint, DevSidebar, EmbossedFrame, SectionHeading
-│   │   ├── chief/ science/ domestic/ foreign/   # per-role panels
+│   │   └── roles/{chief,science,domestic,defense}/  # per-role moves
+│   ├── cards/                 # card registry + cross-card relationship index
+│   ├── data/                  # JSON + typed loaders (BUILDINGS / UNITS / TECHNOLOGIES / SCIENCE_CARDS / EVENT_CARDS / TRACK_CARDS / ADJACENCY_RULES)
+│   ├── ui/                    # MUI panels + cards + chrome
+│   │   ├── layout/            # RolePanel, GameOverBanner, PhaseHint, DevSidebar, …
+│   │   ├── chief/ science/ domestic/ defense/   # per-role panels
+│   │   ├── centralBoard/      # CentralBoard frame + ProgressBoxes (boss-threshold widgets)
+│   │   ├── track/             # TrackStrip, PathOverlay, BossReadout, ResolveStepBanner
+│   │   ├── center/            # CenterBurnBanner (vault-burn beat)
+│   │   ├── log/ requests/ relationships/ cardPreview/ matPreview/
 │   │   ├── cards/ resources/ mat/ deck/ hand/ chat/
 │   │   └── ...
 │   ├── lobby/                 # LobbyShell + SeatPicker + AuthForms + soloConfig + creds

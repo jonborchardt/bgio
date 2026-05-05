@@ -44,10 +44,12 @@ These three are encoded in code: see `src/game/index.ts`,
 
 `endConditions.ts`:
 
-- **Win** when `G.bossResolved === true`. Phase 2.7 will flip this when
-  the village resolves the boss card on the global event track. Until
-  then, the flag is never set, so the only end-of-game outcome is
-  time-up.
+- **Win** when `G.bossResolved === true`. `resolveBoss` in
+  `src/game/track/boss.ts` flips this once the village has weathered the
+  remaining boss attacks (each met threshold subtracts one attack from
+  the printed `baseAttacks` budget; surviving the rest sets the flag).
+  Per spec D26 the flag fires whether or not buildings are still
+  standing afterwards.
 - **Time up** when `round >= turnCap` (default 80). Not a loss — the run
   just ends so the server can record the score.
 
@@ -120,30 +122,39 @@ Borrowed shape: *Carcassonne* / *Suburbia*.
 
 ### 3.4 Defense (formerly Foreign)
 
-The role is mid-redesign; see
-[reports/defense-redesign-spec.md](../reports/defense-redesign-spec.md)
-for the locked decisions and the `plans/defense-redesign-*.md` directory
-for the staged implementation. The short version: the old battle-deck /
-trade-request loop has been retired, the role has been renamed from
-*Foreign* to *Defense*, and the replacement is a global event track of
-threats / boons / modifiers that walk toward the village's center tile,
-plus a positional defense layer where Defense buys units and places them
-on Domestic building tiles. The win condition becomes "village resolves
-the boss card at the end of the track" (D25). Phase 2 plans cover the
-track, the resolver, the defense moves, the science Drill / Teach moves,
-and the boss flow.
+**Current (post-redesign):** The Defense seat recruits units onto
+non-center Domestic building tiles via `defenseBuyAndPlace`. Threats
+flipped from the global event track walk a path toward the village
+vault at `(0, 0)`; every unit whose Chebyshev range covers any cell on
+the threat's pre-impact path gets one fire opportunity. Effective
+strength folds the unit's printed `attack` / `range`, an optional
+`placementBonus[]` matched to the building underneath, taught skills
+granted by Science's Teach move, the global "vs <keyword> +N" matchup
+bonus, and a one-shot drill token (always additive last). Surviving
+threats damage their first impact tile, or center-burn if they reach
+the village vault. The win condition is "village resolves the boss
+card at the end of the track" (D25): the boss prints two thresholds
+and a `baseAttacks` budget, met thresholds cancel attacks, and
+surviving the rest flips `G.bossResolved`.
+
+The full set of locked decisions lives in
+[reports/defense-redesign-spec.md](../reports/defense-redesign-spec.md);
+the staged implementation is recorded under
+`plans/defense-redesign-*.md` (all 22 sub-phases shipped via the
+orchestrator in commit `5ddb643`).
 
 ### 3.5 Opponent (global event track)
 
-The Phase 2 redesign retires the old wander deck wholesale. Its role
-— a once-per-round flip that mixed boons, modifiers, and pressure —
-is now folded into the **global event track** (D19, D20, G3): 10
-phases × 3–4 cards each (mix of threats / boons / modifiers / a
-single boss), with the next card always face-up so Defense can
-prepare for it. The chief flips one track card per round at the
-chief → others phase boundary; track *boons* deliver the bank /
-village bumps the wander deck used to, and track *modifiers* bend
-rules for one round before being cleared at end-of-round.
+The old wander deck is retired. Its role — a once-per-round flip that
+mixed boons, modifiers, and pressure — is folded into the **global
+event track** (D19, D20, G3): 10 phases × 3–4 cards each (a mix of
+threats / boons / modifiers plus a single terminal boss), with the
+next card always face-up so Defense can prepare for it. The chief
+flips one track card per round at the chief→others phase boundary
+(`chiefFlipTrack`); track *boons* deliver the bank / village bumps the
+wander deck used to, and track *modifiers* push onto the same queue
+the per-color event-card dispatcher consumes, then expire at end-of-
+round. The terminal boss card flips `G.bossResolved` on survival.
 
 **Original alternative considered for the V1 wander shape**
 
@@ -173,10 +184,17 @@ The four roles are wired together by:
   rather than baked into the building. Phase 2 wires this through the
   combat resolver via `UnitDef.placementBonus[]`.
 - **Win condition is a cross-role output, not Defense-only.** The boss
-  card prints three thresholds (Science / Economy / Military). Each
-  threshold met → one fewer attack the boss makes. So winning is
-  shaped by all three non-chief roles plus the chief's bank-management
-  decisions, not just by Defense's units on the grid.
+  card prints two thresholds (Science / Economy). Each met threshold
+  cancels one attack from the boss's `baseAttacks` budget; remaining
+  attacks fire through the same path / impact resolver as a normal
+  threat. So winning is shaped by Science completions, the chief's
+  bank-management high-water mark (Economy reads `G.economyHigh`), and
+  the units Defense has on the grid to absorb whatever attacks the
+  thresholds didn't cancel — all three non-chief roles plus the chief
+  contribute to the outcome. (An earlier draft printed a third
+  *Military* threshold; we removed it because units on the grid
+  already shape boss outcomes mechanically — adding a "do you also
+  have N strength?" check on top double-counted the same lever.)
 
 The "web of techs" that ties the roles together (the Sniper recipe, the
 Education branch as the unlocking root, etc.) is described narratively in
@@ -193,8 +211,8 @@ code locations and defaults.
 | Per-round chief gold stipend  | 2       | `src/game/setup.ts` `CHIEF_STIPEND_DEFAULT`               |
 | Chief starter worker pool     | 3       | `src/game/setup.ts` (`chief: { workers: 3 }`)             |
 | Turn cap                      | 80      | `src/game/endConditions.ts` `TURN_CAP_DEFAULT`            |
-| Win flag (boss-resolved)      | flag    | `src/game/endConditions.ts` `endIf` (set by Phase 2.7)    |
-| Science colors picked         | 3 of 4  | `src/game/roles/science/setup.ts` `setupScience`          |
+| Win flag (boss-resolved)      | flag    | `src/game/endConditions.ts` `endIf`; flipped by `resolveBoss` in `src/game/track/boss.ts` |
+| Science colors picked         | 4 of 4  | `src/game/roles/science/setup.ts` `setupScience` (all four colors always present) |
 | Tech cards under each science | 4       | same                                                      |
 | Event hand size               | 4       | `src/game/events/state.ts` `HAND_SIZE`                    |
 | Track flips per round         | 1       | `src/game/roles/chief/flipTrack.ts` (D22)                 |
@@ -243,12 +261,15 @@ Carried over from the original design doc, partially still live:
   (Examples in the original doc: "must do random science this turn,"
   "must buy cheapest science," "can swap 2 science cards," etc.)
 - **Defense incentive density.** The original doc asks: "There needs to
-  be a necessity to have some science, domestic, and defense…" — Phase 2
-  ties the boss's three thresholds (Science / Economy / Military) to all
-  three non-chief roles, so under-investing in any one of them shows up
-  as boss attacks at the end of the run. Live question is whether the
-  thresholds bite hard enough to force participation without forcing a
-  rigid build order.
+  be a necessity to have some science, domestic, and defense…" — the
+  boss's two thresholds (Science / Economy) cancel attacks, and the
+  attacks the village can't cancel are absorbed by Defense's units on
+  the grid. So all three non-chief roles plus the chief contribute to
+  the outcome, but the *thresholds* themselves are now Science +
+  Economy only. Live question is whether the thresholds bite hard
+  enough to force participation in those two roles without forcing a
+  rigid build order, and whether the implicit "you also need Defense
+  units" pressure is loud enough without a printed Military threshold.
 
 ## 8. Known V1 caveats / in-flight work
 
@@ -266,9 +287,13 @@ file alone has the picture:
   worker effects on production are reserved for later.
 - **Building upgrades are a stub.** ½× cost gold-only; richer upgrade
   content needs a data shape.
-- **Defense role mid-redesign (Phase 1 complete).** Defense ships no
-  user-facing moves yet; Phase 2 brings the global event track, the
-  defense moves, science Drill / Teach, and the boss flow. See §3.4.
+- **Defense redesign — fully landed.** All 22 sub-phases (1.1 → 3.9)
+  shipped via the orchestrator (commit `5ddb643`). Defense recruits
+  units onto building tiles, the chief flips one track card per round,
+  threats walk a path through the village and are intercepted by units
+  in range, Science's Drill / Teach moves grant per-fire boosts and
+  taught skills, and the boss card on the terminal phase resolves into
+  a win when survived. See §3.4 / §3.5.
 
 ## 9. The codename
 

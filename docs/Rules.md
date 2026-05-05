@@ -7,16 +7,17 @@ This file is the source of truth for **how the game is played**. Anything
 beyond the rules — open questions, balance levers, alternative designs that
 were considered — lives in [game-design.md](./game-design.md).
 
-> **Status note (Defense redesign — Phase 1 complete).** The fourth role
-> is in mid-redesign: it has been renamed from *Foreign* to **Defense**,
-> the old battle-deck / trade-request loop has been retired, and the
-> replacement (a global event track + village defense grid + boss-resolves-
-> to-win flow) is being staged in over Phase 2. While that work is in
-> flight, the role is intentionally inert in code, the only end-of-game
-> outcome is the time-up cap, and several sections below are placeholders.
-> See [reports/defense-redesign-spec.md](../reports/defense-redesign-spec.md)
-> for the locked decisions and the `plans/` directory for the staged
-> implementation order.
+> **Status note (Defense redesign — landed).** The fourth role has been
+> renamed from *Foreign* to **Defense**. The old battle-deck / trade-request
+> loop is retired; the replacement (a Global Event Track + per-tile units
+> + boss-resolves-to-win flow) is fully wired through the engine and the
+> hot-seat UI. All 22 sub-phases under
+> [`plans/defense-redesign-*.md`](../plans/) are complete (see
+> [reports/defense-redesign-spec.md](../reports/defense-redesign-spec.md)
+> for the locked decisions). One ride-along simplification: the boss's
+> printed thresholds are **two** (Science / Economy), not three —
+> the earlier Military threshold was retired because boss attacks are
+> already shaped by the units the Defense seat has placed on the path.
 
 ## 1. The premise
 
@@ -59,9 +60,10 @@ Every non-chief seat has a **player mat** with three slots:
 - **Stash** — the seat's working pool. **All spend moves** (science
   contribution, domestic build/upgrade/repair) come from the stash.
 
-The center mat is empty during Phase 1. Phase 2 will populate it with the
-**Global Event Track** strip — past / current / next-card slots — that
-replaces the old battle and trade decks.
+The center mat itself is intentionally empty. The table-shared
+**Global Event Track** strip (past / current / next-card slots) is
+rendered above the village grid by the central-board frame, not on the
+center mat.
 
 ### Resources
 
@@ -85,8 +87,11 @@ At game start:
   empty placement grid, and the fixed **center tile** at `(0, 0)` (the
   village vault — always present, never destroyed; see Phase 2 for the
   threat-resolution interaction).
-- **Defense** is currently inert. The role's hand and grid presence
-  arrive in Phase 2.
+- **Defense** receives a starter hand of the militia units listed in
+  `units.json` with no `requires` gate (Scout, Archer, Brute). The hand
+  is a pool — recruiting a unit does not consume the card; tech-driven
+  unlocks push additional units onto the same pile. Recruited units
+  occupy non-center building tiles on the Domestic grid.
 - **Events**: each color (gold/blue/green/red) has its own pool of cards;
   4 cards are dealt face-up to the seat that holds the matching role
   (chief→gold, science→blue, domestic→green, defense→red).
@@ -195,12 +200,30 @@ content-defined bonuses to specific neighbor pairs.
 
 #### 5.2.3 Defense
 
-*Coming.* The role exists as a stub during the Phase 1 redesign work; it
-ships no moves beyond `End my turn`. Phase 2 will introduce buy / place /
-play-tech moves, units placed on domestic building tiles, the path-based
-threat resolver, and the boss-resolves-to-win flow. See
-[reports/defense-redesign-spec.md](../reports/defense-redesign-spec.md)
-and the `plans/defense-redesign-*.md` files for the staged work.
+- May **play 1 red event card** at any time during the round.
+- **Recruit a unit** by paying its cost from stash and placing one
+  instance onto a non-center Domestic building tile via
+  `defenseBuyAndPlace(unitName, cellKey)`. Stacks are uncapped — multiple
+  units may share a tile. The recruited unit's card stays in the
+  Defense hand (the hand is a pool, not a single-use deck), so a unit
+  type can be recruited repeatedly.
+- May **play tech cards** from the Defense red-tech hand
+  (`defensePlay`). Red tech grants new units, drill / teach interactions
+  with Science, or per-unit modifiers consumed by the threat resolver.
+- **End my turn** when ready.
+
+Threats from the global event track resolve at the chief→others phase
+boundary the round after they were flipped. Each threat walks a path
+toward the village center; every unit whose Chebyshev range covers any
+cell on the threat's pre-impact path gets one fire opportunity. Firing
+order is first-strike before non-first-strike, then placement order.
+Effective unit strength folds (in this order) the unit's printed stats,
+its `placementBonus[]` matched to the building underneath it,
+`taughtSkills` granted by Science's Teach move, the global "vs <keyword>
++N" matchup bonus, and finally a one-shot `drillToken` (+1 strength,
+always additive last). Surviving threats damage their first impact tile
+on the path; if the threat reaches the village vault at `(0, 0)` it
+**center-burns** instead — see `src/game/track/centerBurn.ts`.
 
 #### 5.2.4 Events
 
@@ -245,17 +268,28 @@ bookkeeping:
 
 ## 6. Win condition
 
-*Coming.* The game's win condition will be **resolving the boss card**
-on the global event track (a single card at the end of the track that
-makes a deterministic number of attacks based on which of the village's
-science / economy / military thresholds it has met). Phase 2.7 will
-flip the engine-internal `bossResolved` flag to `true` when the village
-survives the boss; until then, that flag is never set.
+The game is **won** by surviving the **boss card** at the end of the
+global event track. The boss prints two thresholds and a `baseAttacks`
+budget; each threshold the village has already met cancels one attack
+from the budget. Remaining attacks are dispatched as synthetic threats
+through the same path / fire / impact pipeline as a normal threat.
+After the last attack lands, `G.bossResolved` flips to `true` and
+`endIf` returns `{ kind: 'win' }`. The win flag fires whether or not
+the village still has buildings — surviving the printed attacks is the
+condition (per spec D26: there is no fail mode).
 
-**Currently, the only way the game ends is the time-up cap.** If `round`
-reaches the **turn cap** (default 80, configurable per match), the run
-ends as `timeUp` — the score is recorded and the players try again.
-There is no loss condition.
+The two thresholds are:
+
+- **Science** — count of completed science cards on `G.science.completed`.
+- **Economy** — running maximum of `G.bank.gold` ever observed during
+  the match (`G.economyHigh`). The high-water-mark reading means a chief
+  who briefly stockpiles before redistributing keeps credit toward the
+  threshold.
+
+If the round counter ever reaches the **turn cap** (default 80,
+configurable per match) before the boss is resolved, the run ends as
+`timeUp` — the score is recorded and the players try again. There is
+no loss condition.
 
 ## 7. Quick reference
 
@@ -266,5 +300,7 @@ There is no loss condition.
   - Stash = working pool, the only place spend moves draw from.
 - **Roles by player count**: 1p = one seat with all four; 2p = chief+science / domestic+defense; 3p = chief+science / domestic / defense; 4p = one role each.
 - **Per round**: each seat may play ≤1 event of its color; science completes ≤1 card; domestic auto-produces.
-- **End condition (current)**: only `timeUp` at the turn cap. The boss-
-  resolved win arrives in Phase 2.7.
+- **End condition**: **win** when the village survives the boss card at
+  the end of the global event track (`G.bossResolved`); otherwise
+  **timeUp** if `round` reaches the turn cap (default 80). No loss
+  condition.
