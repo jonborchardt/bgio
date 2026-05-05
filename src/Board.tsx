@@ -14,6 +14,7 @@
 // player view stays focused on "your turn / not your turn".
 
 import { useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Box, Stack, Typography } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
 import type { SettlementState } from './game/index.ts';
@@ -39,7 +40,10 @@ import {
   ResolveAnimationProvider,
   ResolveTraceWatcher,
 } from './ui/track/resolveAnimationContext.tsx';
+import { ResolveStepBanner } from './ui/track/ResolveStepBanner.tsx';
+import { RangeHighlightProvider } from './ui/track/RangeHighlightProvider.tsx';
 import { BuildingGrid } from './ui/domestic/BuildingGrid.tsx';
+import { CentralBoard } from './ui/centralBoard/CentralBoard.tsx';
 import { VillagePlacementContext } from './ui/layout/VillagePlacementContext.ts';
 import { RESOURCES } from './game/resources/types.ts';
 
@@ -49,6 +53,66 @@ const ROLE_TITLE: Record<'chief' | 'science' | 'domestic' | 'defense', string> =
   domestic: 'Domestic',
   defense: 'Defense',
 };
+
+// Build the <TrackStrip> node from the current G.track slice. Lifted
+// out of the SettlementBoard render to keep the central-board assembly
+// readable; returns `null` when the track is absent (older fixtures).
+function buildTrackNode(G: SettlementState): ReactNode {
+  if (G.track === undefined) return null;
+  const history = G.track.history;
+  const flippedThisRound = G.track.flippedThisRound === true;
+  const currentCard =
+    flippedThisRound && history.length > 0
+      ? history[history.length - 1]
+      : undefined;
+  const pastCards =
+    currentCard !== undefined
+      ? history.slice(0, history.length - 1)
+      : history;
+  const bossInUpcoming = G.track.upcoming.find((c) => c.kind === 'boss');
+  const bossCard = bossInUpcoming ?? history.find((c) => c.kind === 'boss');
+  const villageTotals = {
+    science: countCompletedScience(G),
+    economy: G.bank.gold ?? 0,
+    military: sumUnitStrength(G),
+  };
+  return (
+    <TrackStrip
+      history={pastCards}
+      current={currentCard}
+      upcomingCount={G.track.upcoming.length}
+      phase={G.track.currentPhase}
+      boss={bossCard}
+      bossLooming={bossInUpcoming !== undefined}
+      villageTotals={villageTotals}
+    />
+  );
+}
+
+// Build the central-board status pills (round + optional track phase +
+// completed-science count). Order is fixed; the caller picks whether to
+// render at all based on `G.track` / `G.domestic` presence.
+function buildCentralBoardStats(
+  G: SettlementState,
+): Array<{ label: string; value: string; ariaLabel?: string }> {
+  const completedScience = countCompletedScience(G);
+  const stats: Array<{ label: string; value: string; ariaLabel?: string }> = [
+    { label: 'Round', value: String(G.round) },
+  ];
+  if (G.track !== undefined) {
+    stats.push({
+      label: 'Phase',
+      value: `${G.track.currentPhase}/10`,
+      ariaLabel: `Track phase ${G.track.currentPhase} of 10`,
+    });
+  }
+  stats.push({
+    label: 'Science',
+    value: String(completedScience),
+    ariaLabel: `Completed science cards: ${completedScience}`,
+  });
+  return stats;
+}
 
 export function SettlementBoard(props: BoardProps<SettlementState>) {
   const { G, ctx, moves, playerID } = props;
@@ -189,97 +253,34 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
         />
       ) : null}
 
-      {/* Defense redesign 3.1 — global event track. Sits above the
-          center mat, full width. The strip reads `G.track` directly:
-          the just-flipped card lights up the current slot during the
-          round it was flipped, and earlier flips fill the past row.
-          There is no face-up "next" telegraph — the village only
-          sees what has actually resolved. The boss card is fed in
-          separately so the BossReadout (3.5) tracks the village's
-          progress against thresholds from round 1 onward. */}
-      {G.track !== undefined ? (
-        (() => {
-          const history = G.track.history;
-          const flippedThisRound = G.track.flippedThisRound === true;
-          // The just-flipped card lives at the end of `history` and
-          // only renders in the "current" slot during the round it
-          // was flipped — at end-of-round it slides into the past
-          // row (the round-end hook clears `flippedThisRound`).
-          const currentCard =
-            flippedThisRound && history.length > 0
-              ? history[history.length - 1]
-              : undefined;
-          const pastCards =
-            currentCard !== undefined
-              ? history.slice(0, history.length - 1)
-              : history;
-          // Total face-down cards remaining. With the telegraph slot
-          // gone the whole `upcoming` array is face-down.
-          const upcomingCount = G.track.upcoming.length;
-          // Locate the boss card so the readout can track thresholds
-          // throughout the game. The 2.1 loader guarantees there is
-          // exactly one boss card and that it sits in phase 10 — so
-          // it lives at the end of `upcoming` until it flips, then
-          // moves to `history`. We search both so the readout stays
-          // visible even after the boss flip resolves. `bossLooming`
-          // tells the readout to render in its subdued/desaturated
-          // preview treatment so the table doesn't mistake it for an
-          // already-flipped card.
-          const bossInUpcoming = G.track.upcoming.find(
-            (c) => c.kind === 'boss',
-          );
-          const bossCard =
-            bossInUpcoming ?? G.track.history.find((c) => c.kind === 'boss');
-          const bossLooming = bossInUpcoming !== undefined;
-          // Defense redesign 3.5 — village totals for the boss
-          // readout. We compute them unconditionally (cheap pure
-          // derivations from `G`) and only the strip's boss-readout
-          // path actually consumes them. Reusing the boss-resolver
-          // helpers (`countCompletedScience`, `sumUnitStrength`)
-          // keeps the readout's met / unmet logic identical to
-          // `resolveBoss`'s threshold check at flip time, so the
-          // table can trust "what the readout says" exactly equals
-          // "what the boss will count when it flips."
-          const villageTotals = {
-            science: countCompletedScience(G),
-            economy: G.bank.gold ?? 0,
-            military: sumUnitStrength(G),
-          };
-          return (
-            <TrackStrip
-              history={pastCards}
-              current={currentCard}
-              upcomingCount={upcomingCount}
-              phase={G.track.currentPhase}
-              boss={bossCard}
-              bossLooming={bossLooming}
-              villageTotals={villageTotals}
-            />
-          );
-        })()
-      ) : null}
-
-      {/* Post-3.9 preference sweep — the village grid sits at the
-          board level so every seat (chief / science / domestic /
-          defense / spectators) watches the same map. Threat-resolve
-          path overlays render inside this grid via the existing
-          ResolveAnimationProvider, so the entire table sees the
-          attack animation when a flip resolves. The grid is interactive
-          only for the seat whose role is armed — domestic placement
-          when `activeBuildingDef` is set, defense placement when
-          `selectedUnitName` is set; otherwise it's read-only. */}
-      {G.domestic !== undefined ? (
-        <BuildingGrid
-          grid={G.domestic.grid}
-          activeCard={activeBuildingDef}
-          onPlace={handlePlaceBuilding}
-          units={G.defense?.inPlay}
-          pooledTotal={pooled.total}
-          pooledBreakdown={pooled.breakdown}
-          unitPlacement={{
-            selectedUnitName,
-            onPick: handlePickUnitCell,
-          }}
+      {/* Unified central board: track strip on top, village grid below,
+          inside a single Paper frame so the table reads them as one map.
+          Header pills surface live status (round, current track phase,
+          completed-science count); future UI passes can extend the
+          `stats` array without touching the track / village internals.
+          The step-playback HUD anchors against the grid well via the
+          `overlay` slot. */}
+      {G.track !== undefined || G.domestic !== undefined ? (
+        <CentralBoard
+          track={buildTrackNode(G)}
+          village={
+            G.domestic !== undefined ? (
+              <BuildingGrid
+                grid={G.domestic.grid}
+                activeCard={activeBuildingDef}
+                onPlace={handlePlaceBuilding}
+                units={G.defense?.inPlay}
+                pooledTotal={pooled.total}
+                pooledBreakdown={pooled.breakdown}
+                unitPlacement={{
+                  selectedUnitName,
+                  onPick: handlePickUnitCell,
+                }}
+              />
+            ) : null
+          }
+          stats={buildCentralBoardStats(G)}
+          overlay={<ResolveStepBanner />}
         />
       ) : null}
 
@@ -338,9 +339,11 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
           (older fixtures) the watcher pushes `undefined` and no-ops. */}
       <ResolveAnimationProvider>
         <ResolveTraceWatcher lastResolve={G.track?.lastResolve} />
-        <VillagePlacementContext.Provider value={placementContextValue}>
-          {playArea}
-        </VillagePlacementContext.Provider>
+        <RangeHighlightProvider>
+          <VillagePlacementContext.Provider value={placementContextValue}>
+            {playArea}
+          </VillagePlacementContext.Provider>
+        </RangeHighlightProvider>
       </ResolveAnimationProvider>
     </Box>
   );

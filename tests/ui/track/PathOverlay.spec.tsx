@@ -16,7 +16,18 @@ const renderWithTrace = (trace: ResolveTrace | null): string =>
   renderToStaticMarkup(
     <ThemeProvider theme={theme}>
       <ResolveAnimationContext.Provider
-        value={{ current: trace, pushTrace: () => undefined }}
+        value={{
+          current: trace,
+          // PathOverlay reads only `current` — the step fields are
+          // stubbed so the context type is satisfied. Cell-level tints
+          // (which depend on currentStep) aren't exercised by these
+          // tests; they live in the resolveAnimationContext.spec.
+          currentStep: null,
+          currentStepIndex: -1,
+          totalSteps: 0,
+          advance: () => undefined,
+          pushTrace: () => undefined,
+        }}
       >
         <PathOverlay />
       </ResolveAnimationContext.Provider>

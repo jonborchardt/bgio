@@ -134,20 +134,18 @@ export function PathOverlay({ bounds }: PathOverlayProps) {
           inset: 0,
           width: '100%',
           height: '100%',
-          // CSS animation: the path fades in then out within
-          // ANIMATION_DURATION_MS. Keyframe is inline via sx so we don't
-          // need a separate stylesheet. Defense-redesign 3.9: when the
-          // user prefers reduced motion the overlay drops the keyframe
-          // and just lights up at full opacity for the trace's
-          // duration — the SVG still renders so the path is visible.
+          // CSS animation: the path fades in then *holds* for the
+          // duration of the playback step (the provider clears `current`
+          // at trace end, which unmounts the SVG). Reduced-motion users
+          // skip the fade and see the overlay at full opacity from the
+          // first frame.
           opacity: 0.85,
           animation: reducedMotion
             ? 'none'
-            : 'pathOverlayPulse 350ms ease-out forwards',
-          '@keyframes pathOverlayPulse': {
+            : 'pathOverlayFadeIn 220ms ease-out forwards',
+          '@keyframes pathOverlayFadeIn': {
             '0%': { opacity: 0 },
-            '20%': { opacity: 0.85 },
-            '100%': { opacity: 0 },
+            '100%': { opacity: 0.85 },
           },
         }}
       >

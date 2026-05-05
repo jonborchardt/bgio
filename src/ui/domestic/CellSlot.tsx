@@ -59,6 +59,10 @@ export interface CellSlotProps {
    *  cell becomes clickable + shows a defense-accent outline so the
    *  player can see "click here to drop your unit." */
   isUnitTarget?: boolean;
+  /** `true` when this cell is currently being highlighted as part of a
+   *  hovered/focused unit's Chebyshev range. Renders a defense-accent
+   *  outline tint that does not capture clicks. */
+  inRange?: boolean;
 }
 
 export function CellSlot({
@@ -75,6 +79,7 @@ export function CellSlot({
   onPath = false,
   onImpact = false,
   isUnitTarget = false,
+  inRange = false,
 }: CellSlotProps) {
   const occupied = building !== undefined;
   const isCenter = occupied && building.isCenter === true;
@@ -199,6 +204,7 @@ export function CellSlot({
       data-cell-on-path={onPath ? 'true' : 'false'}
       data-cell-on-impact={onImpact ? 'true' : 'false'}
       data-cell-unit-target={isUnitTarget ? 'true' : 'false'}
+      data-cell-in-range={inRange ? 'true' : 'false'}
       aria-label={
         occupied
           ? isCenter
@@ -257,6 +263,29 @@ export function CellSlot({
       }}
     >
       {body}
+      {/* Range-preview tint. Layered below the path-resolution tints so
+          a mid-attack animation stays legible if the player is hovering
+          a unit at the same time. The inset dashed ring + low-opacity
+          fill reads as "this cell is in range" without competing with
+          the saturated impact pulse. */}
+      {inRange ? (
+        <Box
+          aria-hidden
+          data-testid="range-cell-tint"
+          sx={(t) => ({
+            position: 'absolute',
+            inset: 0,
+            borderRadius: 1.5,
+            pointerEvents: 'none',
+            zIndex: 3,
+            bgcolor: alpha(t.palette.role.defense.light, 0.12),
+            boxShadow: `inset 0 0 0 2px ${alpha(
+              t.palette.role.defense.light,
+              0.7,
+            )}`,
+          })}
+        />
+      ) : null}
       {/* Defense redesign 3.3 — path / impact tints. The cell stays
           interactive (the tints don't capture clicks) and clears
           automatically when the consumer drops `onPath` / `onImpact`. */}
@@ -277,20 +306,24 @@ export function CellSlot({
             boxShadow: onImpact
               ? `inset 0 0 0 2px ${t.palette.pathOverlay.pathImpact}`
               : undefined,
-            // Mirror PathOverlay's pulse so the tile blink stays in
-            // sync with the SVG arrow.
+            // Tints fade in once and *hold* for the duration of the
+            // current playback step — the resolve-animation provider
+            // clears the highlight set when the trace finishes, which
+            // unmounts the tint and removes the visual cleanly. (The
+            // earlier 350ms pulse-and-fade behaved correctly for the
+            // single-shot animation we used to ship; with click-paced
+            // steps the table needs the cells to stay lit while they
+            // read the banner.)
             animation: onImpact
-              ? 'pathTilePulse 350ms ease-out forwards'
-              : 'pathTileTrail 350ms ease-out forwards',
-            '@keyframes pathTilePulse': {
+              ? 'pathTilePulseIn 220ms ease-out forwards'
+              : 'pathTileTrailIn 220ms ease-out forwards',
+            '@keyframes pathTilePulseIn': {
               '0%': { opacity: 0 },
-              '25%': { opacity: 1 },
-              '100%': { opacity: 0 },
+              '100%': { opacity: 1 },
             },
-            '@keyframes pathTileTrail': {
+            '@keyframes pathTileTrailIn': {
               '0%': { opacity: 0 },
-              '20%': { opacity: 0.85 },
-              '100%': { opacity: 0 },
+              '100%': { opacity: 0.85 },
             },
           })}
         />

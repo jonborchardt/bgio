@@ -21,9 +21,11 @@
 // in 3.6); taught skills are rendered as a tiny tag row beneath the
 // unit's name.
 
+import { useCallback, useContext } from 'react';
 import { Box, Stack, Tooltip, Typography } from '@mui/material';
 import type { UnitInstance } from '../../game/roles/defense/types.ts';
 import { UNITS } from '../../data/index.ts';
+import { RangeHighlightContext } from '../track/RangeHighlightContext.ts';
 
 export interface UnitStackProps {
   /** Units placed on this tile. Order does not matter — the component
@@ -43,10 +45,23 @@ interface UnitChipProps {
 // Single-unit chip. Reads display state off the instance + the
 // underlying UnitDef (for max-hp comparison). Drill / teach indicators
 // are surfaced inline; refinement of those visuals is owned by 3.6.
+//
+// Hover / focus publishes the unit id into `RangeHighlightContext` so
+// the village grid can paint a range preview over the cells the unit
+// covers (Chebyshev radius from its tile). On mouse leave / blur the
+// id is cleared.
 function UnitChip({ unit }: UnitChipProps) {
   const def = UNITS.find((u) => u.name === unit.defID);
   const drilled = unit.drillToken === true;
   const taughtSkills = unit.taughtSkills ?? [];
+  const { setHoveredUnitID } = useContext(RangeHighlightContext);
+  const onEnter = useCallback(() => {
+    setHoveredUnitID(unit.id);
+  }, [setHoveredUnitID, unit.id]);
+  const onLeave = useCallback(() => {
+    setHoveredUnitID(null);
+  }, [setHoveredUnitID]);
+  const rangeText = def !== undefined ? ` · range ${def.range}` : '';
   const tooltip = (
     <Stack spacing={0.25}>
       <Typography variant="caption" sx={{ fontWeight: 700 }}>
@@ -55,6 +70,7 @@ function UnitChip({ unit }: UnitChipProps) {
       <Typography variant="caption">
         HP {unit.hp}
         {def ? ` / ${def.hp}` : ''} · order #{unit.placementOrder}
+        {rangeText}
       </Typography>
       {drilled ? (
         <Typography variant="caption">Drilled — next fire +1 strength</Typography>
@@ -72,7 +88,12 @@ function UnitChip({ unit }: UnitChipProps) {
         data-unit-id={unit.id}
         data-unit-def={unit.defID}
         data-unit-order={unit.placementOrder}
+        tabIndex={0}
         aria-label={`Unit ${unit.defID} (order ${unit.placementOrder}, hp ${unit.hp})`}
+        onMouseEnter={onEnter}
+        onMouseLeave={onLeave}
+        onFocus={onEnter}
+        onBlur={onLeave}
         sx={{
           display: 'flex',
           alignItems: 'center',

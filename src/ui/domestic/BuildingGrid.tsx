@@ -23,7 +23,7 @@
 // placed onto for buildings. Unit-placement legality is independent
 // (any non-center occupied cell is legal).
 
-import { useMemo } from 'react';
+import { useContext, useMemo } from 'react';
 import { Box, Typography } from '@mui/material';
 import {
   cellKey,
@@ -36,6 +36,10 @@ import { CellSlot } from './CellSlot.tsx';
 import { EmbossedFrame } from '../layout/EmbossedFrame.tsx';
 import { PathOverlay } from '../track/PathOverlay.tsx';
 import { useActivePathHighlight } from '../track/resolveAnimation.ts';
+import {
+  RangeHighlightContext,
+  computeRangeKeys,
+} from '../track/RangeHighlightContext.ts';
 
 export interface BuildingGridProps {
   grid: Record<string, DomesticBuilding>;
@@ -147,6 +151,16 @@ export function BuildingGrid({
   // (e.g. headless tests), which collapses to `undefined` here.
   const contextHighlight = useActivePathHighlight();
   const activeHighlight = pathHighlight ?? contextHighlight;
+
+  // Range-preview keys derived from whichever unit the table is hovering
+  // / focusing. `RangeHighlightContext` defaults to `null` when no
+  // provider is mounted (headless tests), in which case the resulting
+  // key set is empty.
+  const { hoveredUnitID } = useContext(RangeHighlightContext);
+  const rangeKeys = useMemo(
+    () => computeRangeKeys(hoveredUnitID, units),
+    [hoveredUnitID, units],
+  );
 
   // Group defense units by `cellKey` once per render; CellSlot reads
   // the per-cell list out of this map. The values are placement-order-
@@ -262,6 +276,7 @@ export function BuildingGrid({
                 // building-placement targets only.
                 const isUnitTarget =
                   isPlacingUnit && building !== undefined && !isCenter;
+                const inRange = rangeKeys.has(key);
                 return (
                   <CellSlot
                     key={key}
@@ -277,6 +292,7 @@ export function BuildingGrid({
                     onPath={onPath}
                     onImpact={onImpact}
                     isUnitTarget={isUnitTarget}
+                    inRange={inRange}
                     onClick={() => {
                       // Building placement: empty + legal + activeCard
                       // armed → fire onPlace.
