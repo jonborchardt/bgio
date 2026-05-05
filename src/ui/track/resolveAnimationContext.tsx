@@ -1,11 +1,17 @@
-// Defense redesign 3.3 — resolve animation context.
+// Defense redesign 3.3 — resolve animation provider components.
 //
 // The track resolver appends a `ResolveTrace` to `G.track.traces` (and
 // updates `G.track.lastResolve`) every time a card flip resolves. This
-// React context buffers those traces and feeds them through a small
-// queue so the path overlay can animate one trace at a time without
-// dropping frames when several flips arrive in close succession (e.g.
-// the boss's multi-attack volley — each attack pushes its own trace).
+// file holds the React components that own the playback queue:
+//
+//   - <ResolveAnimationProvider> — buffers traces and surfaces the
+//     currently-animating one through `ResolveAnimationContext`.
+//   - <ResolveTraceWatcher> — a thin effect-only adapter that pushes
+//     `G.track.lastResolve` updates into the provider.
+//
+// The context object, derived hook, and tunable constants live in
+// `./resolveAnimation.ts` (the `react-refresh/only-export-components`
+// rule requires non-component exports to sit in a separate module).
 //
 // Lifecycle of one trace:
 //   1. `pushTrace(trace)` is called from a `useEffect` watching
@@ -27,34 +33,15 @@
 //
 // Pure presentational; no bgio plumbing here.
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { ResolveTrace } from '../../game/track.ts';
-
-/** Total duration of one trace's animation in milliseconds. Kept short
- *  per the plan ("≤ 500ms"); 350ms balances "you saw the path" with
- *  "the game continues immediately." Exposed for tests. */
-export const ANIMATION_DURATION_MS = 350;
-
-/** Hard cap on the internal queue. Real games will see ≤ 8 boss
- *  attacks per flip; a queue beyond ~16 means something upstream went
- *  wrong, and we drop the oldest entries rather than block the UI. */
-export const MAX_QUEUE_LENGTH = 16;
-
-export interface ResolveAnimationContextValue {
-  /** The trace currently animating, or `null` when idle. */
-  current: ResolveTrace | null;
-  /** Push a trace onto the playback queue. Skips `noop` traces and
-   *  duplicates by reference. The hook below `useResolveTrace` calls
-   *  this from a `useEffect` watching `G.track.lastResolve`. */
-  pushTrace: (trace: ResolveTrace) => void;
-}
-
-export const ResolveAnimationContext =
-  createContext<ResolveAnimationContextValue>({
-    current: null,
-    pushTrace: () => undefined,
-  });
+import {
+  ANIMATION_DURATION_MS,
+  MAX_QUEUE_LENGTH,
+  ResolveAnimationContext,
+  type ResolveAnimationContextValue,
+} from './resolveAnimation.ts';
 
 export interface ResolveAnimationProviderProps {
   children: ReactNode;
@@ -156,28 +143,3 @@ export function ResolveTraceWatcher({
   }, [lastResolve, pushTrace]);
   return null;
 }
-
-/**
- * Convenience hook that derives a `{ pathKeys, impactKeys, firingUnitIDs }`
- * shape from the currently-animating trace. Returns `undefined` when
- * idle — the BuildingGrid forwards that straight to its `pathHighlight`
- * prop. Memoized on the active trace's identity so the consumer doesn't
- * recompute the Sets every render while the same animation plays.
- */
-export const useActivePathHighlight = (): {
-  pathKeys: ReadonlySet<string>;
-  impactKeys: ReadonlySet<string>;
-  firingUnitIDs: ReadonlySet<string>;
-} | undefined => {
-  const { current } = useContext(ResolveAnimationContext);
-  return useMemo(() => {
-    if (current === null) return undefined;
-    const pathKeys = new Set<string>();
-    for (const cell of current.pathTiles) {
-      pathKeys.add(`${cell.x},${cell.y}`);
-    }
-    const impactKeys = new Set<string>(current.impactTiles);
-    const firingUnitIDs = new Set<string>(current.firingUnitIDs);
-    return { pathKeys, impactKeys, firingUnitIDs };
-  }, [current]);
-};

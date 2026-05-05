@@ -1,5 +1,13 @@
 [
   {
+    "id": "trk-p1-first-dawn",
+    "kind": "boon",
+    "name": "A New Dawn",
+    "phase": 1,
+    "description": "The first sun rises on the village — the chief receives an extra gold immediately.",
+    "effect": { "kind": "gainResource", "bag": { "gold": 1 }, "target": "bank" }
+  },
+  {
     "id": "trk-p1-001",
     "kind": "threat",
     "name": "Stray Wolves",

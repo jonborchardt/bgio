@@ -6,9 +6,22 @@
 // `grid` keys, or a 3×3 around (0,0) when the grid is empty (so the very
 // first placement has somewhere to land).
 //
+// Two placement modes share the same grid:
+//   - Building placement (domestic seat) — `activeCard` armed, empty
+//     legal cells become clickable, click fires `onPlace(x, y)` →
+//     `domesticBuyBuilding(name, x, y)`.
+//   - Unit placement (defense seat) — `unitPlacement` set, occupied
+//     non-center cells become clickable, click fires
+//     `unitPlacement.onPick(cellKey)` →
+//     `defenseBuyAndPlace(unitDefID, cellKey)`. The grid renders
+//     read-only otherwise. Defense seats can mount the same grid in
+//     their own panel for a "see the village, click a tile to station
+//     a unit" flow (post-3.9 preference sweep).
+//
 // `isLegal` is computed via `isPlacementLegal(grid, x, y)` only when an
 // `activeCard` is present — otherwise nothing on the grid is meant to be
-// placed onto.
+// placed onto for buildings. Unit-placement legality is independent
+// (any non-center occupied cell is legal).
 
 import { useMemo } from 'react';
 import { Box, Typography } from '@mui/material';
@@ -22,12 +35,14 @@ import type { UnitInstance } from '../../game/roles/defense/types.ts';
 import { CellSlot } from './CellSlot.tsx';
 import { EmbossedFrame } from '../layout/EmbossedFrame.tsx';
 import { PathOverlay } from '../track/PathOverlay.tsx';
-import { useActivePathHighlight } from '../track/resolveAnimationContext.tsx';
+import { useActivePathHighlight } from '../track/resolveAnimation.ts';
 
 export interface BuildingGridProps {
   grid: Record<string, DomesticBuilding>;
   activeCard?: BuildingDef;
-  onPlace: (x: number, y: number) => void;
+  /** Building-placement click handler. Fires when an empty legal cell
+   *  is clicked while `activeCard` is armed. */
+  onPlace?: (x: number, y: number) => void;
   /** Defense redesign 3.2 — defense units in play; the grid groups them
    *  by `cellKey` and forwards per-cell stacks to <CellSlot>. Optional
    *  so older fixtures (e.g. the pre-2.5 hot-seat builds) render
@@ -46,6 +61,15 @@ export interface BuildingGridProps {
     pathKeys: ReadonlySet<string>;
     impactKeys: ReadonlySet<string>;
     firingUnitIDs?: ReadonlySet<string>;
+  };
+  /** Post-3.9 preference sweep — defense unit placement mode. When
+   *  `selectedUnitName` is defined, occupied non-center cells become
+   *  clickable; click fires `onPick(cellKey)`. The defense panel uses
+   *  this so the seat sees the actual village map when stationing a
+   *  unit, instead of a separate cell list. */
+  unitPlacement?: {
+    selectedUnitName?: string;
+    onPick: (cellKey: string) => void;
   };
 }
 
@@ -106,9 +130,13 @@ export function BuildingGrid({
   pooledTotal,
   pooledBreakdown,
   pathHighlight,
+  unitPlacement,
 }: BuildingGridProps) {
   const isPlacing = activeCard !== undefined;
-  const { xMin, xMax, yMin, yMax } = computeBounds(grid, isPlacing);
+  const isPlacingUnit = unitPlacement?.selectedUnitName !== undefined;
+  // Pad the bounds when *either* placement mode is active so the grid
+  // doesn't shift when the player switches between modes mid-flow.
+  const { xMin, xMax, yMin, yMax } = computeBounds(grid, isPlacing || isPlacingUnit);
   const cols = xMax - xMin + 1;
   const isEmpty = Object.keys(grid).length === 0;
 
@@ -175,7 +203,7 @@ export function BuildingGrid({
             py: 2,
           }}
         >
-          Empty village — select a building to place.
+          Empty village — buildings will appear here once placed.
         </Typography>
       ) : (
         <Box
@@ -229,6 +257,11 @@ export function BuildingGrid({
                   activeHighlight?.pathKeys.has(key) ?? false;
                 const onImpact =
                   activeHighlight?.impactKeys.has(key) ?? false;
+                // Unit-placement targeting: any occupied non-center
+                // cell is a legal station for a unit. Empty cells stay
+                // building-placement targets only.
+                const isUnitTarget =
+                  isPlacingUnit && building !== undefined && !isCenter;
                 return (
                   <CellSlot
                     key={key}
@@ -243,10 +276,20 @@ export function BuildingGrid({
                     pooledBreakdown={isCenter ? pooledBreakdown : undefined}
                     onPath={onPath}
                     onImpact={onImpact}
+                    isUnitTarget={isUnitTarget}
                     onClick={() => {
-                      if (building !== undefined) return;
-                      if (!isPlacing || !isLegal) return;
-                      onPlace(x, y);
+                      // Building placement: empty + legal + activeCard
+                      // armed → fire onPlace.
+                      if (building === undefined) {
+                        if (!isPlacing || !isLegal) return;
+                        onPlace?.(x, y);
+                        return;
+                      }
+                      // Unit placement: occupied non-center + unit
+                      // armed → fire unitPlacement.onPick.
+                      if (isUnitTarget && unitPlacement) {
+                        unitPlacement.onPick(key);
+                      }
                     }}
                   />
                 );

@@ -111,7 +111,7 @@ describe('resolveTrackCard — boon / modifier dispatch', () => {
     expect(G.bank.wood).toBe(before + 2);
   });
 
-  it('modifier card pushes onto G.track.activeModifiers', () => {
+  it('modifier card pushes onto G.track.activeModifiers and G._modifiers', () => {
     const G = seedFreshGame(2);
     const mod: ModifierCard = {
       kind: 'modifier',
@@ -123,10 +123,20 @@ describe('resolveTrackCard — boon / modifier dispatch', () => {
       effect: { kind: 'doubleScience' },
     };
     expect(G.track?.activeModifiers ?? []).toEqual([]);
+    expect(G._modifiers ?? []).toEqual([]);
     resolveTrackCard(G, detRandom(), mod);
     expect(G.track?.activeModifiers).toBeDefined();
     expect(G.track!.activeModifiers!.length).toBe(1);
     expect(G.track!.activeModifiers![0]!.id).toBe('mod-1');
+    // The effect lands on _modifiers (the same queue event-card modifier
+    // effects use) so any role move gating on `hasModifierActive` /
+    // `consumeModifier` reads track- and event-sourced modifiers
+    // uniformly. (V1 ships the helpers but doesn't yet wire any
+    // role-move consumer; this assertion pins the queue plumbing so a
+    // future consumer can be added without engine changes.)
+    expect(G._modifiers).toBeDefined();
+    expect(G._modifiers!.length).toBe(1);
+    expect(G._modifiers![0]!.kind).toBe('doubleScience');
   });
 
   it('boss card dispatches through resolveBoss (does not throw, flips bossResolved)', () => {

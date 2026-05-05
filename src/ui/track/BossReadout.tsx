@@ -40,6 +40,13 @@ export interface BossReadoutProps {
     economy: number;
     military: number;
   };
+  /** Post-3.9 preference sweep — when `true`, the boss has not yet
+   *  flipped (it still sits in `upcoming`). The readout renders in a
+   *  subdued / desaturated treatment so the table reads it as a
+   *  "looming" threat preview, not a flipped card. When `false` the
+   *  boss has already flipped (now in `history`); the readout shows at
+   *  full strength as the audit/result panel. */
+  looming?: boolean;
 }
 
 // Per-row config drives the rendered list. Keeping this as a small
@@ -171,7 +178,7 @@ function ThresholdRow({ label, short, current, required, met }: ThresholdRowProp
 const isMet = (current: number, required: number): boolean =>
   current >= required;
 
-export function BossReadout({ boss, current }: BossReadoutProps) {
+export function BossReadout({ boss, current, looming = false }: BossReadoutProps) {
   const rows = ROWS.map((spec) => {
     const required = boss.thresholds[spec.key];
     const cur = current[spec.key];
@@ -203,18 +210,27 @@ export function BossReadout({ boss, current }: BossReadoutProps) {
     <Paper
       elevation={0}
       role="region"
-      aria-label={`Boss readout — ${boss.name}`}
+      aria-label={`Boss readout — ${boss.name}${looming ? ' (looming)' : ''}`}
       data-testid="boss-readout"
+      data-boss-readout-looming={looming ? 'true' : 'false'}
       sx={{
         flexShrink: 0,
         width: 220,
         px: 1.25,
         py: 1,
         borderRadius: 1,
-        border: '2px solid',
+        // Looming preview reads as "not yet here": dashed border at
+        // half saturation, slate-muted background, panel-wide opacity
+        // pull so it visibly recedes against the rest of the strip.
+        // Once the boss flips into history we drop back to the solid
+        // 2px boss-accent border so the readout reads as a confirmed
+        // resolution panel.
+        border: looming ? '2px dashed' : '2px solid',
         borderColor: (t) => t.palette.track.boss,
-        bgcolor: (t) => t.palette.card.surface,
+        bgcolor: (t) =>
+          looming ? t.palette.card.takenSurface : t.palette.card.surface,
         color: (t) => t.palette.bossReadout.text,
+        opacity: looming ? 0.65 : 1,
       }}
     >
       <Stack spacing={1}>

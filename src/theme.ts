@@ -283,13 +283,16 @@ const eventColor: Record<EventColor, PaletteColor> = {
 //                pooled-stash total.
 //
 // All three resolve to ramp slots — no raw hex literals leak into
-// component code. Anchored on `purple` so the vault accent stays
+// component code. Post-3.9 preference sweep: anchored on the warm
+// neutral `slate` ramp with a `yellow` accent (a "stone vault with a
+// gold-trim seal") so the centre tile reads as part of the village —
 // distinct from the role accents (chief yellow, science blue, domestic
-// green, defense red) and from the track's threat / boon / boss accents.
+// green, defense red) without competing with them. Earlier passes used
+// purple, which rendered as a colourful sticker against the village.
 const centerTile = {
-  accent: ramps.purple[500],
-  surface: ramps.purple[700],
-  text: ramps.purple[50],
+  accent: ramps.yellow[500],
+  surface: ramps.slate[700],
+  text: ramps.slate[50],
 };
 
 // Defense redesign 3.5 — boss-readout threshold tokens.

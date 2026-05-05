@@ -149,13 +149,18 @@ describe('BossReadout (3.5)', () => {
 });
 
 describe('TrackStrip → BossReadout integration (3.5)', () => {
-  it('renders the boss readout when next-card is the boss and totals are supplied', () => {
+  // Post-3.9 preference sweep: the face-up "next" telegraph slot was
+  // removed and the BossReadout is now driven by the standalone `boss`
+  // prop. The readout renders whenever `boss` AND `villageTotals` are
+  // both supplied — the village can track progress against thresholds
+  // from round 1 onward, not only when the boss is about to flip.
+  it('renders the boss readout when the boss prop and village totals are supplied', () => {
     const html = renderStrip({
       history: [],
       current: undefined,
-      next: boss(),
       upcomingCount: 0,
       phase: 9,
+      boss: boss(),
       villageTotals: { science: 6, economy: 5, military: 8 },
     });
     expect(html).toContain('data-testid="boss-readout"');
@@ -163,11 +168,10 @@ describe('TrackStrip → BossReadout integration (3.5)', () => {
     expect(html).toMatch(/data-testid="boss-readout-row-eco"[^>]*data-met="false"/);
   });
 
-  it('does NOT render the boss readout when next-card is a regular threat', () => {
+  it('does NOT render the boss readout when the boss prop is omitted (no boss in the deck)', () => {
     const html = renderStrip({
-      history: [],
+      history: [threat()],
       current: undefined,
-      next: threat(),
       upcomingCount: 0,
       phase: 4,
       villageTotals: { science: 0, economy: 0, military: 0 },
@@ -175,19 +179,7 @@ describe('TrackStrip → BossReadout integration (3.5)', () => {
     expect(html).not.toContain('data-testid="boss-readout"');
   });
 
-  it('does NOT render the boss readout when next-card is undefined (track exhausted before boss)', () => {
-    const html = renderStrip({
-      history: [],
-      current: undefined,
-      next: undefined,
-      upcomingCount: 0,
-      phase: 10,
-      villageTotals: { science: 6, economy: 12, military: 8 },
-    });
-    expect(html).not.toContain('data-testid="boss-readout"');
-  });
-
-  it('does NOT render the boss readout when villageTotals is omitted, even with boss next', () => {
+  it('does NOT render the boss readout when villageTotals is omitted, even with boss supplied', () => {
     // Defensive: the strip is still mountable from older call sites
     // that haven't wired `villageTotals` yet (e.g. headless test harnesses
     // mocking partial board state). It silently skips the readout
@@ -195,26 +187,26 @@ describe('TrackStrip → BossReadout integration (3.5)', () => {
     const html = renderStrip({
       history: [],
       current: undefined,
-      next: boss(),
       upcomingCount: 0,
       phase: 9,
+      boss: boss(),
     });
     expect(html).not.toContain('data-testid="boss-readout"');
   });
 
-  it('does NOT render the boss readout when boss is the CURRENT card (already flipped)', () => {
-    // §10.6 + the plan are explicit: the readout is for the *next*
-    // (telegraphed) slot. Once the boss has flipped into "current,"
-    // the village's prep window has closed and `resolveBoss` has
-    // already counted thresholds.
+  it('renders the boss readout even after the boss has resolved into history', () => {
+    // The board passes the boss card whether it sits in upcoming or
+    // history, so the readout stays visible as an audit trail of the
+    // village's totals at boss resolution. Mirrors the new Board.tsx
+    // wiring: search both arrays for the boss kind.
     const html = renderStrip({
-      history: [],
-      current: boss(),
-      next: undefined,
+      history: [boss()],
+      current: undefined,
       upcomingCount: 0,
       phase: 10,
+      boss: boss(),
       villageTotals: { science: 6, economy: 12, military: 8 },
     });
-    expect(html).not.toContain('data-testid="boss-readout"');
+    expect(html).toContain('data-testid="boss-readout"');
   });
 });

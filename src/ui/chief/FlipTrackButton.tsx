@@ -1,9 +1,9 @@
 // Defense redesign 3.8 — FlipTrackButton.
 //
-// Renders the chief's "Flip Track" button + a per-round status caption.
-// Clicking dispatches `chiefFlipTrack`; the strip animation + path
-// overlay are driven elsewhere (3.1 + 3.3 watch `G.track.lastResolve`),
-// so this component's only job is to dispatch and reflect the latch.
+// Renders the chief's "Flip Track" action button. Clicking dispatches
+// `chiefFlipTrack`; the strip animation + path overlay are driven
+// elsewhere (3.1 + 3.3 watch `G.track.lastResolve`), so this
+// component's only job is to dispatch and reflect the latch.
 //
 // State the button reads off the panel:
 //   - `canAct`        — chief is in `chiefPhase` (gating mirrors the
@@ -15,13 +15,15 @@
 //                       resolved or track exhausted) the button is
 //                       disabled with an explanatory tooltip.
 //
-// Visual treatment: chief-accent contained button, sized large to read
-// as the round's table-presence beat (D22). Disabled reasons surface
-// via a wrapping Tooltip + a status caption below; we never communicate
-// disabled state via color alone (CLAUDE.md a11y rule).
+// Post-3.9 preference sweep: the button moved into the chief's
+// actions row alongside Graveyard / Undo / End-my-turn, so it reads
+// as part of the round's action set rather than a buried body
+// section. Visual treatment matches the other action buttons (chief
+// accent, default `medium` size); disabled reason + status surfaces
+// via the wrapping Tooltip — no separate caption.
 
 import { useEffect } from 'react';
-import { Box, Button, Stack, Tooltip, Typography } from '@mui/material';
+import { Box, Button, Tooltip } from '@mui/material';
 import { flipTrackDisabledReason } from './flipTrackLogic.ts';
 
 export interface FlipTrackButtonProps {
@@ -93,57 +95,40 @@ export function FlipTrackButton({
         ? 'ready to flip'
         : 'waiting for chief phase';
 
+  // Default tooltip surfaces the live status so the chief reads it on
+  // hover even when the button is enabled (no separate caption needed).
+  const tooltipTitle = reason ?? `Flip the next track card — ${statusLabel}. Keyboard: F.`;
+
   return (
-    <Stack
-      spacing={0.5}
-      data-flip-track-control="true"
-      sx={{ alignItems: 'flex-start' }}
-    >
-      <Tooltip
-        title={reason ?? 'Flip the next track card. Keyboard: F.'}
+    <Tooltip title={tooltipTitle}>
+      <Box
+        component="span"
+        sx={{ display: 'inline-flex' }}
+        data-flip-track-control="true"
       >
-        <Box component="span" sx={{ display: 'inline-flex' }}>
-          <Button
-            variant="contained"
-            size="large"
-            disabled={disabled}
-            onClick={onFlip}
-            aria-label="Flip the next track card. Keyboard shortcut F."
-            aria-keyshortcuts="F"
-            data-flip-track-button="true"
-            data-flip-track-disabled={disabled ? 'true' : 'false'}
-            data-flip-track-status={status}
-            sx={{
-              bgcolor: (t) => t.palette.role.chief.main,
-              color: (t) => t.palette.role.chief.contrastText,
-              fontWeight: 700,
-              letterSpacing: '0.04em',
-              px: 3,
-              py: 1.25,
-              '&:hover': {
-                bgcolor: (t) => t.palette.role.chief.dark,
-              },
-            }}
-          >
-            Flip Track <Box component="span" aria-hidden sx={{ opacity: 0.7, ml: 1, fontSize: '0.75rem' }}>(F)</Box>
-          </Button>
-        </Box>
-      </Tooltip>
-      <Typography
-        variant="caption"
-        data-flip-track-status-caption={status}
-        sx={{
-          color: (t) =>
-            flipped
-              ? t.palette.status.muted
-              : disabled
-                ? t.palette.status.muted
-                : t.palette.role.chief.light,
-        }}
-      >
-        Flip Track: {statusLabel}
-      </Typography>
-    </Stack>
+        <Button
+          variant="contained"
+          disabled={disabled}
+          onClick={onFlip}
+          aria-label={`Flip the next track card. Status: ${statusLabel}. Keyboard shortcut F.`}
+          aria-keyshortcuts="F"
+          data-flip-track-button="true"
+          data-flip-track-disabled={disabled ? 'true' : 'false'}
+          data-flip-track-status={status}
+          sx={{
+            bgcolor: (t) => t.palette.role.chief.main,
+            color: (t) => t.palette.role.chief.contrastText,
+            fontWeight: 700,
+            letterSpacing: '0.04em',
+            '&:hover': {
+              bgcolor: (t) => t.palette.role.chief.dark,
+            },
+          }}
+        >
+          Flip Track <Box component="span" aria-hidden sx={{ opacity: 0.7, ml: 1, fontSize: '0.7rem' }}>(F)</Box>
+        </Button>
+      </Box>
+    </Tooltip>
   );
 }
 

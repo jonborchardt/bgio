@@ -75,44 +75,50 @@ describe('flipTrackDisabledReason (defense redesign 3.8)', () => {
 });
 
 describe('chiefEndPhaseDisabledReason (defense redesign 3.8)', () => {
-  it('returns null when the chief can act and the flip latch is set', () => {
+  it('returns enabled / no reason when the chief can act and the flip latch is set', () => {
     expect(
       chiefEndPhaseDisabledReason({
         canAct: true,
         flipped: true,
         hasTrack: true,
       }),
-    ).toBeNull();
+    ).toEqual({ disabled: false, reason: null });
   });
 
-  it('returns null on track-less fixtures regardless of latch', () => {
+  it('returns enabled on track-less fixtures regardless of latch', () => {
     expect(
       chiefEndPhaseDisabledReason({
         canAct: true,
         flipped: false,
         hasTrack: false,
       }),
-    ).toBeNull();
+    ).toEqual({ disabled: false, reason: null });
   });
 
-  it('disables outside chief phase', () => {
+  it('disables outside chief phase with a surfaced reason', () => {
     expect(
       chiefEndPhaseDisabledReason({
         canAct: false,
         flipped: true,
         hasTrack: true,
       }),
-    ).toBe('End is only available during your phase.');
+    ).toEqual({
+      disabled: true,
+      reason: 'End is only available during your phase.',
+    });
   });
 
-  it('disables until the chief flips when the track exists', () => {
+  it('disables (with no surfaced label) until the chief flips when the track exists', () => {
+    // The FlipTrackButton's own status caption already tells the chief
+    // what to do, so the End-my-phase gate suppresses its tooltip with a
+    // null reason rather than duplicating the message.
     expect(
       chiefEndPhaseDisabledReason({
         canAct: true,
         flipped: false,
         hasTrack: true,
       }),
-    ).toBe('Flip the track card before ending your phase.');
+    ).toEqual({ disabled: true, reason: null });
   });
 
   it('off-phase wins over flip gate (most actionable reason first)', () => {
@@ -122,6 +128,9 @@ describe('chiefEndPhaseDisabledReason (defense redesign 3.8)', () => {
         flipped: false,
         hasTrack: true,
       }),
-    ).toBe('End is only available during your phase.');
+    ).toEqual({
+      disabled: true,
+      reason: 'End is only available during your phase.',
+    });
   });
 });

@@ -23,7 +23,7 @@
 
 import { useContext, useMemo } from 'react';
 import { Box } from '@mui/material';
-import { ResolveAnimationContext } from './resolveAnimationContext.tsx';
+import { ResolveAnimationContext } from './resolveAnimation.ts';
 import { useReducedMotion } from '../layout/useReducedMotion.ts';
 
 export interface PathOverlayProps {
@@ -140,7 +140,7 @@ export function PathOverlay({ bounds }: PathOverlayProps) {
           // user prefers reduced motion the overlay drops the keyframe
           // and just lights up at full opacity for the trace's
           // duration — the SVG still renders so the path is visible.
-          opacity: reducedMotion ? 0.85 : 0.85,
+          opacity: 0.85,
           animation: reducedMotion
             ? 'none'
             : 'pathOverlayPulse 350ms ease-out forwards',

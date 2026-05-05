@@ -1,10 +1,10 @@
 // Defense redesign 3.1 — track strip.
 //
-// Horizontal strip the table reads to know "what just hit" / "what's
-// coming." Layout (left → right):
+// Horizontal strip the table reads to know "what just hit." Layout
+// (left → right):
 //
 //   [ phase markers (1..10, boss highlighted) ]
-//   [ past₁ past₂ … past_n  |  CURRENT  |  NEXT  |  ░ ░ ░ ░ ]
+//   [ past₁ past₂ … past_n  |  CURRENT  |  ░ ░ ░ ░ ]
 //
 //   - Past cards   — `state="past"`, greyed via `track.past` border.
 //   - Current card — `state="current"`, accent from `track.current`.
@@ -13,14 +13,15 @@
 //                    ms; the slide itself is implicit — the card is
 //                    re-keyed by `id` so React swaps placements without
 //                    layout thrash).
-//   - Next card    — `state="next"`, telegraphed via `track.next`.
-//   - Face-down hint — a row of small ░ tiles representing the count
-//                    of cards still in the deck after `next`.
+//   - Face-down hint — a row of small ░ tiles representing every card
+//                    still in the deck (no face-up telegraph; the
+//                    village only sees what has been flipped).
 //
 // The strip is purely presentational — it reads `G.track` (history,
-// upcoming[0], upcoming[1], upcoming.length, currentPhase) and
-// renders. No moves are dispatched here; click affordances are
-// reserved for sub-phase 3.6 (red-tech track manipulation).
+// upcoming.length, currentPhase) and renders. No moves are dispatched
+// here. The face-up "next" telegraph slot was removed in the post-3.9
+// preference sweep so the table starts empty until the chief flips
+// the first card; the village only sees what has actually resolved.
 
 import { useCallback, useMemo, useRef, type KeyboardEvent } from 'react';
 import { Box, Stack, Typography } from '@mui/material';
@@ -37,19 +38,29 @@ export interface TrackStripProps {
    *  the track was never flipped this round, `current` is `undefined`
    *  and the slot collapses. */
   current?: TrackCardDef;
-  /** The face-up telegraph card. Defense plans against this. */
-  next?: TrackCardDef;
-  /** Count of cards remaining in the deck *after* `next`. Drives the
-   *  width of the face-down hint row. */
+  /** Total face-down cards remaining in the deck. Drives the width of
+   *  the face-down hint row. (No face-up telegraph slot — the village
+   *  only sees what has been flipped.) */
   upcomingCount: number;
   /** Cached `G.track.currentPhase`. Used to highlight the active
    *  phase marker above the strip. */
   phase: number;
+  /** The boss card (always present in the deck, lives in phase 10).
+   *  When supplied alongside `villageTotals` the strip renders a
+   *  `<BossReadout>` so the village can track its progress against the
+   *  printed thresholds throughout the game — not just when the boss
+   *  is about to flip. */
+  boss?: TrackCardDef;
+  /** Post-3.9 preference sweep — when `true`, the boss has not yet
+   *  flipped (it still sits in `upcoming`). The readout renders in a
+   *  subdued/desaturated treatment so the table reads it as a
+   *  "looming" preview, not a flipped card. */
+  bossLooming?: boolean;
   /** Live village totals against the boss thresholds (3.5). Optional —
-   *  only consulted when `next` is the boss card, in which case the
-   *  strip renders a `<BossReadout>` adjacent to the next-card preview.
-   *  Computed by the parent (Board.tsx) from `G` so the readout
-   *  updates as science completes / units gain strength / bank changes. */
+   *  the strip renders a `<BossReadout>` whenever both `boss` and
+   *  `villageTotals` are supplied. Computed by the parent (Board.tsx)
+   *  from `G` so the readout updates as science completes / units
+   *  gain strength / bank changes. */
   villageTotals?: {
     science: number;
     economy: number;
@@ -84,9 +95,10 @@ function FaceDownTile() {
 export function TrackStrip({
   history,
   current,
-  next,
   upcomingCount,
   phase,
+  boss,
+  bossLooming = false,
   villageTotals,
 }: TrackStripProps) {
   // Visible past cards: the most-recently-flipped slice of `history`,
@@ -159,7 +171,7 @@ export function TrackStrip({
     <Box
       data-testid="track-strip"
       role="region"
-      aria-label="Global event track. Use arrow keys to move between past, current, and next cards."
+      aria-label="Global event track. Use arrow keys to move between past and current cards."
       sx={{
         width: '100%',
         py: 1,
@@ -225,14 +237,18 @@ export function TrackStrip({
             />
           ))}
 
-          {/* Divider between past and current — small vertical rule. */}
+          {/* Divider between past and current — thin vertical rule.
+              Note: MUI's sx interprets a bare `width: 1` as 100%
+              (theme shorthand), so we have to spell out a CSS pixel
+              value or the divider blows up to a full-width gray bar
+              spanning the strip. Hard-pixel value here is intentional. */}
           {(visiblePast.length > 0 || truncatedPast > 0) &&
-          (current !== undefined || next !== undefined) ? (
+          current !== undefined ? (
             <Box
               aria-hidden
               sx={{
-                width: 1,
-                height: 100,
+                width: '1px',
+                height: 80,
                 bgcolor: (t) => t.palette.status.muted,
                 opacity: 0.4,
                 flexShrink: 0,
@@ -248,25 +264,24 @@ export function TrackStrip({
             />
           ) : null}
 
-          {next !== undefined ? (
-            <TrackCardView
-              key={`next:${next.id}`}
-              card={next}
-              state="next"
-            />
-          ) : null}
-
-          {/* Defense redesign 3.5 — boss thresholds readout. Only
-              rendered when the telegraphed `next` card is the boss
-              AND the parent supplies live `villageTotals`. The board
-              wires the totals from `G` (science completed count, bank
-              gold, sum of unit strength) so the readout updates live
-              while the chief / domestic / defense seats act on the
-              round before the boss flips. */}
-          {next !== undefined &&
-          next.kind === 'boss' &&
+          {/* Defense redesign 3.5 — boss thresholds readout. Rendered
+              throughout the game when the parent supplies the boss
+              card + live `villageTotals` (the boss is always in the
+              deck, so the readout is always meaningful). Earlier
+              passes only showed it when the boss was the face-up
+              telegraph, but that slot was removed — the readout now
+              tracks village progress from round 1. The board wires
+              the totals from `G` (science completed count, bank gold,
+              sum of unit strength) so they update live as science
+              completes / units gain strength / bank changes. */}
+          {boss !== undefined &&
+          boss.kind === 'boss' &&
           villageTotals !== undefined ? (
-            <BossReadout boss={next} current={villageTotals} />
+            <BossReadout
+              boss={boss}
+              current={villageTotals}
+              looming={bossLooming}
+            />
           ) : null}
 
           {/* Face-down hint row. */}
@@ -300,7 +315,6 @@ export function TrackStrip({
           {visiblePast.length === 0 &&
           truncatedPast === 0 &&
           current === undefined &&
-          next === undefined &&
           upcomingCount === 0 ? (
             <Typography
               variant="caption"

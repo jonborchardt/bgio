@@ -44,7 +44,8 @@ export const flipTrackDisabledReason = (
 };
 
 export interface ChiefEndPhaseDisabledArgs {
-  /** True only during `chiefPhase`. */
+  /** True only during `chiefPhase`. Outside the chief phase the button
+   *  is disabled (the move would INVALID_MOVE anyway). */
   canAct: boolean;
   /** `G.track.flippedThisRound`. The chief must flip the round's track
    *  card before transitioning to othersPhase (D22 / 04.2 gate). */
@@ -55,20 +56,32 @@ export interface ChiefEndPhaseDisabledArgs {
   hasTrack: boolean;
 }
 
+export interface DisabledState {
+  /** True when the control should be disabled. */
+  disabled: boolean;
+  /** Tooltip / inline-error text to surface, or `null` to suppress
+   *  surface text (either because the control is enabled, or because
+   *  the disabled state is owned by a sibling control whose own caption
+   *  carries the message). */
+  reason: string | null;
+}
+
 /**
- * Returns the reason the End-my-phase button should be disabled, or
- * `null` when the button is enabled. The flip-first gate (D22) is the
- * common reason this button is disabled even after distribution work
- * finishes — the gate string drives both the tooltip and the inline
- * error caption surfaced when the chief tries to end the phase too
- * early.
+ * Returns the disabled state of the End-my-phase button. The flip-first
+ * gate (D22) keeps the button disabled until the chief flips the round's
+ * track card, but its reason is intentionally `null` — the
+ * FlipTrackButton's own status caption already tells the chief what to
+ * do, so duplicating "flip the track card before ending your phase"
+ * here would be noisy.
  */
 export const chiefEndPhaseDisabledReason = (
   args: ChiefEndPhaseDisabledArgs,
-): string | null => {
-  if (!args.canAct) return 'End is only available during your phase.';
-  if (args.hasTrack && !args.flipped) {
-    return 'Flip the track card before ending your phase.';
+): DisabledState => {
+  if (!args.canAct) {
+    return { disabled: true, reason: 'End is only available during your phase.' };
   }
-  return null;
+  if (args.hasTrack && !args.flipped) {
+    return { disabled: true, reason: null };
+  }
+  return { disabled: false, reason: null };
 };

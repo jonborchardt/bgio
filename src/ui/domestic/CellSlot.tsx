@@ -19,6 +19,7 @@
 // All visual choices route through theme tokens.
 
 import { Box, Stack, Tooltip, Typography } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import type { ReactNode } from 'react';
 import type { DomesticBuilding } from '../../game/roles/domestic/types.ts';
 import type { UnitInstance } from '../../game/roles/defense/types.ts';
@@ -53,6 +54,11 @@ export interface CellSlotProps {
   /** Defense redesign 3.3 — `true` when this cell is on the currently-
    *  animating threat's impact list. Renders a saturated pulse. */
   onImpact?: boolean;
+  /** Post-3.9 preference sweep — when true, this cell is an active
+   *  unit-placement target (defense seat is stationing a unit). The
+   *  cell becomes clickable + shows a defense-accent outline so the
+   *  player can see "click here to drop your unit." */
+  isUnitTarget?: boolean;
 }
 
 export function CellSlot({
@@ -68,13 +74,15 @@ export function CellSlot({
   pooledBreakdown,
   onPath = false,
   onImpact = false,
+  isUnitTarget = false,
 }: CellSlotProps) {
   const occupied = building !== undefined;
   const isCenter = occupied && building.isCenter === true;
   const showBuild = !occupied && isPlacing && isLegal;
-  // Only placement targets are interactive. Occupied cells have no click
-  // action wired through `onPlace`, so they shouldn't read as buttons.
-  const clickable = showBuild;
+  // Building-placement targets (empty legal cells while placing) and
+  // unit-placement targets (occupied non-center cells while a defense
+  // unit is armed) are both interactive.
+  const clickable = showBuild || isUnitTarget;
 
   const def =
     occupied && !isCenter
@@ -190,11 +198,14 @@ export function CellSlot({
       data-cell-center={isCenter ? 'true' : 'false'}
       data-cell-on-path={onPath ? 'true' : 'false'}
       data-cell-on-impact={onImpact ? 'true' : 'false'}
+      data-cell-unit-target={isUnitTarget ? 'true' : 'false'}
       aria-label={
         occupied
           ? isCenter
             ? `Cell ${x},${y} — village vault`
-            : `Cell ${x},${y} — ${building.defID} (HP ${building.hp}/${building.maxHp})`
+            : isUnitTarget
+              ? `Cell ${x},${y} — ${building.defID} (HP ${building.hp}/${building.maxHp}) — click to station unit here`
+              : `Cell ${x},${y} — ${building.defID} (HP ${building.hp}/${building.maxHp})`
           : `Cell ${x},${y} — empty`
       }
       onClick={clickable ? onClick : undefined}
@@ -212,11 +223,19 @@ export function CellSlot({
         // Plot outlines (the dashed cell border) appear ONLY while a card
         // is being placed. Occupied cells are transparent containers — the
         // inner BuildingTile / CenterTile supplies its own frame + shadow.
-        border: !occupied && isPlacing ? '1px dashed' : 'none',
+        // Unit-placement target wraps occupied tiles in a defense-accent
+        // dashed outline so the player sees the click target.
+        border: !occupied && isPlacing
+          ? '1px dashed'
+          : isUnitTarget
+            ? '2px dashed'
+            : 'none',
         borderColor: (t) =>
-          showBuild
-            ? t.palette.role.domestic.light
-            : t.palette.status.muted,
+          isUnitTarget
+            ? t.palette.role.defense.light
+            : showBuild
+              ? t.palette.role.domestic.light
+              : t.palette.status.muted,
         bgcolor: 'transparent',
         cursor: clickable ? 'pointer' : 'default',
         opacity: occupied || showBuild ? 1 : isPlacing ? 0.5 : 0,
@@ -229,7 +248,10 @@ export function CellSlot({
         '&:hover': clickable
           ? {
               transform: 'translateY(-1px)',
-              borderColor: (t) => t.palette.role.domestic.light,
+              borderColor: (t) =>
+                isUnitTarget
+                  ? t.palette.role.defense.main
+                  : t.palette.role.domestic.light,
             }
           : undefined,
       }}
@@ -250,8 +272,8 @@ export function CellSlot({
             zIndex: 4,
             // Impact pulse beats the trail tint when both apply.
             bgcolor: onImpact
-              ? `${t.palette.pathOverlay.pathImpact}33`
-              : `${t.palette.pathOverlay.pathTrail}1f`,
+              ? alpha(t.palette.pathOverlay.pathImpact, 0.2)
+              : alpha(t.palette.pathOverlay.pathTrail, 0.12),
             boxShadow: onImpact
               ? `inset 0 0 0 2px ${t.palette.pathOverlay.pathImpact}`
               : undefined,

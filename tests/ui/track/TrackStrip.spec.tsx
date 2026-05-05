@@ -70,11 +70,10 @@ const renderStrip = (props: Parameters<typeof TrackStrip>[0]): string =>
   );
 
 describe('TrackStrip (3.1)', () => {
-  it('renders an empty-state strip when there is no history / current / next / upcoming', () => {
+  it('renders an empty-state strip when there is no history / current / upcoming', () => {
     const html = renderStrip({
       history: [],
       current: undefined,
-      next: undefined,
       upcomingCount: 0,
       phase: 1,
     });
@@ -103,7 +102,6 @@ describe('TrackStrip (3.1)', () => {
     const html = renderStrip({
       history: [],
       current: undefined,
-      next: threat({ phase: 4 }),
       upcomingCount: 0,
       phase: 4,
     });
@@ -112,7 +110,10 @@ describe('TrackStrip (3.1)', () => {
     expect(html).toMatch(/data-phase="1"[^>]*data-active="false"/);
   });
 
-  it('renders past, current, and next slots mid-game', () => {
+  it('renders past and current slots mid-game (no telegraph)', () => {
+    // Post-3.9 preference sweep: the face-up "next" telegraph slot was
+    // removed. The strip shows only what has resolved — past + current
+    // + a face-down hint for the rest of the deck.
     const past: TrackCardDef[] = [
       threat({ id: 'p1', name: 'Wolves', phase: 1 }),
       threat({ id: 'p2', name: 'Bandits', phase: 1, offset: 1 }),
@@ -121,27 +122,22 @@ describe('TrackStrip (3.1)', () => {
       modifier({ id: 'p5', name: 'Storm', phase: 3 }),
     ];
     const current = threat({ id: 'cur', name: 'Cavalry', phase: 4, strength: 6 });
-    const nxt = threat({ id: 'nxt', name: 'Hounds', phase: 4, strength: 4 });
     const html = renderStrip({
       history: past,
       current,
-      next: nxt,
       upcomingCount: 12,
       phase: 4,
     });
-    // Current + next names show up.
+    // Current name shows up.
     expect(html).toContain('Cavalry');
-    expect(html).toContain('Hounds');
     // A few past names show up.
     expect(html).toContain('Wolves');
     expect(html).toContain('Trader');
-    // Current card is keyed with state="current" and next with state="next".
+    // Current card is keyed with state="current" and past entries with
+    // state="past". There is no "next" slot.
     expect(html).toContain('data-track-card-state="current"');
-    expect(html).toContain('data-track-card-state="next"');
     expect(html).toContain('data-track-card-state="past"');
-    // Threat summary surfaces direction + offset + strength on the
-    // telegraph card.
-    expect(html).toContain('S4');
+    expect(html).not.toContain('data-track-card-state="next"');
   });
 
   it('caps visible past cards and shows "+N earlier" overflow label', () => {
@@ -151,7 +147,6 @@ describe('TrackStrip (3.1)', () => {
     const html = renderStrip({
       history: past,
       current: undefined,
-      next: undefined,
       upcomingCount: 0,
       phase: 4,
     });
@@ -165,9 +160,10 @@ describe('TrackStrip (3.1)', () => {
     const html = renderStrip({
       history: [],
       current: boss(),
-      next: undefined,
       upcomingCount: 0,
       phase: 10,
+      boss: boss(),
+      villageTotals: { science: 0, economy: 0, military: 0 },
     });
     expect(html).toContain('The Last Settlement');
     expect(html).toContain('data-track-card-kind="boss"');
@@ -181,7 +177,6 @@ describe('TrackStrip (3.1)', () => {
     const html = renderStrip({
       history: [],
       current: undefined,
-      next: threat(),
       upcomingCount: 5,
       phase: 1,
     });
@@ -192,7 +187,6 @@ describe('TrackStrip (3.1)', () => {
     const html = renderStrip({
       history: [],
       current: undefined,
-      next: threat(),
       upcomingCount: 20,
       phase: 1,
     });

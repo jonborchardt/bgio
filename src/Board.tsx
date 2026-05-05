@@ -13,6 +13,7 @@
 // players; it lives inside `<DevSidebar>` (dev-only fly-out) so the
 // player view stays focused on "your turn / not your turn".
 
+import { useMemo, useState } from 'react';
 import { Box, Stack, Typography } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
 import type { SettlementState } from './game/index.ts';
@@ -38,6 +39,9 @@ import {
   ResolveAnimationProvider,
   ResolveTraceWatcher,
 } from './ui/track/resolveAnimationContext.tsx';
+import { BuildingGrid } from './ui/domestic/BuildingGrid.tsx';
+import { VillagePlacementContext } from './ui/layout/VillagePlacementContext.ts';
+import { RESOURCES } from './game/resources/types.ts';
 
 const ROLE_TITLE: Record<'chief' | 'science' | 'domestic' | 'defense', string> = {
   chief: 'Chief',
@@ -47,8 +51,69 @@ const ROLE_TITLE: Record<'chief' | 'science' | 'domestic' | 'defense', string> =
 };
 
 export function SettlementBoard(props: BoardProps<SettlementState>) {
-  const { G, ctx, playerID } = props;
+  const { G, ctx, moves, playerID } = props;
   const gameOver = ctx.gameover !== undefined;
+
+  // Post-3.9 preference sweep — the BuildingGrid was lifted out of
+  // DomesticPanel / DefensePanel into the board so every seat sees
+  // the village + the threat-resolution path overlay. The board owns
+  // the placement state (which building / which unit is armed); the
+  // role panels publish into it via VillagePlacementContext when the
+  // local seat selects from their hand.
+  const [selectedBuildingName, setSelectedBuildingName] = useState<
+    string | undefined
+  >(undefined);
+  const [selectedUnitName, setSelectedUnitName] = useState<string | undefined>(
+    undefined,
+  );
+
+  const placementContextValue = useMemo(
+    () => ({
+      selectedBuildingName,
+      setSelectedBuildingName,
+      selectedUnitName,
+      setSelectedUnitName,
+    }),
+    [selectedBuildingName, selectedUnitName],
+  );
+
+  // Pooled non-chief stash total — fed into the centre tile so every
+  // seat reads the at-risk number at a glance (D2 / 3.2). Computed
+  // once per render off `G.mats`; the chief seat is intentionally
+  // absent from `mats`.
+  const pooled = useMemo(() => {
+    const breakdown = RESOURCES.map((r) => {
+      let amount = 0;
+      const mats = G.mats ?? {};
+      for (const seatMat of Object.values(mats)) {
+        amount += seatMat?.stash?.[r] ?? 0;
+      }
+      return { resource: r, amount };
+    });
+    const total = breakdown.reduce((s, b) => s + b.amount, 0);
+    return { total, breakdown };
+  }, [G.mats]);
+
+  // Resolve the armed building name to its def via the local seat's
+  // domestic hand. This is only meaningful when the local seat owns
+  // domestic; otherwise the active card is simply undefined and the
+  // grid renders read-only.
+  const activeBuildingDef = useMemo(() => {
+    if (selectedBuildingName === undefined) return undefined;
+    return G.domestic?.hand.find((c) => c.name === selectedBuildingName);
+  }, [selectedBuildingName, G.domestic]);
+
+  const handlePlaceBuilding = (x: number, y: number): void => {
+    if (selectedBuildingName === undefined) return;
+    moves.domesticBuyBuilding(selectedBuildingName, x, y);
+    setSelectedBuildingName(undefined);
+  };
+
+  const handlePickUnitCell = (cellKey: string): void => {
+    if (selectedUnitName === undefined) return;
+    moves.defenseBuyAndPlace(selectedUnitName, cellKey);
+    setSelectedUnitName(undefined);
+  };
 
   // Spectator vs seated. `playerID === null` is bgio's "watching only"
   // connection (02.4's `playerView(G, ctx, null)` redacts secrets);
@@ -126,12 +191,12 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
 
       {/* Defense redesign 3.1 — global event track. Sits above the
           center mat, full width. The strip reads `G.track` directly:
-          history's tail (minus the just-flipped card if
-          `flippedThisRound`) populates the past slots, the
-          just-flipped card lights up the current slot, and
-          `upcoming[0]` telegraphs the next card. The strip stays
-          mounted whenever `G.track` is populated, regardless of
-          phase, so the table can plan during any seat's turn. */}
+          the just-flipped card lights up the current slot during the
+          round it was flipped, and earlier flips fill the past row.
+          There is no face-up "next" telegraph — the village only
+          sees what has actually resolved. The boss card is fed in
+          separately so the BossReadout (3.5) tracks the village's
+          progress against thresholds from round 1 onward. */}
       {G.track !== undefined ? (
         (() => {
           const history = G.track.history;
@@ -148,13 +213,24 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
             currentCard !== undefined
               ? history.slice(0, history.length - 1)
               : history;
-          const nextCard = G.track.upcoming[0];
-          // Cards still in the deck *after* `next`. When `nextCard`
-          // is undefined (track exhausted) the count is 0.
-          const afterNext =
-            nextCard !== undefined
-              ? Math.max(0, G.track.upcoming.length - 1)
-              : 0;
+          // Total face-down cards remaining. With the telegraph slot
+          // gone the whole `upcoming` array is face-down.
+          const upcomingCount = G.track.upcoming.length;
+          // Locate the boss card so the readout can track thresholds
+          // throughout the game. The 2.1 loader guarantees there is
+          // exactly one boss card and that it sits in phase 10 — so
+          // it lives at the end of `upcoming` until it flips, then
+          // moves to `history`. We search both so the readout stays
+          // visible even after the boss flip resolves. `bossLooming`
+          // tells the readout to render in its subdued/desaturated
+          // preview treatment so the table doesn't mistake it for an
+          // already-flipped card.
+          const bossInUpcoming = G.track.upcoming.find(
+            (c) => c.kind === 'boss',
+          );
+          const bossCard =
+            bossInUpcoming ?? G.track.history.find((c) => c.kind === 'boss');
+          const bossLooming = bossInUpcoming !== undefined;
           // Defense redesign 3.5 — village totals for the boss
           // readout. We compute them unconditionally (cheap pure
           // derivations from `G`) and only the strip's boss-readout
@@ -173,13 +249,38 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
             <TrackStrip
               history={pastCards}
               current={currentCard}
-              next={nextCard}
-              upcomingCount={afterNext}
+              upcomingCount={upcomingCount}
               phase={G.track.currentPhase}
+              boss={bossCard}
+              bossLooming={bossLooming}
               villageTotals={villageTotals}
             />
           );
         })()
+      ) : null}
+
+      {/* Post-3.9 preference sweep — the village grid sits at the
+          board level so every seat (chief / science / domestic /
+          defense / spectators) watches the same map. Threat-resolve
+          path overlays render inside this grid via the existing
+          ResolveAnimationProvider, so the entire table sees the
+          attack animation when a flip resolves. The grid is interactive
+          only for the seat whose role is armed — domestic placement
+          when `activeBuildingDef` is set, defense placement when
+          `selectedUnitName` is set; otherwise it's read-only. */}
+      {G.domestic !== undefined ? (
+        <BuildingGrid
+          grid={G.domestic.grid}
+          activeCard={activeBuildingDef}
+          onPlace={handlePlaceBuilding}
+          units={G.defense?.inPlay}
+          pooledTotal={pooled.total}
+          pooledBreakdown={pooled.breakdown}
+          unitPlacement={{
+            selectedUnitName,
+            onPick: handlePickUnitCell,
+          }}
+        />
       ) : null}
 
       {/* Seat tiles fuse into the active role panel below: zero-gap
@@ -237,7 +338,9 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
           (older fixtures) the watcher pushes `undefined` and no-ops. */}
       <ResolveAnimationProvider>
         <ResolveTraceWatcher lastResolve={G.track?.lastResolve} />
-        {playArea}
+        <VillagePlacementContext.Provider value={placementContextValue}>
+          {playArea}
+        </VillagePlacementContext.Provider>
       </ResolveAnimationProvider>
     </Box>
   );

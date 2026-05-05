@@ -70,16 +70,20 @@ const enumerateChief = (
 
   // chiefFlipTrack: when there's a card to flip and the round's flip
   // hasn't happened yet (D22). The move re-validates legality.
-  if (
-    G.track !== undefined &&
-    G.track.upcoming.length > 0 &&
-    G.track.flippedThisRound !== true
-  ) {
+  const trackPresent = G.track !== undefined && G.track.upcoming.length > 0;
+  const flipPending = trackPresent && G.track!.flippedThisRound !== true;
+  if (flipPending) {
     out.push({ move: 'chiefFlipTrack', args: [] });
   }
 
-  // chiefEndPhase: always a candidate while in chiefPhase.
-  out.push({ move: 'chiefEndPhase', args: [] });
+  // chiefEndPhase: gated on the flip latch when a track is present, so a
+  // bot doesn't spend turn budget on an end-phase move that the engine
+  // will INVALID_MOVE-reject. When no track is configured (older fixtures
+  // / hot-seat runs without track content) the gate degrades to "always
+  // a candidate" so chief turns still terminate.
+  if (!trackPresent || G.track!.flippedThisRound === true) {
+    out.push({ move: 'chiefEndPhase', args: [] });
+  }
 
   // chiefPlaceWorker: a few cell candidates, gated by feature flag and
   // available workers. We don't try every cell — MCTS can re-enumerate after

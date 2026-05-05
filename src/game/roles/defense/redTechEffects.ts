@@ -40,6 +40,7 @@
 // so callers below assume the inputs are valid.
 
 import type { SettlementState } from '../../types.ts';
+import { peekFollowing } from '../../track.ts';
 
 export interface UnitUpgradeEffect {
   kind: 'unitUpgrade';
@@ -124,11 +125,11 @@ export const applyDefenseRedEffect = (
       return;
     }
     case 'peekTrack': {
-      const upcoming = G.track?.upcoming ?? [];
-      const n = Math.max(1, effect.amount ?? 1);
+      if (G.track === undefined) return;
       if (G.defense === undefined) return;
       if (G.defense._peeked === undefined) G.defense._peeked = [];
-      const slice = upcoming.slice(0, n);
+      const n = Math.max(1, effect.amount ?? 1);
+      const slice = peekFollowing(G.track, n);
       for (const card of slice) {
         if (!G.defense._peeked.includes(card.id)) {
           G.defense._peeked.push(card.id);

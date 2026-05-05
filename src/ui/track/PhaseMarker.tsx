@@ -50,18 +50,23 @@ export function PhaseMarker({ phase, active = false, boss = false }: PhaseMarker
           height: 18,
           border: '1px solid',
           borderColor: (t) =>
-            boss
-              ? t.palette.track.boss
-              : t.palette.track.phaseMarkers[Math.max(0, Math.min(9, phase - 1))]!,
-          bgcolor: (t) =>
             active
-              ? boss
+              ? t.palette.track.current
+              : boss
                 ? t.palette.track.boss
-                : t.palette.track.phaseMarkers[Math.max(0, Math.min(9, phase - 1))]!
-              : 'transparent',
+                : t.palette.track.phaseMarkers[Math.max(0, Math.min(9, phase - 1))]!,
+          // Active fill uses the shared `track.current` accent (same yellow
+          // the just-flipped card uses) regardless of phase index, with a
+          // dark text for legible contrast. Earlier passes mapped active
+          // bg to `phaseMarkers[idx]` directly, which collapsed P1's near-
+          // white slot against the near-white card.text — the label
+          // disappeared. Routing every active marker through `track.current`
+          // keeps the gradient story (the border still shifts hue per
+          // phase) while guaranteeing legibility.
+          bgcolor: (t) => (active ? t.palette.track.current : 'transparent'),
           color: (t) =>
             active
-              ? t.palette.card.text
+              ? t.palette.card.takenSurface
               : boss
                 ? t.palette.track.boss
                 : t.palette.track.phaseMarkers[Math.max(0, Math.min(9, phase - 1))]!,

@@ -114,11 +114,26 @@ export interface TrackState {
   lastResolve?: ResolveTrace;
 }
 
+/** ID of the deterministic first card the chief flips on round 1. The
+ *  card lives in `trackCards.json` like any other (kind: boon, phase 1)
+ *  but is **not** shuffled into the phase-1 pile — `buildTrack` lifts it
+ *  out and prepends it so every match opens with the same telegraphed
+ *  beat ("A New Dawn — chief gains 1 gold"). The user requested this
+ *  pinning post-3.9 so the table has a predictable first turn instead
+ *  of a randomly-drawn threat or boon. */
+export const FIRST_TRACK_CARD_ID = 'trk-p1-first-dawn';
+
 /**
  * Build the initial track state from a list of TrackCardDef sourced from
  * `TRACK_CARDS`. Each phase pile is shuffled independently via
  * `random.shuffle` (so two clients with the same bgio seed produce the
  * same track), then piles are concatenated in ascending phase order.
+ *
+ * The card with id `FIRST_TRACK_CARD_ID` is pinned to slot 0 — it's
+ * lifted out of its phase pile before that pile shuffles, then prepended
+ * to `upcoming`. If the source array doesn't contain that id (older
+ * fixtures, test factories) the pin is a no-op and the normal shuffle
+ * order applies.
  *
  * The 2.1 loader guarantees:
  *   - exactly one boss card, in phase 10;
@@ -135,10 +150,18 @@ export const buildTrack = (
   random: RandomAPI,
   source: ReadonlyArray<TrackCardDef>,
 ): TrackState => {
-  // Group by phase. We avoid mutating `source` (the loader deep-freezes
-  // every entry) by accumulating into fresh arrays.
+  // Lift the pinned-first card out before grouping so it doesn't get
+  // shuffled into its phase pile. Missing pin (e.g. test factories that
+  // pass a custom card list) is a no-op.
+  const pinned = source.find((c) => c.id === FIRST_TRACK_CARD_ID);
+  const rest = pinned !== undefined
+    ? source.filter((c) => c.id !== FIRST_TRACK_CARD_ID)
+    : source;
+
+  // Group the remainder by phase. We avoid mutating `source` (the
+  // loader deep-freezes every entry) by accumulating into fresh arrays.
   const byPhase = new Map<number, TrackCardDef[]>();
-  for (const card of source) {
+  for (const card of rest) {
     const arr = byPhase.get(card.phase) ?? [];
     arr.push(card);
     byPhase.set(card.phase, arr);
@@ -147,6 +170,7 @@ export const buildTrack = (
   // order. The boss is the only phase-10 card (per loader invariant), so
   // it ends up last.
   const upcoming: TrackCardDef[] = [];
+  if (pinned !== undefined) upcoming.push(pinned);
   const phases = [...byPhase.keys()].sort((a, b) => a - b);
   for (const phase of phases) {
     const pile = byPhase.get(phase)!;

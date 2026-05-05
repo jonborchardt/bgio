@@ -9,7 +9,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { ThemeProvider } from '@mui/material/styles';
 import { theme } from '../../../src/theme.ts';
 import { PathOverlay } from '../../../src/ui/track/PathOverlay.tsx';
-import { ResolveAnimationContext } from '../../../src/ui/track/resolveAnimationContext.tsx';
+import { ResolveAnimationContext } from '../../../src/ui/track/resolveAnimation.ts';
 import type { ResolveTrace } from '../../../src/game/track.ts';
 
 const renderWithTrace = (trace: ResolveTrace | null): string =>

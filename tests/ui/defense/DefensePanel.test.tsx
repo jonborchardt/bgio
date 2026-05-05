@@ -3,7 +3,10 @@
 // Mirrors the Domestic / Science panel test pattern: smoke-import each
 // module so a future rename / file-deletion fails loudly here. The
 // rich render-and-click assertions belong on the per-component test
-// files alongside (UnitHand / PlacementOverlay / TechRow / InPlayList).
+// files alongside (UnitHand / TechRow / InPlayList). Post-3.9
+// preference sweep: PlacementOverlay was retired — placement now
+// happens by clicking the BuildingGrid directly, so the defense panel
+// no longer ships its own picker component.
 
 import { describe, expect, it } from 'vitest';
 
@@ -26,13 +29,6 @@ describe('DefensePanel smoke (defense redesign 3.6)', () => {
     const mod = await import('../../../src/ui/defense/UnitHand.tsx');
     expect(mod).toBeTruthy();
     expect(typeof mod.UnitHand).toBe('function');
-    expect(typeof mod.default).toBe('function');
-  });
-
-  it('PlacementOverlay imports without runtime errors', async () => {
-    const mod = await import('../../../src/ui/defense/PlacementOverlay.tsx');
-    expect(mod).toBeTruthy();
-    expect(typeof mod.PlacementOverlay).toBe('function');
     expect(typeof mod.default).toBe('function');
   });
 

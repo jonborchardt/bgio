@@ -15,6 +15,7 @@ import {
   peekNext,
   peekFollowing,
   advanceTrack,
+  FIRST_TRACK_CARD_ID,
 } from '../../src/game/track.ts';
 import type { TrackState } from '../../src/game/track.ts';
 import type { RandomAPI } from '../../src/game/random.ts';
@@ -90,17 +91,23 @@ describe('buildTrack (defense redesign 2.2)', () => {
   });
 
   it('shuffles each phase pile independently (reverse-shuffle witness)', () => {
-    // Group source by phase, sort by phase, then within each pile reverse
-    // the order. That's what `buildTrack` should produce when fed
-    // reverseRandom — if it instead reversed the whole concatenated list
-    // (or the per-phase piles in the wrong order) the assertion fails.
+    // Group source by phase, lifting the pinned-first card aside so it
+    // does not enter its phase pile. Sort phases ascending, then within
+    // each pile reverse the order — that's what `buildTrack` should
+    // produce when fed reverseRandom. The pinned card prepends. If the
+    // builder reversed the whole concatenated list (or reversed the
+    // phase piles in the wrong order, or lost the pin) the assertion
+    // fails.
+    const pinned = TRACK_CARDS.find((c) => c.id === FIRST_TRACK_CARD_ID);
     const byPhase = new Map<number, TrackCardDef[]>();
     for (const c of TRACK_CARDS) {
+      if (c.id === FIRST_TRACK_CARD_ID) continue;
       const arr = byPhase.get(c.phase) ?? [];
       arr.push(c);
       byPhase.set(c.phase, arr);
     }
     const expected: TrackCardDef[] = [];
+    if (pinned !== undefined) expected.push(pinned);
     const phases = [...byPhase.keys()].sort((a, b) => a - b);
     for (const p of phases) {
       expected.push(...[...byPhase.get(p)!].reverse());
@@ -108,10 +115,35 @@ describe('buildTrack (defense redesign 2.2)', () => {
 
     const t = buildTrack(reverseRandom(), TRACK_CARDS);
     expect(t.upcoming.map((c) => c.id)).toEqual(expected.map((c) => c.id));
+    // Pinned-first invariant: when present in the source, the pinned
+    // card is always at upcoming[0] regardless of shuffle order.
+    if (pinned !== undefined) {
+      expect(t.upcoming[0]!.id).toBe(FIRST_TRACK_CARD_ID);
+    }
     // Boss invariant survives the reverse: phase 10 has only the boss
     // (per loader contract), so reversing a singleton pile is a no-op
     // and the boss is still last.
     expect(t.upcoming[t.upcoming.length - 1]!.kind).toBe('boss');
+  });
+
+  it('pins the deterministic first card to slot 0 regardless of shuffle order', () => {
+    // Identity shuffle would already put A New Dawn first because it's
+    // already first in the source array; reverseRandom would put the
+    // last phase-1 card first if the pin weren't honored. So this test
+    // pairs reverseRandom with the assertion that A New Dawn is still
+    // upcoming[0], proving the pin overrides shuffle order.
+    const t = buildTrack(reverseRandom(), TRACK_CARDS);
+    expect(t.upcoming[0]!.id).toBe(FIRST_TRACK_CARD_ID);
+  });
+
+  it('omitting the pinned card from the source falls back to plain shuffle order', () => {
+    // Test factories that build their own card list without the pin
+    // should not crash or insert a phantom pinned slot. The first card
+    // in the source becomes upcoming[0] (under identityRandom).
+    const noPinSource = TRACK_CARDS.filter((c) => c.id !== FIRST_TRACK_CARD_ID);
+    const t = buildTrack(identityRandom(), noPinSource);
+    expect(t.upcoming.length).toBe(noPinSource.length);
+    expect(t.upcoming[0]!.id).toBe(noPinSource[0]!.id);
   });
 
   it('handles an empty source list without throwing', () => {

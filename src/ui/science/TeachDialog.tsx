@@ -35,6 +35,7 @@ import {
   teachDisabledReason,
   teachUnitDisabledReason,
 } from './drillTeachLogic.ts';
+import { ResourceToken } from '../resources/ResourceToken.tsx';
 
 export interface TeachButtonProps {
   units: ReadonlyArray<UnitInstance>;
@@ -132,6 +133,10 @@ export function TeachButton({
                 return (
                   <Tooltip
                     key={id}
+                    // aria-label still spells the cost out for screen
+                    // readers (the token's text alternative is the
+                    // count + name, but a hover-tooltip bridges it
+                    // explicitly when the player can't afford it).
                     title={
                       affordable
                         ? ''
@@ -147,7 +152,7 @@ export function TeachButton({
                         onClick={() => setChosenSkill(id)}
                         data-teach-skill-id={id}
                         data-teach-skill-affordable={affordable ? 'true' : 'false'}
-                        aria-label={`Choose skill ${def.name}`}
+                        aria-label={`Choose skill ${def.name} (cost ${def.cost} science)`}
                         sx={{
                           textAlign: 'left',
                           textTransform: 'none',
@@ -165,9 +170,26 @@ export function TeachButton({
                       >
                         <Box
                           component="span"
-                          sx={{ fontWeight: 700, display: 'block' }}
+                          sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            fontWeight: 700,
+                          }}
                         >
-                          {def.name} — {def.cost} science
+                          {def.name}
+                          <Box
+                            component="span"
+                            aria-hidden
+                            sx={{ mx: 0.25, color: (t) => t.palette.status.muted }}
+                          >
+                            —
+                          </Box>
+                          <ResourceToken
+                            resource="science"
+                            count={def.cost}
+                            size="small"
+                          />
                         </Box>
                         <Box
                           component="span"
@@ -187,31 +209,62 @@ export function TeachButton({
             </Stack>
           ) : (
             <Stack spacing={0.5} data-teach-confirm-header="true">
-              <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                {skill.name} — {skill.cost} science
-              </Typography>
+              <Box
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                  {skill.name}
+                </Typography>
+                <Typography
+                  component="span"
+                  variant="body2"
+                  aria-hidden
+                  sx={{ color: (t) => t.palette.status.muted }}
+                >
+                  —
+                </Typography>
+                <ResourceToken
+                  resource="science"
+                  count={skill.cost}
+                  size="small"
+                />
+              </Box>
               <Typography
                 variant="body2"
                 sx={{ color: (t) => t.palette.status.muted }}
               >
                 {skill.description}
               </Typography>
-              <Typography
-                variant="caption"
+              <Box
                 data-teach-affordability={
                   stashScience >= skill.cost ? 'ok' : 'short'
                 }
                 sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 0.5,
                   color: (t) =>
                     stashScience >= skill.cost
                       ? t.palette.status.healthy
                       : t.palette.status.warning,
                 }}
               >
-                {stashScience >= skill.cost
-                  ? `You have ${stashScience} science — enough.`
-                  : `You have ${stashScience} science — need ${skill.cost}.`}
-              </Typography>
+                <Typography variant="caption">You have</Typography>
+                <ResourceToken
+                  resource="science"
+                  count={stashScience}
+                  size="small"
+                />
+                <Typography variant="caption">
+                  {stashScience >= skill.cost
+                    ? '— enough.'
+                    : `— need ${skill.cost}.`}
+                </Typography>
+              </Box>
             </Stack>
           )
         }

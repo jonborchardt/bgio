@@ -41,16 +41,38 @@ describe('enumerate (11.2)', () => {
 
   it('in chiefPhase returns chief candidates and not science candidates', () => {
     const G = setupG();
+    // Fresh state: the track is populated and flippedThisRound is unset,
+    // so chiefFlipTrack is the candidate to surface. Once the chief flips
+    // (or in fixtures without a track), chiefEndPhase takes its place —
+    // covered by the next test.
     const candidates = enumerate(G, ctxFor('chiefPhase'), '0');
     const moveNames = new Set(candidates.map((c) => c.move));
 
     // Chief moves should be present.
-    expect(moveNames.has('chiefEndPhase')).toBe(true);
+    expect(moveNames.has('chiefFlipTrack')).toBe(true);
     expect(moveNames.has('chiefDistribute')).toBe(true);
 
     // Science moves should not be present.
     expect(moveNames.has('scienceContribute')).toBe(false);
     expect(moveNames.has('scienceComplete')).toBe(false);
+  });
+
+  it('in chiefPhase, chiefEndPhase only emits once flippedThisRound is set', () => {
+    const G = setupG();
+    // Pre-flip: chiefEndPhase is suppressed so the bot doesn't waste turns
+    // on a move the engine will INVALID_MOVE-reject.
+    let candidates = enumerate(G, ctxFor('chiefPhase'), '0');
+    let moveNames = new Set(candidates.map((c) => c.move));
+    expect(moveNames.has('chiefEndPhase')).toBe(false);
+    expect(moveNames.has('chiefFlipTrack')).toBe(true);
+
+    // Post-flip: the latch is set, so chiefEndPhase becomes the closer
+    // and chiefFlipTrack drops out.
+    if (G.track !== undefined) G.track.flippedThisRound = true;
+    candidates = enumerate(G, ctxFor('chiefPhase'), '0');
+    moveNames = new Set(candidates.map((c) => c.move));
+    expect(moveNames.has('chiefEndPhase')).toBe(true);
+    expect(moveNames.has('chiefFlipTrack')).toBe(false);
   });
 
   it('in scienceTurn stage returns science candidates and not chief candidates', () => {

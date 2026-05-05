@@ -12,11 +12,13 @@ import { createRoot, type Root } from 'react-dom/client';
 import { useContext } from 'react';
 import {
   ResolveAnimationProvider,
-  ResolveAnimationContext,
   ResolveTraceWatcher,
+} from '../../../src/ui/track/resolveAnimationContext.tsx';
+import {
+  ResolveAnimationContext,
   ANIMATION_DURATION_MS,
   MAX_QUEUE_LENGTH,
-} from '../../../src/ui/track/resolveAnimationContext.tsx';
+} from '../../../src/ui/track/resolveAnimation.ts';
 import type { ResolveTrace } from '../../../src/game/track.ts';
 
 // React 19 act() opt-in (mirrors the existing pattern in

@@ -14,12 +14,14 @@
 // Defense redesign 3.8 — the panel now also surfaces the round's
 // **Flip Track** button (D22). Flipping is required before
 // `chiefEndPhase` will resolve, so the End-my-phase button is disabled
-// (with an inline reason) until the per-round latch
-// `G.track.flippedThisRound` is set. The flip dispatches
+// until the per-round latch `G.track.flippedThisRound` is set. The
+// FlipTrackButton's own status caption tells the chief what to do, so
+// the End-my-phase gate's tooltip / inline reason is intentionally
+// empty (see `chiefEndPhaseDisabledReason`). The flip dispatches
 // `chiefFlipTrack`; resulting strip / path overlay animation is driven
 // by 3.1 + 3.3 — this panel just dispatches.
 
-import { useContext } from 'react';
+import { useCallback, useContext } from 'react';
 import { Box, Button, Stack, Tooltip, Typography } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
 import type { PlayerID, SettlementState } from '../../game/types.ts';
@@ -41,6 +43,15 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
   const { G, ctx, moves, playerID } = props;
   const seatCtx = useContext(SeatPickerContext);
 
+  // Stable across renders so the `'F'` keyboard shortcut listener inside
+  // <FlipTrackButton> doesn't unbind/rebind on every render — `moves` is a
+  // fresh object each render, so without this wrap the effect's deps
+  // would churn. Declared before the early returns so the hook order is
+  // identical on every render (Rules of Hooks).
+  const handleFlipTrack = useCallback((): void => {
+    moves.chiefFlipTrack();
+  }, [moves]);
+
   if (playerID === undefined || playerID === null) return null;
 
   const localRoles = rolesAtSeat(G.roleAssignments, playerID);
@@ -58,12 +69,11 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
   const flipped = G.track?.flippedThisRound === true;
   const upcomingCount = G.track?.upcoming.length ?? 0;
 
-  const endPhaseReason = chiefEndPhaseDisabledReason({
+  const endPhaseState = chiefEndPhaseDisabledReason({
     canAct: isChiefPhase,
     flipped,
     hasTrack,
   });
-  const endPhaseDisabled = endPhaseReason !== null;
 
   // Sort seats deterministically; render every non-chief seat (the chief's
   // own seat owns no circle on the mat, so there's nothing to distribute to).
@@ -78,10 +88,6 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
   ): void => {
     const amounts: Partial<ResourceBag> = { [resource]: amount };
     moves.chiefDistribute(seat, amounts);
-  };
-
-  const handleFlipTrack = (): void => {
-    moves.chiefFlipTrack();
   };
 
   const handleEndTurn = (): void => {
@@ -105,19 +111,33 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
             canAct={isChiefPhase}
             onUndo={() => moves.undoLast()}
           />
+          {/* Defense redesign post-3.9 — Flip Track sits next to the
+              other chief actions so it reads as part of the round's
+              action set, not a buried section. The button itself owns
+              its disabled / status surface; the End-my-turn button
+              gates on the same flip latch and shows its disabled
+              reason via a Tooltip. */}
+          {isChiefPhase && hasTrack ? (
+            <FlipTrackButton
+              canAct={isChiefPhase}
+              flipped={flipped}
+              upcomingCount={upcomingCount}
+              onFlip={handleFlipTrack}
+            />
+          ) : null}
           {isChiefPhase ? (
             <Tooltip
-              title={endPhaseReason ?? ''}
-              disableHoverListener={!endPhaseDisabled}
+              title={endPhaseState.reason ?? ''}
+              disableHoverListener={endPhaseState.reason === null}
             >
               <Box component="span" sx={{ display: 'inline-flex' }}>
                 <Button
                   variant="contained"
-                  disabled={endPhaseDisabled}
+                  disabled={endPhaseState.disabled}
                   onClick={handleEndTurn}
                   data-chief-end-phase-button="true"
                   data-chief-end-phase-disabled={
-                    endPhaseDisabled ? 'true' : 'false'
+                    endPhaseState.disabled ? 'true' : 'false'
                   }
                   sx={{
                     bgcolor: (t) => t.palette.role.chief.main,
@@ -179,34 +199,6 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
           </Stack>
         ) : null}
 
-        {isChiefPhase && hasTrack ? (
-          <Stack spacing={0.75} aria-label="Flip track card">
-            <SectionHeading role="chief">Flip Track</SectionHeading>
-            <Typography
-              variant="body2"
-              sx={{ color: (t) => t.palette.status.muted }}
-            >
-              The round's track card flips before you end your phase.
-              The next card is face-up on the strip; flipping resolves it
-              immediately and reveals the next telegraph.
-            </Typography>
-            <FlipTrackButton
-              canAct={isChiefPhase}
-              flipped={flipped}
-              upcomingCount={upcomingCount}
-              onFlip={handleFlipTrack}
-            />
-            {endPhaseDisabled && endPhaseReason !== null ? (
-              <Typography
-                variant="caption"
-                data-chief-end-phase-error="true"
-                sx={{ color: (t) => t.palette.status.critical }}
-              >
-                {endPhaseReason}
-              </Typography>
-            ) : null}
-          </Stack>
-        ) : null}
       </Stack>
     </RolePanel>
   );

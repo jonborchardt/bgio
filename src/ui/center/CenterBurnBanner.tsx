@@ -332,11 +332,3 @@ export interface CenterBurnBannerHostProps {
 export function CenterBurnBannerHost({ track }: CenterBurnBannerHostProps) {
   return <CenterBurnBanner lastResolve={track?.lastResolve} />;
 }
-
-/**
- * Helper exported for tests: build a BurnEntry from a trace. Keeps the
- * banner's queueing logic in one file while letting tests construct
- * synthetic entries without re-implementing the parse.
- */
-export const __testBurnEntry = (trace: ResolveTrace): BurnEntry | null =>
-  traceToEntry(trace);

@@ -13,7 +13,10 @@
 //
 // What we *do* assert in this file:
 //   - The trigger button's data-disabled attribute matches the helper.
-//   - The status caption reflects the per-round latch + track state.
+//   - The aria-label folds the status string in so screen readers
+//     announce it (post-3.9 sweep moved the visible caption into the
+//     tooltip + aria-label; the standalone caption was dropped when
+//     the button moved into the chief's actions row).
 //   - The data-flip-track-status attribute exposes the four states the
 //     UI distinguishes (`ready`, `flipped`, `exhausted`, `waiting`).
 
@@ -57,7 +60,8 @@ describe('FlipTrackButton (defense redesign 3.8)', () => {
     expect(html).toContain('data-flip-track-button="true"');
     expect(html).toContain('data-flip-track-disabled="false"');
     expect(html).toContain('data-flip-track-status="ready"');
-    expect(html).toContain('Flip Track: ready to flip');
+    // Status is folded into aria-label so screen readers announce it.
+    expect(html).toContain('Status: ready to flip');
     // Button label is constant — confirm it shipped.
     expect(html).toContain('Flip Track');
   });
@@ -66,21 +70,21 @@ describe('FlipTrackButton (defense redesign 3.8)', () => {
     const html = render({ flipped: true });
     expect(html).toContain('data-flip-track-disabled="true"');
     expect(html).toContain('data-flip-track-status="flipped"');
-    expect(html).toContain('Flip Track: flipped this round');
+    expect(html).toContain('Status: flipped this round');
   });
 
   it('disabled with "exhausted" status when upcomingCount is 0', () => {
     const html = render({ upcomingCount: 0 });
     expect(html).toContain('data-flip-track-disabled="true"');
     expect(html).toContain('data-flip-track-status="exhausted"');
-    expect(html).toContain('Flip Track: no cards left');
+    expect(html).toContain('Status: no cards left');
   });
 
   it('disabled with "waiting" status when canAct is false', () => {
     const html = render({ canAct: false });
     expect(html).toContain('data-flip-track-disabled="true"');
     expect(html).toContain('data-flip-track-status="waiting"');
-    expect(html).toContain('Flip Track: waiting for chief phase');
+    expect(html).toContain('Status: waiting for chief phase');
   });
 
   it('flipped status wins over exhausted (latch is set first; track exhaustion is downstream)', () => {

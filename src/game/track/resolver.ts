@@ -6,11 +6,19 @@
 //
 //   - boon     → applies the printed effect through the same dispatcher
 //                the per-color event-card moves use.
-//   - modifier → pushes the card onto `G.track.activeModifiers`. The
-//                stack is consumed (and cleared) by `consumeModifiers` at
-//                the start of every threat resolution. End-of-round
-//                cleanup (Phase 2.8) clears anything that wasn't
-//                consumed.
+//   - modifier → pushes the card's effect onto `G._modifiers` (the same
+//                queue the event-card dispatcher uses) so any role move
+//                that gates on `hasModifierActive(G, kind)` /
+//                `consumeModifier(G, kind)` from
+//                `events/dispatcher.ts` can read it uniformly,
+//                regardless of whether the modifier came from a track
+//                flip or an event card. (V1 ships these helpers but
+//                does not yet wire role moves to consult them; the
+//                queue plumbing is correct so consumers can be added
+//                without further engine work.) The card itself is
+//                also recorded on `G.track.activeModifiers` so the
+//                end-of-round hook can expire any unconsumed entries
+//                (spec §2 D20: "modifiers bend rules for one round").
 //   - threat   → walks the path / fire / impact pipeline (spec §3 + §4).
 //   - boss     → no-op stub. Phase 2.7 lands the real boss resolver.
 //
@@ -82,6 +90,7 @@ import { RESOURCES, type Resource, type ResourceBag } from '../resources/types.t
 import { appendBankLog } from '../resources/bankLog.ts';
 import { dispatch } from '../events/dispatcher.ts';
 import type { EventCardDef } from '../events/state.ts';
+import type { EventEffect } from '../events/effects.ts';
 import {
   computeGridBounds,
   computePath,
@@ -260,14 +269,6 @@ export const resolveThreat = (
   random: RandomAPI,
   threat: ThreatCard,
 ): void => {
-  // Consume any pending modifiers — they're a no-op for the V1 resolver
-  // (their effects bend rules elsewhere) but the spec says "the resolver
-  // consumes them at the start of the next threat fire and clears at
-  // end-of-round." Reading them out of the active stack gives Phase 2.8
-  // a clean handoff and keeps the modifier semantics testable here.
-  const modifiers = G.track?.activeModifiers ?? [];
-  void modifiers;
-
   // Resolver consults the domestic grid + defense instances. If either
   // is missing we degenerate cleanly — no fires, threat heads straight
   // to center.
@@ -427,19 +428,20 @@ export const resolveThreat = (
   //   - died en route  → cover up to (and including) the last impact
   //                       tile; that's the threat's furthest-traversed
   //                       cell.
+  // Reaching this point implies `damage > 0` survived the fire volley
+  // (the kill branch returned earlier), so the impact loop must have
+  // either consumed all `damage` (=> at least one tile in
+  // `traceImpactTiles`) or left some for the center burn (`damage > 0`
+  // here). The two branches below cover both — there is no third case.
   if (damage > 0) {
     for (const cell of path) tracePath.push({ x: cell.x, y: cell.y });
-  } else if (traceImpactTiles.length > 0) {
+  } else {
     const lastKey = traceImpactTiles[traceImpactTiles.length - 1]!;
     for (const cell of path) {
       tracePath.push({ x: cell.x, y: cell.y });
       const k = `${cell.x},${cell.y}`;
       if (k === lastKey) break;
     }
-  } else {
-    // No impacts and no center burn — the resolver fired but didn't
-    // damage anything. Cover the fire slice for visibility.
-    for (const cell of fireSlice) tracePath.push({ x: cell.x, y: cell.y });
   }
 
   // If the path reached center with damage left, burn the pool. Capture
@@ -498,14 +500,31 @@ export const resolveThreat = (
   publishTrace(G, trace);
 };
 
+/** Modifier-kind effects that the event dispatcher consumes via
+ *  `hasModifierActive` / `consumeModifier`. Track-flipped modifier cards
+ *  carry one of these as their `effect`; the resolver pushes the effect
+ *  onto `G._modifiers` so the conditioned moves see it. */
+const MODIFIER_KINDS: ReadonlySet<EventEffect['kind']> = new Set([
+  'doubleScience',
+  'forbidBuy',
+  'forceCheapestScience',
+]);
+
 /**
- * Push a `modifier` track card onto the active-modifier stack. Lazy-
- * initializes the slot. Phase 2.8 clears the stack at end-of-round.
+ * Push a `modifier` track card's effect onto `G._modifiers` so the
+ * existing dispatcher-side consumers see it, and record the card on
+ * `G.track.activeModifiers` so the round-end hook can expire any
+ * unconsumed entries.
  */
 const pushModifier = (G: SettlementState, card: ModifierCard): void => {
   if (G.track === undefined) return;
   if (G.track.activeModifiers === undefined) G.track.activeModifiers = [];
   G.track.activeModifiers.push(card);
+
+  const effect = card.effect as EventEffect | undefined;
+  if (effect === undefined || !MODIFIER_KINDS.has(effect.kind)) return;
+  if (G._modifiers === undefined) G._modifiers = [];
+  G._modifiers.push(effect);
 };
 
 /** Defense redesign 3.3 — emit a degenerate trace for non-threat flips

@@ -11,12 +11,15 @@
 //      `inPlay` (the resolver filters them out at the moment they hit 0
 //      HP) so this hook never resurrects.
 //
-//   2. `defense:clear-modifiers` — clears `G.track.activeModifiers` so
-//      one-round modifier cards expire at end-of-round (spec §2 D20:
-//      "modifiers bend rules for one round"). The resolver consumes the
-//      stack at threat-fire time but never clears it, by design — the
-//      cleanup point is right here so a modifier flipped in round N is
-//      still queryable mid-round and only cleared between rounds.
+//   2. `defense:clear-modifiers` — expires any track-flipped modifiers
+//      that the conditioned moves didn't consume during the round (spec
+//      §2 D20: "modifiers bend rules for one round"). For each entry in
+//      `G.track.activeModifiers`, splice one matching-kind effect out of
+//      `G._modifiers` (which is the queue the dispatcher's
+//      `hasModifierActive` / `consumeModifier` consult); then clear
+//      `activeModifiers`. Already-consumed modifiers were popped off
+//      `_modifiers` by their conditioned move and the splice here finds
+//      nothing for that kind — that's the intended path.
 //
 // Drill markers (`UnitInstance.drillToken`) are NOT cleared by either
 // hook — the spec says "persist until consumed" (a drill marker on a
@@ -92,10 +95,21 @@ registerRoundEndHook('defense:regen-units', (G) => {
   }
 });
 
-// Round-end hook 2 — clear unconsumed one-round modifier cards.
+// Round-end hook 2 — expire unconsumed track-flipped modifiers.
 registerRoundEndHook('defense:clear-modifiers', (G) => {
   if (G.track === undefined) return;
-  if (G.track.activeModifiers === undefined) return;
+  const cards = G.track.activeModifiers;
+  if (cards === undefined || cards.length === 0) return;
+  const stack = G._modifiers;
+  if (stack !== undefined) {
+    for (const card of cards) {
+      const effect = card.effect as { kind?: string } | undefined;
+      const kind = effect?.kind;
+      if (kind === undefined) continue;
+      const idx = stack.findIndex((m) => m.kind === kind);
+      if (idx >= 0) stack.splice(idx, 1);
+    }
+  }
   // Hard reset rather than `length = 0` so the slot returns to its
   // initial-undefined-equivalent shape (an empty array). Either form is
   // observable as "no active modifiers"; the resolver lazy-inits when
