@@ -130,12 +130,14 @@ export function BuildingTile({
         <HpPips current={building.hp} max={building.maxHp} />
       </Box>
 
-      {/* The card itself. */}
+      {/* The card itself — `small` size keeps the village reading as a
+          compact tile board (vs. the deck-detail `normal` size used in
+          the role panels). */}
       {def ? (
         <BuildingCard
           def={def}
           count={building.upgrades > 0 ? building.upgrades + 1 : undefined}
-          size="normal"
+          size="small"
           activeNeighbors={activeNeighbors}
         />
       ) : (

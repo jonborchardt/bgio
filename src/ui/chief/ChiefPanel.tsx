@@ -11,25 +11,21 @@
 // stays mounted but only renders the resource bar (income for the round)
 // so the chief can watch their take accumulate; distribution UI is hidden.
 //
-// Defense redesign 3.8 — the panel now also surfaces the round's
-// **Flip Track** button (D22). Flipping is required before
-// `chiefEndPhase` will resolve, so the End-my-phase button is disabled
-// until the per-round latch `G.track.flippedThisRound` is set. The
-// FlipTrackButton's own status caption tells the chief what to do, so
-// the End-my-phase gate's tooltip / inline reason is intentionally
-// empty (see `chiefEndPhaseDisabledReason`). The flip dispatches
-// `chiefFlipTrack`; resulting strip / path overlay animation is driven
-// by 3.1 + 3.3 — this panel just dispatches.
+// The panel surfaces a single chief action via <ChiefActionButton>,
+// which morphs between "Flip Track" (when the round's track card is
+// still face-down) and "End my turn" (after the flip lands or when
+// the engine has no track). The handler dispatches `chiefFlipTrack`
+// or `chiefEndPhase` accordingly. Resolve animation is driven by the
+// resolve-animation provider — this panel only dispatches moves.
 
 import { useCallback, useContext } from 'react';
-import { Box, Button, Stack, Tooltip, Typography } from '@mui/material';
+import { Stack, Typography } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
 import type { PlayerID, SettlementState } from '../../game/types.ts';
 import type { Resource, ResourceBag } from '../../game/resources/types.ts';
 import { rolesAtSeat } from '../../game/roles.ts';
 import { CircleEditor } from './CircleEditor.tsx';
-import { FlipTrackButton } from './FlipTrackButton.tsx';
-import { chiefEndPhaseDisabledReason } from './flipTrackLogic.ts';
+import { ChiefActionButton } from './ChiefActionButton.tsx';
 import { RolePanel } from '../layout/RolePanel.tsx';
 import { SectionHeading } from '../layout/SectionHeading.tsx';
 import { PlayableHand } from '../cards/PlayableHand.tsx';
@@ -43,11 +39,11 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
   const { G, ctx, moves, playerID } = props;
   const seatCtx = useContext(SeatPickerContext);
 
-  // Stable across renders so the `'F'` keyboard shortcut listener inside
-  // <FlipTrackButton> doesn't unbind/rebind on every render — `moves` is a
-  // fresh object each render, so without this wrap the effect's deps
-  // would churn. Declared before the early returns so the hook order is
-  // identical on every render (Rules of Hooks).
+  // Stable across renders so the `F` keyboard shortcut listener inside
+  // <ChiefActionButton> doesn't unbind/rebind on every render — `moves`
+  // is a fresh object each render, so without this wrap the effect's
+  // deps would churn. Declared before the early returns so the hook
+  // order is identical on every render (Rules of Hooks).
   const handleFlipTrack = useCallback((): void => {
     moves.chiefFlipTrack();
   }, [moves]);
@@ -61,19 +57,13 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
   const isChiefPhase = ctx.phase === 'chiefPhase';
   const canPush = isChiefPhase;
 
-  // Defense redesign 3.8 — flip-first gate state (D22). The track slot
-  // is optional on G (older fixtures may pre-date 2.2); we treat a
-  // missing track as "flip gate not enforced," matching `chiefEndPhase`'s
-  // own behavior.
+  // Track slot may be absent (older fixtures); a missing track is
+  // treated as "no flip required," matching `chiefEndPhase`'s own
+  // behavior. The unified action button below switches its label /
+  // handler off these flags.
   const hasTrack = G.track !== undefined;
   const flipped = G.track?.flippedThisRound === true;
   const upcomingCount = G.track?.upcoming.length ?? 0;
-
-  const endPhaseState = chiefEndPhaseDisabledReason({
-    canAct: isChiefPhase,
-    flipped,
-    hasTrack,
-  });
 
   // Sort seats deterministically; render every non-chief seat (the chief's
   // own seat owns no circle on the mat, so there's nothing to distribute to).
@@ -111,46 +101,19 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
             canAct={isChiefPhase}
             onUndo={() => moves.undoLast()}
           />
-          {/* Defense redesign post-3.9 — Flip Track sits next to the
-              other chief actions so it reads as part of the round's
-              action set, not a buried section. The button itself owns
-              its disabled / status surface; the End-my-turn button
-              gates on the same flip latch and shows its disabled
-              reason via a Tooltip. */}
-          {isChiefPhase && hasTrack ? (
-            <FlipTrackButton
+          {/* Single chief action: morphs from "Flip Track" to "End my
+              turn" once the round's track card has been flipped. The
+              button gates on the same `flippedThisRound` latch the move
+              checks, so its mode mirrors what the engine will accept. */}
+          {isChiefPhase ? (
+            <ChiefActionButton
               canAct={isChiefPhase}
+              hasTrack={hasTrack}
               flipped={flipped}
               upcomingCount={upcomingCount}
               onFlip={handleFlipTrack}
+              onEnd={handleEndTurn}
             />
-          ) : null}
-          {isChiefPhase ? (
-            <Tooltip
-              title={endPhaseState.reason ?? ''}
-              disableHoverListener={endPhaseState.reason === null}
-            >
-              <Box component="span" sx={{ display: 'inline-flex' }}>
-                <Button
-                  variant="contained"
-                  disabled={endPhaseState.disabled}
-                  onClick={handleEndTurn}
-                  data-chief-end-phase-button="true"
-                  data-chief-end-phase-disabled={
-                    endPhaseState.disabled ? 'true' : 'false'
-                  }
-                  sx={{
-                    bgcolor: (t) => t.palette.role.chief.main,
-                    color: (t) => t.palette.role.chief.contrastText,
-                    '&:hover': {
-                      bgcolor: (t) => t.palette.role.chief.dark,
-                    },
-                  }}
-                >
-                  End my turn
-                </Button>
-              </Box>
-            </Tooltip>
           ) : null}
         </>
       }

@@ -24,7 +24,7 @@
 // (any non-center occupied cell is legal).
 
 import { useContext, useMemo } from 'react';
-import { Box, Typography } from '@mui/material';
+import { Box } from '@mui/material';
 import {
   cellKey,
   isPlacementLegal,
@@ -84,24 +84,20 @@ interface Bounds {
   yMax: number;
 }
 
+/** Minimum visible radius around the vault. The village always renders
+ *  this large so the table sees a full board of empty fields from
+ *  round 1, just like a physical board with marked spaces. */
+const MIN_VISIBLE_RADIUS = 2;
+
 const computeBounds = (
   grid: Record<string, DomesticBuilding>,
   pad: boolean,
 ): Bounds => {
-  const keys = Object.keys(grid);
-  if (keys.length === 0) {
-    // Empty grid: only meaningful while placing (3x3 around origin lets the
-    // first placement land somewhere). When not placing we'd render nothing,
-    // so the panel-level empty state takes over instead.
-    return pad
-      ? { xMin: -1, xMax: 1, yMin: -1, yMax: 1 }
-      : { xMin: 0, xMax: 0, yMin: 0, yMax: 0 };
-  }
-  let xMin = Number.POSITIVE_INFINITY;
-  let xMax = Number.NEGATIVE_INFINITY;
-  let yMin = Number.POSITIVE_INFINITY;
-  let yMax = Number.NEGATIVE_INFINITY;
-  for (const k of keys) {
+  let xMin = -MIN_VISIBLE_RADIUS;
+  let xMax = MIN_VISIBLE_RADIUS;
+  let yMin = -MIN_VISIBLE_RADIUS;
+  let yMax = MIN_VISIBLE_RADIUS;
+  for (const k of Object.keys(grid)) {
     const parts = k.split(',');
     if (parts.length !== 2) continue;
     const x = Number(parts[0]);
@@ -112,18 +108,15 @@ const computeBounds = (
     if (y < yMin) yMin = y;
     if (y > yMax) yMax = y;
   }
-  // Pad by one cell only while the player is actively placing — otherwise
-  // the grid would visually shift after each placement (a freshly-placed
-  // edge cell would suddenly appear interior because the bounds grew on
-  // every side). With pad gated on isPlacing, the placed building stays
-  // exactly where the player clicked it.
-  if (!pad) return { xMin, xMax, yMin, yMax };
-  return {
-    xMin: xMin - 1,
-    xMax: xMax + 1,
-    yMin: yMin - 1,
-    yMax: yMax + 1,
-  };
+  // Pad by one extra cell when the player is actively placing so the
+  // first legal cell at any edge always has somewhere to land.
+  if (pad) {
+    xMin -= 1;
+    xMax += 1;
+    yMin -= 1;
+    yMax += 1;
+  }
+  return { xMin, xMax, yMin, yMax };
 };
 
 export function BuildingGrid({
@@ -142,7 +135,6 @@ export function BuildingGrid({
   // doesn't shift when the player switches between modes mid-flow.
   const { xMin, xMax, yMin, yMax } = computeBounds(grid, isPlacing || isPlacingUnit);
   const cols = xMax - xMin + 1;
-  const isEmpty = Object.keys(grid).length === 0;
 
   // Defense redesign 3.3 — when no explicit highlight prop is supplied,
   // fall back to the currently-animating trace from the resolve-animation
@@ -208,18 +200,7 @@ export function BuildingGrid({
         justifyContent: 'center',
       }}
     >
-      {isEmpty && !isPlacing ? (
-        <Typography
-          variant="caption"
-          sx={{
-            color: (t) => t.palette.status.muted,
-            fontStyle: 'italic',
-            py: 2,
-          }}
-        >
-          Empty village — buildings will appear here once placed.
-        </Typography>
-      ) : (
+      <Box sx={{ position: 'relative', width: '100%' }}>
         <Box
           sx={{
             position: 'relative',
@@ -229,15 +210,16 @@ export function BuildingGrid({
           }}
         >
           <Box
-            aria-label="Domestic building grid"
+            aria-label="Village building grid"
             sx={{
               display: 'grid',
-              // Column width matches the `normal` card (180px) plus a
-              // small gutter; cells are fixed-aspect to match the
-              // physical-card height. Village cards render at the
-              // medium / `normal` size so the village board reads as a
-              // tile grid rather than a detailed deck.
-              gridTemplateColumns: `repeat(${cols}, 190px)`,
+              // Each cell — buildings, vault, and empty fields — renders
+              // at the canonical `small` card footprint (110px wide).
+              // Cells use auto rows so the height matches the tallest
+              // tile in the row; the inner BuildingCard / CenterTile
+              // both clamp at the small height.
+              gridTemplateColumns: `repeat(${cols}, 110px)`,
+              gridAutoRows: '90px',
               gap: 0.75,
             }}
           >
@@ -318,7 +300,7 @@ export function BuildingGrid({
               wrapper level so the overlay can't steal placements. */}
           <PathOverlay bounds={overlayBounds} />
         </Box>
-      )}
+      </Box>
     </EmbossedFrame>
   );
 }

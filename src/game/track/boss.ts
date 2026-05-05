@@ -63,17 +63,19 @@ export const sumUnitStrength = (G: SettlementState): number => {
   return total;
 };
 
-/** Count met thresholds. Exported so the UI's boss-card readout can
+/** Count met thresholds. Exported so the UI's progress widgets can
  *  reuse the exact same counting logic when telegraphing "you've met
- *  X of 3 thresholds" before the flip lands. */
+ *  X of 2 thresholds" before the flip lands. The economy threshold
+ *  reads `G.economyHigh` (the running maximum) rather than the current
+ *  bank gold so a chief who briefly stockpiles can't lose the
+ *  threshold by spending afterwards. */
 export const countMetThresholds = (
   G: SettlementState,
   card: BossCard,
 ): number => {
   let met = 0;
   if (countCompletedScience(G) >= card.thresholds.science) met += 1;
-  if ((G.bank.gold ?? 0) >= card.thresholds.economy) met += 1;
-  if (sumUnitStrength(G) >= card.thresholds.military) met += 1;
+  if ((G.economyHigh ?? G.bank.gold ?? 0) >= card.thresholds.economy) met += 1;
   return met;
 };
 

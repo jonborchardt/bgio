@@ -143,6 +143,11 @@ export const setup = (
   return {
     bank: startingBank,
     bankLog,
+    // Seed the economy high-water mark with the starting bank's gold
+    // so the first round's progress reads against a non-zero baseline
+    // (the boss's economy threshold counts the running max, not the
+    // current value).
+    economyHigh: startingBank.gold ?? 0,
     centerMat: initialCenterMat(),
     roleAssignments,
     round: 0,

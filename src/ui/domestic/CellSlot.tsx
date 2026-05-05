@@ -156,8 +156,10 @@ export function CellSlot({
   // Build the tile body. Branches:
   //   - occupied + isCenter → CenterTile
   //   - occupied + regular  → BuildingTile (with HpPips + UnitStack)
-  //   - empty + showBuild   → "+ build" placeholder
-  //   - empty + idle        → invisible spacer
+  //   - empty + showBuild   → "+ build" affordance
+  //   - empty + idle        → "Field" placeholder so the table can see
+  //                            the playable area at all times (physical-
+  //                            board metaphor)
   const body: ReactNode = (() => {
     if (occupied && isCenter) {
       return (
@@ -183,14 +185,31 @@ export function CellSlot({
           variant="caption"
           sx={{
             color: (t) => t.palette.role.domestic.main,
-            fontWeight: 600,
+            fontWeight: 700,
+            fontSize: '0.7rem',
+            letterSpacing: '0.04em',
           }}
         >
           + build
         </Typography>
       );
     }
-    return null;
+    return (
+      <Typography
+        variant="caption"
+        aria-hidden
+        sx={{
+          color: (t) => t.palette.status.muted,
+          fontStyle: 'italic',
+          fontSize: '0.65rem',
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+          opacity: 0.55,
+        }}
+      >
+        field
+      </Typography>
+    );
   })();
 
   const cell = (
@@ -217,25 +236,23 @@ export function CellSlot({
       onClick={clickable ? onClick : undefined}
       sx={{
         position: 'relative',
-        // Placed buildings render at the `normal` card size so the
-        // village reads as a tile grid; the inner BuildingCard's fixed
-        // height (CARD_HEIGHT.normal) drives the actual occupied row
-        // height. The floor below covers the rare def-missing fallback
-        // and keeps empty cells short so the grid doesn't dominate the
-        // panel before the player has built much.
-        minHeight: occupied ? '240px' : '5.25rem',
-        width: '100%',
+        // Every cell is hard-pinned to the `small` BuildingCard
+        // footprint (110×90) so the village reads as a uniform board:
+        // empty fields, occupied buildings, and the vault all sit at
+        // the same height.
+        width: '110px',
+        height: '90px',
         borderRadius: 1.5,
-        // Plot outlines (the dashed cell border) appear ONLY while a card
-        // is being placed. Occupied cells are transparent containers — the
-        // inner BuildingTile / CenterTile supplies its own frame + shadow.
-        // Unit-placement target wraps occupied tiles in a defense-accent
-        // dashed outline so the player sees the click target.
-        border: !occupied && isPlacing
-          ? '1px dashed'
-          : isUnitTarget
+        // Empty cells always carry a faint dashed outline so the table
+        // can see "this is a plot." Legal placement targets get the
+        // domestic accent; unit-placement targets get the defense
+        // accent. Occupied cells stay transparent (the inner tile
+        // supplies its own frame).
+        border: occupied
+          ? isUnitTarget
             ? '2px dashed'
-            : 'none',
+            : 'none'
+          : '1px dashed',
         borderColor: (t) =>
           isUnitTarget
             ? t.palette.role.defense.light
@@ -244,7 +261,9 @@ export function CellSlot({
               : t.palette.status.muted,
         bgcolor: 'transparent',
         cursor: clickable ? 'pointer' : 'default',
-        opacity: occupied || showBuild ? 1 : isPlacing ? 0.5 : 0,
+        // Empty fields render at reduced opacity so they recede behind
+        // the placed buildings.
+        opacity: occupied ? 1 : showBuild ? 1 : 0.7,
         display: 'flex',
         flexDirection: 'column',
         alignItems: occupied ? 'stretch' : 'center',

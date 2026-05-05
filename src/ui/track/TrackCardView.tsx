@@ -74,7 +74,7 @@ const KIND_TOOLTIP: Record<TrackCardDef['kind'], string> = {
   boss: 'Boss — final card. Each unmet threshold (Sci / Eco / Mil) costs the village an extra attack.',
 };
 
-function KindIcon({ kind, size = 18 }: KindIconProps) {
+function KindIcon({ kind, size = 13 }: KindIconProps) {
   const { d, extra } = GLYPHS[kind];
   return (
     <Tooltip title={KIND_TOOLTIP[kind]} placement="top">
@@ -130,7 +130,7 @@ const summaryFor = (card: TrackCardDef): string => {
         ? 'Modifier'
         : `Mod • ${card.durationRounds}r`;
     case 'boss':
-      return `Sci ${card.thresholds.science} · Eco ${card.thresholds.economy} · Mil ${card.thresholds.military}`;
+      return `Sci ${card.thresholds.science} · Eco ${card.thresholds.economy}`;
   }
 };
 
@@ -160,12 +160,15 @@ export function TrackCardView({ card, state }: TrackCardViewProps) {
       data-reduced-motion={reducedMotion ? 'true' : 'false'}
       title={`${card.name} — ${card.description}`}
       sx={{
+        // 30% smaller than the previous 80×120 footprint so the strip
+        // fits a deck of ~30 cards onto two rows without horizontal
+        // scrolling.
         position: 'relative',
-        width: 80,
-        height: 120,
+        width: 56,
+        height: 84,
         flexShrink: 0,
-        px: 0.75,
-        py: 0.75,
+        px: 0.5,
+        py: 0.5,
         borderRadius: 1,
         border: '2px solid',
         borderColor: (t) =>
@@ -217,10 +220,11 @@ export function TrackCardView({ card, state }: TrackCardViewProps) {
             variant="caption"
             sx={{
               fontWeight: 700,
-              fontSize: '0.65rem',
+              fontSize: '0.55rem',
               letterSpacing: '0.04em',
               textTransform: 'uppercase',
               color: (t) => t.palette.status.muted,
+              lineHeight: 1,
             }}
           >
             P{card.phase}
@@ -230,9 +234,8 @@ export function TrackCardView({ card, state }: TrackCardViewProps) {
           variant="body2"
           sx={{
             fontWeight: 600,
-            lineHeight: 1.15,
-            fontSize: '0.78rem',
-            // Two-line clamp so longer names don't overflow.
+            lineHeight: 1.1,
+            fontSize: '0.6rem',
             display: '-webkit-box',
             WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical',
@@ -245,10 +248,14 @@ export function TrackCardView({ card, state }: TrackCardViewProps) {
         <Typography
           variant="caption"
           sx={{
-            fontSize: '0.65rem',
-            lineHeight: 1.1,
+            fontSize: '0.5rem',
+            lineHeight: 1.05,
             color: (t) => t.palette.status.muted,
             wordBreak: 'break-word',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
           }}
         >
           {summaryFor(card)}

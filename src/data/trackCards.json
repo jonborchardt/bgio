@@ -352,7 +352,7 @@
     "name": "The Last Settlement",
     "phase": 10,
     "description": "The rival warlord himself arrives at the gates. Surviving his attacks ends the war in your favour.",
-    "thresholds": { "science": 6, "economy": 12, "military": 8 },
+    "thresholds": { "science": 6, "economy": 12 },
     "baseAttacks": 4,
     "attackPattern": [
       { "direction": "N", "offset": 0, "strength": 6 },

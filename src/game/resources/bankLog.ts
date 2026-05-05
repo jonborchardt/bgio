@@ -59,6 +59,12 @@ export interface BankLogEntry {
  * Push a signed bank delta onto `G.bankLog`, lazily initializing the slot.
  * No-op when `delta` is empty (no resource entry is non-zero) so callers
  * don't need to gate the call.
+ *
+ * Side effect: refresh `G.economyHigh` (the running maximum of
+ * `G.bank.gold` over the match). Hooked here because `appendBankLog`
+ * is the canonical post-mutation site every bank-touching move calls;
+ * the call sites pass the delta *after* applying it to `G.bank`, so
+ * the current value is authoritative when this helper runs.
  */
 export const appendBankLog = (
   G: SettlementState,
@@ -66,6 +72,14 @@ export const appendBankLog = (
   delta: Partial<ResourceBag>,
   detail?: string,
 ): void => {
+  // Always refresh the economy high-water mark — even when the delta
+  // is empty, the caller may be syncing log state right after a
+  // non-bank mutation. Cheap pure read.
+  const gold = G.bank.gold ?? 0;
+  if (G.economyHigh === undefined || gold > G.economyHigh) {
+    G.economyHigh = gold;
+  }
+
   let nonZero = false;
   const trimmed: Partial<ResourceBag> = {};
   for (const r of RESOURCES as ReadonlyArray<Resource>) {

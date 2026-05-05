@@ -40,8 +40,8 @@ function VaultIcon() {
       aria-hidden
       viewBox="0 0 32 32"
       sx={{
-        width: 32,
-        height: 32,
+        width: 18,
+        height: 18,
         color: 'currentColor',
         opacity: 0.9,
       }}
@@ -112,17 +112,13 @@ export function CenterTile({
         data-center-tile="true"
         aria-label={`Village vault — pooled stash ${pooledTotal}`}
         sx={{
-          // Match BuildingTile's footprint so the village grid reads as
-          // a uniform tile grid; the vault is just one of the
-          // buildings, marked by its accent and icon rather than by a
-          // different shape.
+          // Match BuildingTile's `small` footprint so the vault sits
+          // flush in the village tile grid. The accent + icon mark it
+          // as the centre, not a different shape.
           position: 'relative',
           width: '100%',
-          minHeight: '240px',
+          minHeight: '90px',
           borderRadius: 1.5,
-          // 2px border (vs the 1px BuildingCard outline) so the vault
-          // pops as the centre of the village without breaking the
-          // tile-grid rhythm.
           border: '2px solid',
           borderColor: (t) => t.palette.centerTile.accent,
           bgcolor: (t) => t.palette.centerTile.surface,
@@ -132,8 +128,8 @@ export function CenterTile({
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 0.75,
-          p: 1.5,
+          gap: 0.25,
+          p: 0.5,
           // Subtle inner gradient so the vault reads as a heavier tile
           // than its neighbours without being a different shape.
           backgroundImage: (t) =>
@@ -144,24 +140,32 @@ export function CenterTile({
           transition: 'box-shadow 200ms',
         }}
       >
-        <Typography
-          variant="overline"
-          sx={{
-            letterSpacing: '0.12em',
-            lineHeight: 1,
-            fontWeight: 700,
-            opacity: 0.85,
-          }}
+        <Stack
+          direction="row"
+          spacing={0.5}
+          sx={{ alignItems: 'center', lineHeight: 1 }}
         >
-          Vault
-        </Typography>
-        <VaultIcon />
+          <VaultIcon />
+          <Typography
+            variant="caption"
+            sx={{
+              letterSpacing: '0.1em',
+              lineHeight: 1,
+              fontWeight: 800,
+              opacity: 0.9,
+              fontSize: '0.6rem',
+            }}
+          >
+            VAULT
+          </Typography>
+        </Stack>
         <Typography
-          variant="h4"
+          variant="h6"
           data-center-pooled={pooledTotal}
           sx={{
-            fontWeight: 700,
-            lineHeight: 1.05,
+            fontWeight: 800,
+            lineHeight: 1,
+            fontVariantNumeric: 'tabular-nums',
           }}
         >
           {pooledTotal}
@@ -169,11 +173,14 @@ export function CenterTile({
         <Typography
           variant="caption"
           sx={{
-            opacity: 0.8,
+            opacity: 0.7,
             lineHeight: 1,
+            fontSize: '0.55rem',
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
           }}
         >
-          pooled stash
+          pooled
         </Typography>
       </Box>
     </Tooltip>

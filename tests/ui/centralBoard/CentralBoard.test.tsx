@@ -1,8 +1,4 @@
 // CentralBoard render tests.
-//
-// Mirrors the existing UI test pattern: render via
-// `react-dom/server`'s `renderToStaticMarkup`, wrap in MUI's
-// ThemeProvider, and assert against the resulting HTML string.
 
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -18,7 +14,7 @@ const render = (props: Parameters<typeof CentralBoard>[0]): string =>
   );
 
 describe('CentralBoard', () => {
-  it('renders the track + village nodes inside the central board frame', () => {
+  it('renders the track + village nodes inside the board frame', () => {
     const html = render({
       track: <div data-testid="track-mock">TRACK</div>,
       village: <div data-testid="village-mock">VILLAGE</div>,
@@ -28,31 +24,17 @@ describe('CentralBoard', () => {
     expect(html).toContain('VILLAGE');
   });
 
-  it('renders header status pills when stats are supplied', () => {
+  it('renders the science + economy tracker slots', () => {
     const html = render({
       track: null,
       village: null,
-      stats: [
-        { label: 'Round', value: '3' },
-        { label: 'Phase', value: '4/10', ariaLabel: 'Track phase 4 of 10' },
-        { label: 'Science', value: '2' },
-      ],
+      scienceTracker: <div data-testid="science-mock">SCIENCE</div>,
+      economyTracker: <div data-testid="economy-mock">ECONOMY</div>,
     });
-    expect(html).toContain('data-testid="central-board-stat-round"');
-    expect(html).toContain('data-testid="central-board-stat-phase"');
-    expect(html).toContain('data-testid="central-board-stat-science"');
-    expect(html).toContain('aria-label="Track phase 4 of 10"');
-    expect(html).toContain('>3<');
-    expect(html).toContain('>4/10<');
-  });
-
-  it('omits the stats row when stats is empty / undefined', () => {
-    const html = render({
-      track: null,
-      village: null,
-      stats: [],
-    });
-    expect(html).not.toContain('central-board-stat-');
+    expect(html).toContain('data-testid="central-board-science-slot"');
+    expect(html).toContain('data-testid="central-board-economy-slot"');
+    expect(html).toContain('SCIENCE');
+    expect(html).toContain('ECONOMY');
   });
 
   it('renders an overlay node into the village content well', () => {

@@ -85,10 +85,11 @@ export interface ModifierCard extends TrackCardBase {
 export interface BossThresholds {
   // Completed science card count.
   science: number;
-  // Bank gold.
+  // Running maximum of bank gold (`G.economyHigh`). The boss compares
+  // against the high-water mark rather than the current bank so a
+  // chief who briefly stockpiles can't lose the threshold simply by
+  // spending the gold before the boss flip lands.
   economy: number;
-  // Sum of unit.strength on grid.
-  military: number;
 }
 
 export interface BossCard extends TrackCardBase {
@@ -839,8 +840,7 @@ export const validateTrackCards = (raw: unknown): TrackCardDef[] => {
       }
       const science = requireInteger(thresholdsRaw, 'science', i, 'TrackCardDef.thresholds');
       const economy = requireInteger(thresholdsRaw, 'economy', i, 'TrackCardDef.thresholds');
-      const military = requireInteger(thresholdsRaw, 'military', i, 'TrackCardDef.thresholds');
-      if (science < 0 || economy < 0 || military < 0) {
+      if (science < 0 || economy < 0) {
         throw new Error(
           `TrackCardDef[${i}]: boss thresholds must be non-negative integers`,
         );
@@ -857,7 +857,7 @@ export const validateTrackCards = (raw: unknown): TrackCardDef[] => {
         phase,
         description,
         baseAttacks,
-        thresholds: { science, economy, military },
+        thresholds: { science, economy },
         attackPattern,
       };
     }

@@ -69,6 +69,14 @@ export interface SettlementState {
   // mutation. Optional so older test fixtures stay source-compatible —
   // `appendBankLog` lazily initializes the slot.
   bankLog?: BankLogEntry[];
+  // Running maximum of `G.bank.gold` ever observed during the match.
+  // Refreshed by `appendBankLog` at every bank mutation, so all
+  // bank-touching moves keep it in sync without a per-call hook. The
+  // boss's economy threshold checks against this rather than current
+  // `bank.gold` so a chief who briefly stockpiles can't fail the check
+  // simply by spending the gold afterwards. Optional so older fixtures
+  // stay source-compatible.
+  economyHigh?: number;
   centerMat: CenterMat;
   roleAssignments: Record<PlayerID, Role[]>;
   round: number;

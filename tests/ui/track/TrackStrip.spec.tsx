@@ -1,9 +1,4 @@
-// Defense redesign 3.1 — TrackStrip render tests.
-//
-// Mirrors the existing UI test pattern in this repo: render via
-// `react-dom/server`'s `renderToStaticMarkup`, wrap in MUI's
-// ThemeProvider, and assert against the resulting HTML string.
-// `@testing-library/react` is not installed.
+// TrackStrip render tests — unified single-row timeline.
 
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -56,7 +51,7 @@ const boss = (overrides: Partial<BossCard> = {}): BossCard => ({
   phase: 10,
   description: overrides.description ?? 'Final boss.',
   baseAttacks: overrides.baseAttacks ?? 4,
-  thresholds: overrides.thresholds ?? { science: 6, economy: 12, military: 8 },
+  thresholds: overrides.thresholds ?? { science: 6, economy: 12 },
   attackPattern: overrides.attackPattern ?? [
     { direction: 'N', offset: 0, strength: 3 },
   ],
@@ -69,51 +64,18 @@ const renderStrip = (props: Parameters<typeof TrackStrip>[0]): string =>
     </ThemeProvider>,
   );
 
-describe('TrackStrip (3.1)', () => {
-  it('renders an empty-state strip when there is no history / current / upcoming', () => {
+describe('TrackStrip', () => {
+  it('renders an empty-state hint when no slots exist', () => {
     const html = renderStrip({
       history: [],
       current: undefined,
-      upcomingCount: 0,
+      upcoming: [],
       phase: 1,
     });
-    // All ten phase markers render regardless of game state.
-    // Defense-redesign 3.9 polish: aria-labels now include the
-    // total ("Phase 1 of 10 marker") so screen readers can position
-    // the user inside the strip without inferring from the count;
-    // the active phase appends ", active" so the user hears the
-    // marker that indicates the live phase. Phase 1 is the active
-    // phase in this empty-state render, so its aria-label includes
-    // that suffix.
-    for (let p = 1; p <= 10; p += 1) {
-      const aria =
-        p === 10
-          ? 'Boss phase marker (phase 10)'
-          : p === 1
-            ? 'Phase 1 of 10 marker, active'
-            : `Phase ${p} of 10 marker`;
-      expect(html).toContain(`aria-label="${aria}"`);
-    }
-    // Empty hint visible.
     expect(html).toContain('Track empty');
   });
 
-  it('marks the active phase via data-active="true"', () => {
-    const html = renderStrip({
-      history: [],
-      current: undefined,
-      upcomingCount: 0,
-      phase: 4,
-    });
-    // Phase 4's marker has data-active="true"; phase 1's does not.
-    expect(html).toMatch(/data-phase="4"[^>]*data-active="true"/);
-    expect(html).toMatch(/data-phase="1"[^>]*data-active="false"/);
-  });
-
-  it('renders past and current slots mid-game (no telegraph)', () => {
-    // Post-3.9 preference sweep: the face-up "next" telegraph slot was
-    // removed. The strip shows only what has resolved — past + current
-    // + a face-down hint for the rest of the deck.
+  it('renders past + current + face-down upcoming as a single row', () => {
     const past: TrackCardDef[] = [
       threat({ id: 'p1', name: 'Wolves', phase: 1 }),
       threat({ id: 'p2', name: 'Bandits', phase: 1, offset: 1 }),
@@ -122,75 +84,93 @@ describe('TrackStrip (3.1)', () => {
       modifier({ id: 'p5', name: 'Storm', phase: 3 }),
     ];
     const current = threat({ id: 'cur', name: 'Cavalry', phase: 4, strength: 6 });
+    const upcoming: TrackCardDef[] = [
+      threat({ id: 'u1', name: 'Hidden', phase: 4 }),
+      threat({ id: 'u2', name: 'Hidden', phase: 5 }),
+      boss(),
+    ];
     const html = renderStrip({
       history: past,
       current,
-      upcomingCount: 12,
+      upcoming,
       phase: 4,
     });
-    // Current name shows up.
-    expect(html).toContain('Cavalry');
-    // A few past names show up.
+    // Past + current names render face-up.
     expect(html).toContain('Wolves');
-    expect(html).toContain('Trader');
-    // Current card is keyed with state="current" and past entries with
-    // state="past". There is no "next" slot.
-    expect(html).toContain('data-track-card-state="current"');
-    expect(html).toContain('data-track-card-state="past"');
-    expect(html).not.toContain('data-track-card-state="next"');
+    expect(html).toContain('Cavalry');
+    // Each face-up slot carries its slot state for tests.
+    expect(html).toContain('data-slot-state="past"');
+    expect(html).toContain('data-slot-state="current"');
+    expect(html).toContain('data-slot-state="upcoming"');
+    // Boss slot lights up at the tail.
+    expect(html).toContain('data-slot-boss="true"');
+    // Phase chips appear at phase boundaries (P1, P2, P3, P4 …).
+    expect(html).toContain('>P1<');
+    expect(html).toContain('>P2<');
+    expect(html).toContain('>BOSS<');
   });
 
-  it('caps visible past cards and shows "+N earlier" overflow label', () => {
+  it('renders the active phase chip as live', () => {
+    const upcoming: TrackCardDef[] = [
+      threat({ id: 'u1', phase: 1 }),
+      threat({ id: 'u2', phase: 4 }),
+      boss(),
+    ];
+    const html = renderStrip({
+      history: [],
+      current: undefined,
+      upcoming,
+      phase: 4,
+    });
+    expect(html).toMatch(/data-phase-chip="4"[^>]*data-phase-active="true"/);
+    expect(html).toMatch(/data-phase-chip="1"[^>]*data-phase-active="false"/);
+  });
+
+  it('renders every past card without truncation', () => {
     const past: TrackCardDef[] = Array.from({ length: 9 }, (_, i) =>
       threat({ id: `p${i}`, name: `Past ${i}`, phase: 1 + Math.floor(i / 3) }),
     );
     const html = renderStrip({
       history: past,
       current: undefined,
-      upcomingCount: 0,
+      upcoming: [],
       phase: 4,
     });
-    // 9 past, cap = 6 → 3 truncated.
-    expect(html).toContain('+3 earlier');
-    // Latest past card name is preserved (oldest dropped).
+    expect(html).not.toContain('earlier');
+    expect(html).toContain('Past 0');
     expect(html).toContain('Past 8');
   });
 
-  it('renders boss readout with thresholds when current is the boss card', () => {
+  it('renders the boss card face-up when it sits in current', () => {
     const html = renderStrip({
       history: [],
       current: boss(),
-      upcomingCount: 0,
+      upcoming: [],
       phase: 10,
-      boss: boss(),
-      villageTotals: { science: 0, economy: 0, military: 0 },
     });
     expect(html).toContain('The Last Settlement');
     expect(html).toContain('data-track-card-kind="boss"');
-    // Thresholds preview surfaces in the summary line.
     expect(html).toContain('Sci 6');
     expect(html).toContain('Eco 12');
-    expect(html).toContain('Mil 8');
+    expect(html).not.toContain('Mil ');
   });
 
-  it('renders a face-down hint sized by upcomingCount', () => {
+  it('renders one face-down slot per upcoming card', () => {
+    const upcoming: TrackCardDef[] = Array.from({ length: 20 }, (_, i) =>
+      threat({ id: `u${i}`, phase: 1 + (i % 9) }),
+    );
+    upcoming.push(boss());
     const html = renderStrip({
       history: [],
       current: undefined,
-      upcomingCount: 5,
+      upcoming,
       phase: 1,
     });
-    expect(html).toContain('Face-down cards remaining: 5');
-  });
-
-  it('renders an "+N" overflow when upcomingCount exceeds the visible cap', () => {
-    const html = renderStrip({
-      history: [],
-      current: undefined,
-      upcomingCount: 20,
-      phase: 1,
-    });
-    // 8 visible tiles + "+12" overflow.
-    expect(html).toContain('+12');
+    const upcomingTiles = (html.match(/data-slot-state="upcoming"/g) ?? [])
+      .length;
+    // 20 hidden + 1 boss = 21 face-down slots.
+    expect(upcomingTiles).toBe(21);
+    // No "+N" overflow.
+    expect(html).not.toMatch(/\+\d+ /);
   });
 });

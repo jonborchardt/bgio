@@ -84,7 +84,7 @@ const buildBoss = (overrides: Partial<BossCard> = {}): BossCard => ({
   phase: 10,
   description: 'A test boss',
   baseAttacks: 4,
-  thresholds: { science: 6, economy: 12, military: 8 },
+  thresholds: { science: 6, economy: 12 },
   attackPattern: bossPattern(),
   ...overrides,
 });
@@ -161,37 +161,44 @@ describe('countMetThresholds', () => {
   it('returns 0 when no threshold is met', () => {
     const G = buildG([]);
     G.bank.gold = 0;
+    G.economyHigh = 0;
     expect(
       countMetThresholds(
         G,
-        buildBoss({ thresholds: { science: 1, economy: 1, military: 1 } }),
+        buildBoss({ thresholds: { science: 1, economy: 1 } }),
       ),
     ).toBe(0);
   });
 
-  it('returns 3 when all thresholds are met', () => {
-    const G = buildG([
-      unit({
-        id: 'b1',
-        defID: 'Brute',
-        cellKey: cellKey(0, 1),
-        hp: 2,
-        placementOrder: 0,
-      }),
-    ]);
+  it('returns the count of met thresholds (max = 2)', () => {
+    const G = buildG([]);
     G.bank.gold = 10;
+    G.economyHigh = 10;
     G.science!.completed = ['s1', 's2', 's3'];
     expect(
       countMetThresholds(
         G,
-        buildBoss({ thresholds: { science: 2, economy: 5, military: 1 } }),
+        buildBoss({ thresholds: { science: 2, economy: 5 } }),
       ),
-    ).toBe(3);
+    ).toBe(2);
+  });
+
+  it('reads economy from G.economyHigh, not current bank.gold', () => {
+    const G = buildG([]);
+    // Chief stockpiled briefly then spent it back down.
+    G.bank.gold = 0;
+    G.economyHigh = 8;
+    expect(
+      countMetThresholds(
+        G,
+        buildBoss({ thresholds: { science: 99, economy: 5 } }),
+      ),
+    ).toBe(1);
   });
 });
 
 describe('resolveBoss — attacks-met math', () => {
-  it('all three thresholds met: attacks = max(0, baseAttacks - 3)', () => {
+  it('all thresholds met: attacks = max(0, baseAttacks - met)', () => {
     const G = buildG([
       unit({
         id: 'b',
@@ -202,6 +209,7 @@ describe('resolveBoss — attacks-met math', () => {
       }),
     ]);
     G.bank.gold = 99;
+    G.economyHigh = 99;
     G.science!.completed = ['s1', 's2', 's3', 's4', 's5', 's6'];
     const initialMillHp = G.domestic!.grid[cellKey(0, 1)]!.hp;
     resolveBoss(
@@ -209,12 +217,12 @@ describe('resolveBoss — attacks-met math', () => {
       detRandom(),
       buildBoss({
         baseAttacks: 4,
-        thresholds: { science: 6, economy: 12, military: 1 },
+        thresholds: { science: 6, economy: 12 },
         attackPattern: [{ direction: 'N', offset: 0, strength: 2 }],
       }),
     );
-    // 4 - 3 met = 1 attack. Brute on Mill (atk 2) one-shots strength-2 →
-    // Mill HP unchanged.
+    // 4 - 2 met = 2 attacks. Brute on Mill (atk 2) one-shots each
+    // strength-2 attack → Mill HP unchanged.
     expect(G.domestic!.grid[cellKey(0, 1)]!.hp).toBe(initialMillHp);
     expect(G.bossResolved).toBe(true);
   });
@@ -223,6 +231,7 @@ describe('resolveBoss — attacks-met math', () => {
     // Force every threshold to be unmet: empty bank, no science, no units.
     const G = buildG([]);
     G.bank.gold = 0;
+    G.economyHigh = 0;
     G.science!.completed = [];
     // Each attack walks N at offset 0; first impact is the Mill at (0,1).
     // baseAttacks = 4, thresholds met = 0 → 4 attacks of strength 1 each
@@ -232,7 +241,7 @@ describe('resolveBoss — attacks-met math', () => {
       detRandom(),
       buildBoss({
         baseAttacks: 4,
-        thresholds: { science: 1, economy: 1, military: 1 },
+        thresholds: { science: 1, economy: 1 },
         attackPattern: [{ direction: 'N', offset: 0, strength: 1 }],
       }),
     );
@@ -241,8 +250,8 @@ describe('resolveBoss — attacks-met math', () => {
   });
 
   it('attacks clamp at 0 when baseAttacks <= thresholds met', () => {
-    // baseAttacks 2 with all 3 thresholds met → max(0, 2 - 3) = 0 attacks.
-    // Mill HP stays at full and the boss flag still flips.
+    // baseAttacks 2 with both thresholds met → max(0, 2 - 2) = 0
+    // attacks. Mill HP stays at full and the boss flag still flips.
     const G = buildG([
       unit({
         id: 'b',
@@ -253,6 +262,7 @@ describe('resolveBoss — attacks-met math', () => {
       }),
     ]);
     G.bank.gold = 99;
+    G.economyHigh = 99;
     G.science!.completed = ['s1', 's2', 's3', 's4', 's5', 's6'];
     const initialHp = G.domestic!.grid[cellKey(0, 1)]!.hp;
     resolveBoss(
@@ -260,7 +270,7 @@ describe('resolveBoss — attacks-met math', () => {
       detRandom(),
       buildBoss({
         baseAttacks: 2,
-        thresholds: { science: 6, economy: 12, military: 1 },
+        thresholds: { science: 6, economy: 12 },
         attackPattern: [{ direction: 'N', offset: 0, strength: 5 }],
       }),
     );
@@ -275,13 +285,14 @@ describe('resolveBoss — pattern cycling', () => {
     // all of strength 1 against the Mill (4 hp). Mill chipped to 1.
     const G = buildG([]);
     G.bank.gold = 0;
+    G.economyHigh = 0;
     G.science!.completed = [];
     resolveBoss(
       G,
       detRandom(),
       buildBoss({
         baseAttacks: 3,
-        thresholds: { science: 1, economy: 1, military: 1 },
+        thresholds: { science: 1, economy: 1 },
         attackPattern: [{ direction: 'N', offset: 0, strength: 1 }],
       }),
     );
@@ -317,7 +328,7 @@ describe('resolveBoss — bossResolved flag', () => {
       detRandom(),
       buildBoss({
         baseAttacks: 1,
-        thresholds: { science: 99, economy: 99, military: 99 },
+        thresholds: { science: 99, economy: 99 },
         attackPattern: [{ direction: 'N', offset: 0, strength: 99 }],
       }),
     );
@@ -345,7 +356,7 @@ describe('resolveBoss — edge cases', () => {
       detRandom(),
       buildBoss({
         baseAttacks: 2,
-        thresholds: { science: 99, economy: 99, military: 99 },
+        thresholds: { science: 99, economy: 99 },
         attackPattern: [{ direction: 'N', offset: 0, strength: 2 }],
       }),
     );
@@ -369,7 +380,7 @@ describe('resolveBoss — edge cases', () => {
         detRandom(),
         buildBoss({
           baseAttacks: 3,
-          thresholds: { science: 99, economy: 99, military: 99 },
+          thresholds: { science: 99, economy: 99 },
           attackPattern: [
             { direction: 'N', offset: 0, strength: 1 },
             { direction: 'E', offset: 0, strength: 1 },
@@ -397,7 +408,7 @@ describe('resolveTrackCard — boss dispatch (regression)', () => {
         detRandom(),
         buildBoss({
           baseAttacks: 1,
-          thresholds: { science: 99, economy: 99, military: 99 },
+          thresholds: { science: 99, economy: 99 },
           attackPattern: [{ direction: 'N', offset: 0, strength: 1 }],
         }),
       ),

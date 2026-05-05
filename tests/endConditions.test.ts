@@ -120,7 +120,7 @@ describe('endIf', () => {
       phase: 10,
       description: '',
       baseAttacks: 1,
-      thresholds: { science: 1, economy: 1, military: 0 },
+      thresholds: { science: 1, economy: 1 },
       attackPattern: [{ direction: 'N', offset: 0, strength: 1 }],
     };
     const r: RandomAPI = {

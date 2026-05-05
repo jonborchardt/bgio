@@ -302,7 +302,7 @@ describe('resolveTrackCard — trace publication (3.3)', () => {
       phase: 10,
       description: '',
       baseAttacks: 3,
-      thresholds: { science: 999, economy: 999, military: 999 },
+      thresholds: { science: 999, economy: 999 },
       attackPattern: [
         { direction: 'N', offset: 0, strength: 1 },
         { direction: 'S', offset: 0, strength: 1 },

@@ -21,9 +21,9 @@ describe('CenterTile (defense redesign 3.2)', () => {
     const html = renderTile(7);
     expect(html).toContain('data-center-tile="true"');
     expect(html).toContain('data-center-pooled="7"');
-    // Vault label + "pooled stash" subline.
-    expect(html).toContain('Vault');
-    expect(html).toContain('pooled stash');
+    // Vault label + "pooled" subline (small-card layout).
+    expect(html).toContain('VAULT');
+    expect(html).toContain('pooled');
     // Aria-label echoes the total for screen readers.
     expect(html).toContain('aria-label="Village vault — pooled stash 7"');
   });

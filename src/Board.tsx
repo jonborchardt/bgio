@@ -15,7 +15,7 @@
 
 import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Box, Stack, Typography } from '@mui/material';
+import { Box, Stack } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
 import type { SettlementState } from './game/index.ts';
 import { rolesAtSeat } from './game/roles.ts';
@@ -24,7 +24,6 @@ import { SciencePanel } from './ui/science/SciencePanel.tsx';
 import { DomesticPanel } from './ui/domestic/DomesticPanel.tsx';
 import { DefensePanel } from './ui/defense/DefensePanel.tsx';
 import { GameOverBanner } from './ui/layout/GameOverBanner.tsx';
-import { pickActiveSeat } from './ui/layout/activeSeat.ts';
 import type { GameOutcome } from './game/endConditions.ts';
 import { SeatTiles } from './ui/mat/CenterMat.tsx';
 import { CenterBurnBanner } from './ui/center/CenterBurnBanner.tsx';
@@ -32,10 +31,7 @@ import { RelationshipsModalHost } from './ui/relationships/RelationshipsModalHos
 import { DevSidebar } from './ui/layout/DevSidebar.tsx';
 import { EventLogDrawer } from './ui/log/EventLogDrawer.tsx';
 import { TrackStrip } from './ui/track/TrackStrip.tsx';
-import {
-  countCompletedScience,
-  sumUnitStrength,
-} from './game/track/boss.ts';
+import { countCompletedScience } from './game/track/boss.ts';
 import {
   ResolveAnimationProvider,
   ResolveTraceWatcher,
@@ -44,15 +40,9 @@ import { ResolveStepBanner } from './ui/track/ResolveStepBanner.tsx';
 import { RangeHighlightProvider } from './ui/track/RangeHighlightProvider.tsx';
 import { BuildingGrid } from './ui/domestic/BuildingGrid.tsx';
 import { CentralBoard } from './ui/centralBoard/CentralBoard.tsx';
+import { ProgressBoxes } from './ui/centralBoard/ProgressBoxes.tsx';
 import { VillagePlacementContext } from './ui/layout/VillagePlacementContext.ts';
 import { RESOURCES } from './game/resources/types.ts';
-
-const ROLE_TITLE: Record<'chief' | 'science' | 'domestic' | 'defense', string> = {
-  chief: 'Chief',
-  science: 'Science',
-  domestic: 'Domestic',
-  defense: 'Defense',
-};
 
 // Build the <TrackStrip> node from the current G.track slice. Lifted
 // out of the SettlementBoard render to keep the central-board assembly
@@ -69,49 +59,67 @@ function buildTrackNode(G: SettlementState): ReactNode {
     currentCard !== undefined
       ? history.slice(0, history.length - 1)
       : history;
-  const bossInUpcoming = G.track.upcoming.find((c) => c.kind === 'boss');
-  const bossCard = bossInUpcoming ?? history.find((c) => c.kind === 'boss');
-  const villageTotals = {
-    science: countCompletedScience(G),
-    economy: G.bank.gold ?? 0,
-    military: sumUnitStrength(G),
-  };
   return (
     <TrackStrip
       history={pastCards}
       current={currentCard}
-      upcomingCount={G.track.upcoming.length}
+      upcoming={G.track.upcoming}
       phase={G.track.currentPhase}
-      boss={bossCard}
-      bossLooming={bossInUpcoming !== undefined}
-      villageTotals={villageTotals}
     />
   );
 }
 
-// Build the central-board status pills (round + optional track phase +
-// completed-science count). Order is fixed; the caller picks whether to
-// render at all based on `G.track` / `G.domestic` presence.
-function buildCentralBoardStats(
-  G: SettlementState,
-): Array<{ label: string; value: string; ariaLabel?: string }> {
-  const completedScience = countCompletedScience(G);
-  const stats: Array<{ label: string; value: string; ariaLabel?: string }> = [
-    { label: 'Round', value: String(G.round) },
-  ];
-  if (G.track !== undefined) {
-    stats.push({
-      label: 'Phase',
-      value: `${G.track.currentPhase}/10`,
-      ariaLabel: `Track phase ${G.track.currentPhase} of 10`,
-    });
+// Locate the boss card. The 2.1 loader guarantees exactly one boss
+// card exists; the only question is whether it's still face-down
+// (in `upcoming`) or already flipped (in `history`).
+function findBoss(G: SettlementState) {
+  if (G.track === undefined) return undefined;
+  const inUpcoming = G.track.upcoming.find((c) => c.kind === 'boss');
+  if (inUpcoming !== undefined && inUpcoming.kind === 'boss') {
+    return inUpcoming;
   }
-  stats.push({
-    label: 'Science',
-    value: String(completedScience),
-    ariaLabel: `Completed science cards: ${completedScience}`,
-  });
-  return stats;
+  const inHistory = G.track.history.find((c) => c.kind === 'boss');
+  return inHistory !== undefined && inHistory.kind === 'boss'
+    ? inHistory
+    : undefined;
+}
+
+function buildScienceTracker(G: SettlementState): ReactNode {
+  const boss = findBoss(G);
+  const target = boss?.thresholds.science ?? 0;
+  const current = countCompletedScience(G);
+  return (
+    <ProgressBoxes
+      label="Science"
+      current={current}
+      target={target}
+      accent="science"
+      tooltipTitle={
+        target > 0
+          ? `Completed science: ${current} of ${target} (boss threshold).`
+          : 'No boss threshold yet.'
+      }
+    />
+  );
+}
+
+function buildEconomyTracker(G: SettlementState): ReactNode {
+  const boss = findBoss(G);
+  const target = boss?.thresholds.economy ?? 0;
+  const current = G.economyHigh ?? G.bank.gold ?? 0;
+  return (
+    <ProgressBoxes
+      label="Economy"
+      current={current}
+      target={target}
+      accent="gold"
+      tooltipTitle={
+        target > 0
+          ? `Most gold ever in vault: ${current} of ${target} (boss threshold).`
+          : 'No boss threshold yet.'
+      }
+    />
+  );
 }
 
 export function SettlementBoard(props: BoardProps<SettlementState>) {
@@ -193,55 +201,8 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
   const expanded = (role: 'chief' | 'science' | 'domestic' | 'defense') =>
     isSolo || localRoles.includes(role);
 
-  // Build the single-line turn-status string the player sees under the
-  // title. We collapse activeSeat info into "It's your turn" / "Waiting
-  // on Chief" / "Game over" plus the round number, so the player view
-  // never needs to spell out phase / activePlayers / mode.
-  const active = pickActiveSeat({
-    activePlayers: ctx.activePlayers,
-    currentPlayer: ctx.currentPlayer,
-    phase: ctx.phase,
-    roleAssignments: G.roleAssignments,
-    othersDone: G.othersDone,
-    localSeat: playerID,
-  });
-  const activeRolesAtSeat = G.roleAssignments[active.seat] ?? [];
-  const activeRoleLabel = activeRolesAtSeat
-    .map((r) => ROLE_TITLE[r as 'chief' | 'science' | 'domestic' | 'defense'])
-    .filter(Boolean)
-    .join(' · ');
-  const turnLine = gameOver
-    ? `Game over — Round ${G.round}`
-    : active.isLocal
-      ? `It's your turn — Round ${G.round}`
-      : `Waiting on ${activeRoleLabel || `Player ${Number(active.seat) + 1}`} — Round ${G.round}`;
-
   const playArea = (
     <Stack spacing={3} sx={{ minWidth: 0 }}>
-      <Box component="header" sx={{ textAlign: 'center' }}>
-        <Typography
-          variant="h4"
-          component="h1"
-          sx={{ fontWeight: 700, letterSpacing: '0.02em', mb: 0.5 }}
-        >
-          Settlement
-        </Typography>
-        <Typography
-          aria-label="Turn status"
-          sx={{
-            fontWeight: 600,
-            color: (t) =>
-              gameOver
-                ? t.palette.status.muted
-                : active.isLocal
-                  ? t.palette.status.active
-                  : t.palette.status.muted,
-          }}
-        >
-          {turnLine}
-        </Typography>
-      </Box>
-
       {gameOver ? (
         <GameOverBanner
           outcome={ctx.gameover as GameOutcome}
@@ -253,13 +214,10 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
         />
       ) : null}
 
-      {/* Unified central board: track strip on top, village grid below,
-          inside a single Paper frame so the table reads them as one map.
-          Header pills surface live status (round, current track phase,
-          completed-science count); future UI passes can extend the
-          `stats` array without touching the track / village internals.
-          The step-playback HUD anchors against the grid well via the
-          `overlay` slot. */}
+      {/* Game board: track strip on top, village grid centred below,
+          flanked by Science (left) + Economy (right) progress trackers
+          in the side gutters. The boss card is never surfaced on the
+          table — the gutters carry the boss-threshold telegraph. */}
       {G.track !== undefined || G.domestic !== undefined ? (
         <CentralBoard
           track={buildTrackNode(G)}
@@ -279,7 +237,8 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
               />
             ) : null
           }
-          stats={buildCentralBoardStats(G)}
+          scienceTracker={buildScienceTracker(G)}
+          economyTracker={buildEconomyTracker(G)}
           overlay={<ResolveStepBanner />}
         />
       ) : null}

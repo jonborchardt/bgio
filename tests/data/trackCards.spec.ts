@@ -139,11 +139,10 @@ describe('Track Card Schema (D19, D20, D21)', () => {
       const boss = TRACK_CARDS.find((c) => c.kind === 'boss')!;
       expect(boss.kind).toBe('boss');
       if (boss.kind !== 'boss') return;
-      const { science, economy, military } = boss.thresholds;
+      const { science, economy } = boss.thresholds;
       for (const [name, value] of [
         ['science', science],
         ['economy', economy],
-        ['military', military],
       ] as const) {
         expect(Number.isInteger(value), `${name} threshold integer`).toBe(true);
         expect(value, `${name} threshold non-negative`).toBeGreaterThanOrEqual(
@@ -269,7 +268,7 @@ describe('Track Card Schema (D19, D20, D21)', () => {
             phase: 10,
             description: 'x',
             baseAttacks: 4,
-            thresholds: { science: -1, economy: 0, military: 0 },
+            thresholds: { science: -1, economy: 0 },
             attackPattern: [{ direction: 'N', offset: 0, strength: 4 }],
           },
         ]),

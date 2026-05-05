@@ -25,8 +25,11 @@ import type { ResolveStep } from './resolveSteps.ts';
 
 /** Auto-advance interval per playback step. The HUD's "Continue" button
  *  cancels the timer and advances immediately, so this is the upper
- *  bound on how long the table waits before the next phase plays. */
-export const STEP_DURATION_MS = 1800;
+ *  bound on how long the table waits before the next phase plays — in
+ *  practice the table will click through the steps. The value is
+ *  intentionally long so an idle / inattentive table doesn't blow
+ *  through a multi-step combat without seeing each phase. */
+export const STEP_DURATION_MS = 36000;
 
 /** Backwards-compat alias retained so existing callers / tests that
  *  import the previous one-shot duration still type-check. The value is

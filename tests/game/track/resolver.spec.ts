@@ -155,7 +155,7 @@ describe('resolveTrackCard — boon / modifier dispatch', () => {
         phase: 10,
         description: '',
         baseAttacks: 4,
-        thresholds: { science: 0, economy: 0, military: 0 },
+        thresholds: { science: 0, economy: 0 },
         attackPattern: [],
       }),
     ).not.toThrow();
