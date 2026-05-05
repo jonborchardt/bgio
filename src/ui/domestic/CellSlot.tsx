@@ -18,13 +18,13 @@
 //
 // All visual choices route through theme tokens.
 
-import { Box, Stack, Tooltip, Typography } from '@mui/material';
+import { Box, Tooltip, Typography } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import type { ReactNode } from 'react';
 import type { DomesticBuilding } from '../../game/roles/domestic/types.ts';
 import type { UnitInstance } from '../../game/roles/defense/types.ts';
 import { BUILDINGS } from '../../data/index.ts';
-import { ResourceToken } from '../resources/ResourceToken.tsx';
+import { BuildingCard } from '../cards/BuildingCard.tsx';
 import { BuildingTile } from './BuildingTile.tsx';
 import { CenterTile } from './CenterTile.tsx';
 
@@ -94,64 +94,16 @@ export function CellSlot({
       ? BUILDINGS.find((b) => b.name === building.defID)
       : undefined;
 
-  // Tooltip content for regular occupied tiles. The HP row is now
-  // visualized inline via HpPips on the BuildingTile, so the tooltip
-  // body focuses on cost / note / upgrade detail and skips the
-  // "HP X/Y" line that the 1.3 stub printed.
-  const tooltipNodes: ReactNode[] = [];
-  if (def && occupied && !isCenter) {
-    const costEntries: Array<[string, number]> = def.costBag
-      ? (Object.entries(def.costBag) as Array<[string, number]>).filter(
-          ([, v]) => (v ?? 0) > 0,
-        )
-      : def.cost > 0
-        ? [['gold', def.cost]]
-        : [];
-    tooltipNodes.push(
-      <Box
-        key="cost"
-        component="span"
-        sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4, flexWrap: 'wrap' }}
-      >
-        Cost:{' '}
-        {costEntries.length === 0 ? (
-          'free'
-        ) : (
-          <Box
-            component="span"
-            sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4 }}
-          >
-            {costEntries.map(([r, v]) => (
-              <ResourceToken key={r} resource={r} count={v} size="small" />
-            ))}
-          </Box>
-        )}
-      </Box>,
-    );
-    if (def.note) tooltipNodes.push(<span key="note">{def.note}</span>);
-    if (building.upgrades > 0) {
-      tooltipNodes.push(
-        <span key="upgrades">{`Upgrades: +${building.upgrades}`}</span>,
-      );
-    }
-  }
-  const tooltip: ReactNode =
-    tooltipNodes.length === 0 ? (
-      ''
-    ) : (
-      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-        {tooltipNodes.map((node, i) => (
-          <Box
-            key={i}
-            component="span"
-            sx={{ display: 'inline-flex', alignItems: 'center' }}
-          >
-            {i > 0 ? <Box component="span" sx={{ mx: 0.5 }}>—</Box> : null}
-            {node}
-          </Box>
-        ))}
-      </Stack>
-    );
+  // Hover detail for regular occupied tiles. The placed-tile card on
+  // the grid intentionally drops cost / adjacency rule text to keep the
+  // 110×90 footprint readable; this tooltip surfaces the canonical
+  // BuildingCard at full detail so the player can hover to see cost,
+  // adjacency rules, flavour, and any upgrade count without leaving
+  // the grid view.
+  const showDetailHover = def !== undefined && occupied && !isCenter;
+  const detailHover: ReactNode = showDetailHover ? (
+    <BuildingCard def={def} size="detailed" activeNeighbors={activeNeighbors} />
+  ) : null;
 
   // Build the tile body. Branches:
   //   - occupied + isCenter → CenterTile
@@ -369,8 +321,24 @@ export function CellSlot({
     </Box>
   );
 
-  return tooltipNodes.length > 0 ? (
-    <Tooltip title={tooltip} placement="top">
+  return showDetailHover ? (
+    <Tooltip
+      title={detailHover}
+      placement="top"
+      enterDelay={250}
+      enterNextDelay={150}
+      slotProps={{
+        tooltip: {
+          sx: {
+            // Detailed BuildingCard is 260×340 — drop the default
+            // tooltip padding/background so the card renders cleanly.
+            bgcolor: 'transparent',
+            p: 0,
+            maxWidth: 'none',
+          },
+        },
+      }}
+    >
       {cell}
     </Tooltip>
   ) : (

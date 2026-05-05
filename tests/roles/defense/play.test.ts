@@ -270,7 +270,7 @@ describe('defensePlay (defense redesign 2.5)', () => {
     expect(G.defense!.techHand).toHaveLength(1);
   });
 
-  it('rejects when onPlayEffects is empty (nothing to do)', () => {
+  it('plays a no-effect tech (consumed, no engine effect) — matches the loosened playTechStub gate', () => {
     const tech: TechnologyDef = {
       branch: 'Fighting',
       name: 'Empty',
@@ -290,7 +290,8 @@ describe('defensePlay (defense redesign 2.5)', () => {
     );
 
     const result = callPlay(G, '3', ctxDefenseTurn('3'), 'Empty');
-    expect(result).toBe(INVALID_MOVE);
+    expect(result).not.toBe(INVALID_MOVE);
+    expect(G.defense!.techHand).toHaveLength(0);
   });
 
   it('rejects out-of-stage and wrong-role calls', () => {

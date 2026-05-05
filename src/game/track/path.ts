@@ -173,19 +173,21 @@ const chebyshev = (a: Cell, b: Cell): number =>
   Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 
 /**
- * `true` iff the unit's tile is within the given Chebyshev radius of
- * any cell on the path. The resolver calls this once per (unit, path)
- * pair to decide whether the unit gets a fire opportunity at the
- * incoming threat.
+ * `true` iff the unit's tile is within firing reach of any cell on the
+ * path. `range` is the count of tiles the unit can reach starting from
+ * its own cell — `range = 1` covers only the unit's own tile,
+ * `range = 2` covers the unit's tile + the 8-neighbour ring, etc. The
+ * effective Chebyshev radius is therefore `range - 1`.
  */
 export const tileCoversPath = (
   unitTile: Cell,
   range: number,
   path: ReadonlyArray<Cell>,
 ): boolean => {
-  if (range < 0) return false;
+  if (range < 1) return false;
+  const radius = range - 1;
   for (const cell of path) {
-    if (chebyshev(unitTile, cell) <= range) return true;
+    if (chebyshev(unitTile, cell) <= radius) return true;
   }
   return false;
 };

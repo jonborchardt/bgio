@@ -139,8 +139,7 @@ export const enumerateDefense = (
   // — we skip them rather than emit candidates that the move would
   // reject.
   for (const tech of defense.techHand ?? []) {
-    const effects = tech.onPlayEffects;
-    if (effects === undefined || effects.length === 0) continue;
+    const effects = tech.onPlayEffects ?? [];
     const isTargeted = effects.some(
       (e) =>
         typeof e === 'object' &&

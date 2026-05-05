@@ -24,7 +24,7 @@ import { Box } from '@mui/material';
 import type { BuildingDef } from '../../data/schema.ts';
 import type { DomesticBuilding } from '../../game/roles/domestic/types.ts';
 import type { UnitInstance } from '../../game/roles/defense/types.ts';
-import { BuildingCard } from '../cards/BuildingCard.tsx';
+import { VillageBuildingCard } from '../cards/VillageBuildingCard.tsx';
 import { HpPips } from './HpPips.tsx';
 import { UnitStack } from './UnitStack.tsx';
 import { useReducedMotion } from '../layout/useReducedMotion.ts';
@@ -130,14 +130,14 @@ export function BuildingTile({
         <HpPips current={building.hp} max={building.maxHp} />
       </Box>
 
-      {/* The card itself — `small` size keeps the village reading as a
-          compact tile board (vs. the deck-detail `normal` size used in
-          the role panels). */}
+      {/* The placed-tile card — a village-specific 110×90 view that
+          drops cost (already paid) in favour of the building's benefit
+          and a firing-adjacency dot row. The full card is reachable via
+          the CellSlot hover tooltip. */}
       {def ? (
-        <BuildingCard
+        <VillageBuildingCard
           def={def}
           count={building.upgrades > 0 ? building.upgrades + 1 : undefined}
-          size="small"
           activeNeighbors={activeNeighbors}
         />
       ) : (

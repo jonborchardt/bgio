@@ -246,12 +246,13 @@ export function TrackStrip({
                   ml: isPhaseStart && i > 0 ? 0.5 : 0,
                 }}
               >
-                {/* Phase chip — only on the first slot of each phase
-                    group, AND only when the slot is still face-down
-                    (or the boss). Flipped face-up cards already carry
-                    their own "P{n}" header inside `<TrackCardView>`,
-                    so an extra chip above them would be redundant. */}
-                {isPhaseStart && (slot.state === 'upcoming' || slot.isBoss) ? (
+                {/* Phase chip — appears on the first slot of each
+                    phase group except for the just-flipped current
+                    card, which already carries its own "P{n}" header
+                    inside `<TrackCardView>`. Past slots are compact
+                    and don't repeat the phase number, so they get the
+                    chip; upcoming + boss slots always do. */}
+                {isPhaseStart && slot.state !== 'current' ? (
                   <Box
                     component="span"
                     aria-label={`Phase ${slot.phase}${isPhaseActive ? ', active' : ''}${slot.isBoss ? ', boss' : ''}`}

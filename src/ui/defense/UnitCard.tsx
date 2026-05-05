@@ -33,6 +33,9 @@ export interface UnitCardProps {
   selectedName?: string;
   /** Toggle selection. The parent inverts on second click. */
   onSelect: (unitDefID: string) => void;
+  /** Optional per-card help-request button rendered next to the
+   *  Buy & place action. Returns null when nothing is owed. */
+  renderHelpButton?: (def: UnitDef) => ReactNode;
 }
 
 const costEntries = (
@@ -78,6 +81,7 @@ export function UnitCard({
   canAct,
   selectedName,
   onSelect,
+  renderHelpButton,
 }: UnitCardProps) {
   const isSelected = def.name === selectedName;
   const cost = unitCost(def);
@@ -174,6 +178,7 @@ export function UnitCard({
               {isSelected ? 'Cancel' : 'Buy & place'}
             </Button>
           </Box>
+          {renderHelpButton?.(def) ?? null}
         </Stack>
       </Stack>
     </Tooltip>

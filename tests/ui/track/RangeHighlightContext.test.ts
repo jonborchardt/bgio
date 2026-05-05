@@ -34,22 +34,22 @@ describe('computeRangeKeys', () => {
     expect(computeRangeKeys('u1', [u])).toEqual(new Set());
   });
 
-  it('covers a (2*range+1)^2 square in Chebyshev distance', () => {
+  it('covers a (2*(range-1)+1)^2 square — range is the count of tiles, not the radius', () => {
     // Pick a real unit def to avoid coupling to test-only fixtures.
     const def = UNITS[0]!;
     const u = makeUnit('u1', def.name, '0,0');
     const keys = computeRangeKeys('u1', [u]);
-    const expected = (def.range * 2 + 1) ** 2;
+    const radius = Math.max(def.range - 1, 0);
+    const expected = def.range >= 1 ? (radius * 2 + 1) ** 2 : 0;
     expect(keys.size).toBe(expected);
-    // The unit's own tile is always in range.
-    expect(keys.has('0,0')).toBe(true);
-    // Corners of the square are also in range (Chebyshev counts
-    // diagonals as distance 1).
     if (def.range >= 1) {
-      expect(keys.has(`${def.range},${def.range}`)).toBe(true);
-      expect(keys.has(`${-def.range},${-def.range}`)).toBe(true);
+      // The unit's own tile is always in range.
+      expect(keys.has('0,0')).toBe(true);
+      // Corners of the square (Chebyshev `radius`) are in range.
+      expect(keys.has(`${radius},${radius}`)).toBe(true);
+      expect(keys.has(`${-radius},${-radius}`)).toBe(true);
+      // Just outside the square is NOT in range.
+      expect(keys.has(`${radius + 1},0`)).toBe(false);
     }
-    // Just outside the square is NOT in range.
-    expect(keys.has(`${def.range + 1},0`)).toBe(false);
   });
 });

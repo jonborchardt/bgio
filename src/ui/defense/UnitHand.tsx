@@ -10,6 +10,7 @@
 // accent so the panel doesn't render a blank gap when the seat starts
 // without any unit cards.
 
+import type { ReactNode } from 'react';
 import { Stack, Typography } from '@mui/material';
 import type { UnitDef } from '../../data/schema.ts';
 import type { ResourceBag } from '../../game/resources/types.ts';
@@ -28,6 +29,9 @@ export interface UnitHandProps {
   onSelect: (unitDefID: string) => void;
   /** Optional fallback message when the hand is empty. */
   emptyHint?: string;
+  /** Optional per-card help-request button rendered next to the
+   *  Buy & place action. */
+  renderHelpButton?: (def: UnitDef) => ReactNode;
 }
 
 export function UnitHand({
@@ -37,6 +41,7 @@ export function UnitHand({
   selectedName,
   onSelect,
   emptyHint = 'No unit cards available.',
+  renderHelpButton,
 }: UnitHandProps) {
   if (hand.length === 0) {
     return (
@@ -79,6 +84,7 @@ export function UnitHand({
           canAct={canAct}
           selectedName={selectedName}
           onSelect={onSelect}
+          renderHelpButton={renderHelpButton}
         />
       ))}
     </Stack>

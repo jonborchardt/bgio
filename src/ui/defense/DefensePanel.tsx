@@ -3,11 +3,11 @@
 // The defense seat's per-turn UI:
 //
 //   - Stash bar reminder (read off `G.mats[seat].stash`).
-//   - Unit hand (the `G.defense.hand` row + selection flow).
+//   - Unit hand (the `G.defense.hand` row + selection flow), with a
+//     per-card help-request button next to each unit's Buy & place
+//     action.
 //   - Red tech hand (the `G.defense.techHand` row, played via
 //     `defensePlay(techName)`).
-//   - In-play list — every unit currently on the grid, with drill /
-//     taught-skill markers (mirrors UnitStack tooltip text in 3.2).
 //   - End-my-turn action.
 //
 // Post-3.9 preference sweep: the village grid was lifted out of this
@@ -16,8 +16,8 @@
 // into `VillagePlacementContext`, and the board-mounted BuildingGrid
 // reads it to highlight legal target tiles. Click on a tile dispatches
 // `defenseBuyAndPlace` from the board (which clears the selection).
-// This panel just owns hand selection + the in-play list + the help
-// rows — it no longer renders its own grid.
+// In-play unit state lives on the village grid itself (UnitStack on
+// each tile) — the panel doesn't duplicate it.
 //
 // Renders nothing when:
 //   - No `playerID` is bound (spectator), OR
@@ -43,7 +43,6 @@ import { idForUnit, idForTech } from '../../cards/registry.ts';
 import { unitCost } from '../../data/index.ts';
 import { UnitHand } from './UnitHand.tsx';
 import { TechRow } from './TechRow.tsx';
-import { InPlayList } from './InPlayList.tsx';
 
 export function DefensePanel(props: BoardProps<SettlementState>) {
   const { G, ctx, moves, playerID } = props;
@@ -69,7 +68,6 @@ export function DefensePanel(props: BoardProps<SettlementState>) {
 
   const hand = defense?.hand ?? [];
   const techHand = defense?.techHand ?? [];
-  const inPlay = defense?.inPlay ?? [];
 
   const selectedUnitName = placement.selectedUnitName;
 
@@ -136,6 +134,23 @@ export function DefensePanel(props: BoardProps<SettlementState>) {
           canAct={canAct}
           selectedName={selectedUnitName}
           onSelect={handleSelectUnit}
+          renderHelpButton={(def) => (
+            <RequestHelpButton
+              G={G}
+              playerID={playerID}
+              moves={moves}
+              fromRole="defense"
+              targetId={idForUnit(def)}
+              targetLabel={def.name}
+              slices={buildResourceSlices({
+                G,
+                fromSeat: playerID,
+                fromRole: 'defense',
+                cost: unitCost(def),
+                have: stash,
+              })}
+            />
+          )}
         />
 
         {/* Placement prompt — the village grid lives at the board
@@ -179,41 +194,6 @@ export function DefensePanel(props: BoardProps<SettlementState>) {
             />
           )}
         />
-
-        {/* Help-request row for unaffordable units in the hand. The
-            UnitHand renders the cards themselves; this stack surfaces a
-            help button for each unit that the seat can't currently
-            afford so the chief can route resources their way. */}
-        {hand.length > 0 ? (
-          <Stack
-            direction="row"
-            spacing={0.5}
-            data-defense-hand-helprow="true"
-            sx={{ flexWrap: 'wrap', rowGap: 0.5 }}
-          >
-            {hand.map((def) => (
-              <RequestHelpButton
-                key={`help-${def.name}`}
-                G={G}
-                playerID={playerID}
-                moves={moves}
-                fromRole="defense"
-                targetId={idForUnit(def)}
-                targetLabel={def.name}
-                slices={buildResourceSlices({
-                  G,
-                  fromSeat: playerID,
-                  fromRole: 'defense',
-                  cost: unitCost(def),
-                  have: stash,
-                })}
-              />
-            ))}
-          </Stack>
-        ) : null}
-
-        <SectionHeading role="defense">In play ({inPlay.length})</SectionHeading>
-        <InPlayList units={inPlay} />
       </Stack>
     </RolePanel>
   );

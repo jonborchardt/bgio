@@ -58,12 +58,13 @@ export const computeRangeKeys = (
   const cy = Number(parts[1]);
   if (!Number.isFinite(cx) || !Number.isFinite(cy)) return out;
   const range = def.range;
-  if (range < 0) return out;
-  for (let dx = -range; dx <= range; dx += 1) {
-    for (let dy = -range; dy <= range; dy += 1) {
-      // Chebyshev radius — every cell whose max(|dx|,|dy|) ≤ range
-      // is "in range". The square loop already enforces the bound, so
-      // we don't need a redundant check.
+  if (range < 1) return out;
+  // `range` is the count of tiles the unit reaches starting from its
+  // own cell — range 1 = self only, range 2 = self + 8-neighbour ring.
+  // Effective Chebyshev radius is `range - 1`.
+  const radius = range - 1;
+  for (let dx = -radius; dx <= radius; dx += 1) {
+    for (let dy = -radius; dy <= radius; dy += 1) {
       out.add(`${cx + dx},${cy + dy}`);
     }
   }

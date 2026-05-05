@@ -77,47 +77,10 @@ export interface BuildingGridProps {
   };
 }
 
-interface Bounds {
-  xMin: number;
-  xMax: number;
-  yMin: number;
-  yMax: number;
-}
-
-/** Minimum visible radius around the vault. The village always renders
- *  this large so the table sees a full board of empty fields from
- *  round 1, just like a physical board with marked spaces. */
-const MIN_VISIBLE_RADIUS = 2;
-
-const computeBounds = (
-  grid: Record<string, DomesticBuilding>,
-  pad: boolean,
-): Bounds => {
-  let xMin = -MIN_VISIBLE_RADIUS;
-  let xMax = MIN_VISIBLE_RADIUS;
-  let yMin = -MIN_VISIBLE_RADIUS;
-  let yMax = MIN_VISIBLE_RADIUS;
-  for (const k of Object.keys(grid)) {
-    const parts = k.split(',');
-    if (parts.length !== 2) continue;
-    const x = Number(parts[0]);
-    const y = Number(parts[1]);
-    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-    if (x < xMin) xMin = x;
-    if (x > xMax) xMax = x;
-    if (y < yMin) yMin = y;
-    if (y > yMax) yMax = y;
-  }
-  // Pad by one extra cell when the player is actively placing so the
-  // first legal cell at any edge always has somewhere to land.
-  if (pad) {
-    xMin -= 1;
-    xMax += 1;
-    yMin -= 1;
-    yMax += 1;
-  }
-  return { xMin, xMax, yMin, yMax };
-};
+/** The village always renders as a fixed 5×5 board centered on the
+ *  vault — same physical-board feel every round, no expansion as
+ *  buildings get placed. */
+const VILLAGE_RADIUS = 2;
 
 export function BuildingGrid({
   grid,
@@ -131,9 +94,10 @@ export function BuildingGrid({
 }: BuildingGridProps) {
   const isPlacing = activeCard !== undefined;
   const isPlacingUnit = unitPlacement?.selectedUnitName !== undefined;
-  // Pad the bounds when *either* placement mode is active so the grid
-  // doesn't shift when the player switches between modes mid-flow.
-  const { xMin, xMax, yMin, yMax } = computeBounds(grid, isPlacing || isPlacingUnit);
+  const xMin = -VILLAGE_RADIUS;
+  const xMax = VILLAGE_RADIUS;
+  const yMin = -VILLAGE_RADIUS;
+  const yMax = VILLAGE_RADIUS;
   const cols = xMax - xMin + 1;
 
   // Defense redesign 3.3 — when no explicit highlight prop is supplied,

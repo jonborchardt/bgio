@@ -137,9 +137,78 @@ const summaryFor = (card: TrackCardDef): string => {
 export function TrackCardView({ card, state }: TrackCardViewProps) {
   const isBoss = card.kind === 'boss';
   const reducedMotion = useReducedMotion();
-  // Slightly muted opacity for past cards keeps them visually de-
-  // emphasised even with a distinct border accent.
-  const opacity = state === 'past' ? 0.55 : 1;
+
+  // Past cards collapse back to a compact face-up tile (matching the
+  // face-down slot footprint) so the strip can carry a long history
+  // without pushing the current / upcoming cards off-screen. The kind
+  // glyph stays visible and the full name + description hangs off a
+  // tooltip.
+  if (state === 'past') {
+    const { d, extra } = GLYPHS[card.kind];
+    const tooltipText = `${KIND_LABEL[card.kind]} — ${card.name}. ${card.description}`;
+    return (
+      <Tooltip title={tooltipText} placement="top">
+        <Paper
+          elevation={0}
+          role="article"
+          aria-label={tooltipText}
+          tabIndex={0}
+          data-track-card="true"
+          data-track-card-state="past"
+          data-track-card-kind={card.kind}
+          data-reduced-motion={reducedMotion ? 'true' : 'false'}
+          sx={{
+            width: 14,
+            height: 22,
+            flexShrink: 0,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 0.5,
+            border: '1px solid',
+            borderColor: (t) =>
+              isBoss ? t.palette.track.boss : t.palette.track.past,
+            bgcolor: (t) => t.palette.card.surface,
+            color: (t) =>
+              isBoss ? t.palette.track.boss : t.palette.track.past,
+            opacity: 0.85,
+            transition: reducedMotion
+              ? 'none'
+              : 'opacity 250ms ease, border-color 250ms ease',
+            boxShadow: (t) => t.palette.shadow.card,
+            overflow: 'hidden',
+            '&:focus-visible': {
+              outline: '2px solid',
+              outlineColor: (t) => t.palette.status.active,
+              outlineOffset: 2,
+            },
+          }}
+        >
+          <svg viewBox="0 0 32 32" width={10} height={10} aria-hidden>
+            <path
+              d={d}
+              stroke="currentColor"
+              strokeWidth={1.8}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+            {extra ? (
+              <path
+                d={extra}
+                stroke="currentColor"
+                strokeWidth={1.6}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+              />
+            ) : null}
+          </svg>
+        </Paper>
+      </Tooltip>
+    );
+  }
+
   // Defense redesign 3.9 — make every card focusable so the strip's
   // arrow-key navigation can cycle past → current → next without a
   // mouse. Tabbing into the strip lands on the first focusable card,
@@ -181,7 +250,6 @@ export function TrackCardView({ card, state }: TrackCardViewProps) {
                 : t.palette.track.past,
         bgcolor: (t) => t.palette.card.surface,
         color: (t) => t.palette.card.text,
-        opacity,
         // Defense-redesign 3.9: animation budget = ≤ 250ms, suppressed
         // entirely under prefers-reduced-motion so the card does not
         // visibly fade or shift its border color.

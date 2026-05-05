@@ -85,8 +85,10 @@ export const defensePlay: Move<SettlementState> = (
   );
   if (tech === undefined) return INVALID_MOVE;
 
-  const effects = tech.onPlayEffects;
-  if (effects === undefined || effects.length === 0) return INVALID_MOVE;
+  // Every red tech can be played — even ones whose only value is a
+  // text-field unit/building unlock (e.g. Sharpshooting, Animals).
+  // Mirrors the loosened gate on the shared playTechStub.
+  const effects = tech.onPlayEffects ?? [];
 
   // Split the effect list into defense-specific entries (handled inline)
   // and "everything else" (delegated to applyTechOnPlay below). We
