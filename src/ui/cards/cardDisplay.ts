@@ -1,10 +1,9 @@
 // Display-card extractor — converts a typed game-content def
-// (BuildingDef / UnitDef / TechnologyDef / CanonicalScienceCardDef) into
-// a single `DisplayCard` descriptor. The v9 shell (`V9CardShell.tsx`)
-// renders only this descriptor, so visuals stay decoupled from data.
+// (BuildingDef / UnitDef / TechnologyDef) into a single `DisplayCard`
+// descriptor. The v9 shell (`V9CardShell.tsx`) renders only this
+// descriptor, so visuals stay decoupled from data.
 
 import type { BuildingDef, TechnologyDef, UnitDef } from '../../data/schema.ts';
-import type { CanonicalScienceCardDef } from '../../data/scienceCards.ts';
 import { ADJACENCY_RULES } from '../../data/adjacency.ts';
 import { findBuildingId, findTechId } from '../../cards/registry.ts';
 import type { Role } from '../../game/types.ts';
@@ -102,13 +101,6 @@ const ROLE_LABEL: Record<Role, string> = {
   defense: 'Defense',
 };
 
-const ROLE_BY_SCIENCE_COLOR: Record<EventColor, Role> = {
-  blue: 'science',
-  green: 'domestic',
-  red: 'defense',
-  gold: 'chief',
-};
-
 const bagToList = (
   bag: Partial<ResourceBag> | undefined,
 ): Array<{ resource: string; count: number }> => {
@@ -119,12 +111,6 @@ const bagToList = (
     if (v > 0) out.push({ resource: r, count: v });
   }
   return out;
-};
-
-const compactBag = (bag: Partial<ResourceBag> | undefined): string => {
-  const list = bagToList(bag);
-  if (list.length === 0) return 'free';
-  return list.map((b) => `${b.count}${b.resource[0]}`).join(' ');
 };
 
 // Split a `requires` field on `+` / `,`, drop trailing parentheticals
@@ -233,25 +219,6 @@ export function unitDisplay(def: UnitDef, count?: number): DisplayCard {
     if (items.length > 0) result.requires = items;
   }
   return result;
-}
-
-export function scienceDisplay(def: CanonicalScienceCardDef): DisplayCard {
-  const recipientRole = ROLE_BY_SCIENCE_COLOR[def.color];
-  const cellLabel = `${def.color[0]!.toUpperCase()}${def.color.slice(1)} L${def.level}`;
-  const head = def.variants[0]?.cost ?? {};
-  const variantCount = def.variants.length;
-  return {
-    kind: def.tier === 'advanced' ? 'scienceAdvanced' : 'science',
-    role: recipientRole,
-    roleLabel: ROLE_LABEL[recipientRole],
-    title: cellLabel,
-    kindLabel: 'Science',
-    subtitle: `${def.tier} · ${variantCount} variant${variantCount === 1 ? '' : 's'} · → ${ROLE_LABEL[recipientRole]}`,
-    cost: { bag: bagToList(head), short: compactBag(head) },
-    benefit: `Reward: 4 random ${def.color} techs.`,
-    flavor:
-      'Each match places one variant in this cell. Costs differ; rewards are identical.',
-  };
 }
 
 export function techDisplay(

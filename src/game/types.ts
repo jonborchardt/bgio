@@ -13,8 +13,8 @@ import type { CenterMat } from './resources/centerMat.ts';
 // Per-seat player mat (in / out / stash). Same cycle-erasing trick.
 import type { PlayerMat } from './resources/playerMat.ts';
 // Type-only edge for the canonical TechnologyDef shape — referenced from
-// the per-role hand fields (chief/domestic) populated by `scienceComplete`
-// in 05.3 when a science card's underlying tech cards are distributed.
+// the per-role hand fields (chief/domestic) populated by the Library
+// when a tech-flavored card is bought.
 import type { TechnologyDef } from '../data/schema.ts';
 // Same trick for the Science role state — type-only edge so there is no
 // runtime cycle with `./roles/science/setup.ts`, which imports `RandomAPI`
@@ -43,6 +43,10 @@ import type { HelpRequest } from './requests/types.ts';
 // `./track.ts` module is pure (no runtime imports back from this file)
 // so a plain type-only edge is enough to keep the cycle erased.
 import type { TrackState } from './track.ts';
+// Science Library SL 2.1 — runtime state for the Library deck / row /
+// per-seat discount tableaus. `./library/state.ts` only imports types
+// from this file, so the type-only edge keeps the cycle erased.
+import type { LibraryState } from './library/state.ts';
 
 export type Role = 'chief' | 'science' | 'domestic' | 'defense';
 
@@ -58,6 +62,7 @@ export type {
   EventsState,
   DomesticState,
   TrackState,
+  LibraryState,
 };
 
 export interface SettlementState {
@@ -148,11 +153,9 @@ export interface SettlementState {
   // narrower `StageName` subtype.
   _stageStack?: Record<PlayerID, string[]>;
 
-  // Science role state — 3×4 grid of science cards, the tech cards stacked
-  // under each, per-card resource contributions, completion log, and the
-  // per-round completion counter that the `science:reset-completions` hook
-  // clears at endOfRound. Optional so older test fixtures that pre-date 05.1
-  // remain source-compatible; hooks and moves that touch it must guard.
+  // Science role state — the blue-tech `hand` populated by the Library,
+  // plus per-round drill/teach latches (D27). Optional so older test
+  // fixtures stay source-compatible.
   science?: ScienceState;
 
   // Defense role state — Phase 2 will repopulate this with real units in
@@ -179,6 +182,12 @@ export interface SettlementState {
   // that touch it must guard.
   events?: EventsState;
 
+  // Science Library (SL redesign): row / deck / lost-ideas pile / per-
+  // seat discount tableaus. Built at setup by SL 2.2; mutated by the
+  // SL 3.x moves. Optional so test fixtures and pre-SL setups stay
+  // source-compatible — moves that read it must guard for `undefined`.
+  library?: LibraryState;
+
   // Feature-flag bag toggled by later slices' `setup` once the
   // corresponding state shape exists. Used by stub moves that need to
   // short-circuit until the real implementation lands. Optional so older
@@ -200,24 +209,25 @@ export interface SettlementState {
   };
 
   // 08.2 — modifier stack pushed by the event-effect dispatcher. Effects
-  // that condition a *subsequent* move (e.g. `doubleScience`, `forbidBuy`)
-  // push themselves here on dispatch; the move consults
-  // `hasModifierActive(...)` and calls `consumeModifier(...)` after
-  // applying. Optional so test fixtures and pre-08.2 setups stay clean.
+  // that condition a *subsequent* move push themselves here on dispatch;
+  // the move consults `hasModifierActive(...)` and calls
+  // `consumeModifier(...)` after applying. No live `EventEffect` kinds
+  // are modifier-shaped today; the slot stays as the integration seam.
+  // Optional so test fixtures and pre-08.2 setups stay clean.
   _modifiers?: EventEffect[];
 
   // 08.2 — per-seat "awaiting follow-up input" map. The dispatcher stashes
-  // an effect here when it can't apply immediately (e.g.
-  // `swapTwoScienceCards` needs the seat to pick which two cards). The
-  // follow-up `eventResolve(payload)` move (08.3) reads this slot, applies
-  // the effect with the payload, and clears the entry. Optional for the
-  // same reason as `_modifiers`.
+  // an effect here when it can't apply immediately (an `awaitInput`
+  // effect needing a seat-supplied payload). The follow-up
+  // `eventResolve(payload)` move (08.3) reads this slot, applies the
+  // effect with the payload, and clears the entry. Optional for the same
+  // reason as `_modifiers`.
   _awaitingInput?: Record<PlayerID, EventEffect>;
 
   // Chief-role-specific runtime state — worker token reserve, etc. Filled
   // out incrementally as chief features land (04.3 introduces `workers`).
-  // 05.3 adds the optional `hand` slot: the Chief receives gold-color
-  // technology cards distributed by `scienceComplete`. The `taxedThisRound`
+  // The optional `hand` slot receives gold-color technology cards
+  // distributed by `scienceLibraryBuy`. The `taxedThisRound`
   // latch belongs to the chief Tax super-power: once-per-round gate that
   // the `chief:reset-tax` round-end hook clears. Optional so existing tests
   // / fixtures stay clean.
@@ -228,10 +238,10 @@ export interface SettlementState {
   };
 
   // Domestic role state — the full shape lands in 06.1 (hand of buildings
-  // + placed-building grid). 05.3's `scienceComplete` distributes green-
-  // color tech cards to the Domestic seat; those go into the optional
-  // `techHand` slot inside `DomesticState` (renamed from `hand` so the
-  // 06.1 plan's `hand: BuildingDef[]` slot stays unambiguous). 04.3's
+  // + placed-building grid). `scienceLibraryBuy` distributes green-color
+  // tech cards to the Domestic seat; those go into the optional `techHand`
+  // slot inside `DomesticState` (renamed from `hand` so the 06.1 plan's
+  // `hand: BuildingDef[]` slot stays unambiguous). 04.3's
   // `chiefPlaceWorker` stub still reads `domestic.grid[key].worker` — the
   // new `DomesticBuilding` shape is a superset of the previous stub shape
   // (it adds `defID` + `upgrades` alongside the existing `worker` field),

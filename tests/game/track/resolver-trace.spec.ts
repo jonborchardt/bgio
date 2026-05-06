@@ -256,7 +256,7 @@ describe('resolveTrackCard — trace publication (3.3)', () => {
       phase: 1,
       description: 'science doubled',
       durationRounds: 1,
-      effect: { kind: 'doubleScience' },
+      effect: { kind: 'awaitInput', prompt: 'noop', payloadKind: 'noop' },
     };
     resolveTrackCard(G, detRandom(), mod);
     const t = G.track!.lastResolve!;

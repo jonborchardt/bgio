@@ -1,7 +1,7 @@
 // sciencePlayTech (08.6) — Science seat plays a blue-color tech card.
 //
-// Tech cards distributed by 05.3's `scienceComplete` for a blue-color
-// science card land in `G.science.hand`. This move lets the Science
+// Tech cards distributed by `scienceLibraryBuy` for a blue-color
+// Library card land in `G.science.hand`. This move lets the Science
 // seat play any tech in that hand whose `onPlayEffects` is non-empty.
 //
 // All gating + dispatch logic lives in the shared `playTechStub`

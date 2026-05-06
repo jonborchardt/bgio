@@ -101,32 +101,94 @@ the boss's Economy threshold.
 
 ### 3.2 Science
 
-**Current (Option 1, hybrid):** 3×4 grid of science cards — one column
-per color, fixed in role order (chief→gold, science→blue, domestic→green,
-defense→red). Lowest-level card in each column must be completed first.
-Each card has 4 face-down tech cards under it that distribute on
-completion. (Earlier revisions picked 3 of 4 colors per game and let the
-fourth sit out; we dropped that variance because it consistently locked
-one role out of receiving any tech that game.)
+**Current (post-redesign — The Library):** the science seat is the
+village's research arm and gardener. Each round they spend their stash
+at a face-up 6-slot **Library row** fed from a tier-stacked deck
+(T1 → T2 → T3, all of one tier reveals before the next). Buying a card
+pays a color × tier cost, hands the card to the recipient role's hand
+(gold→chief, blue→science, green→domestic, red→defense, by `kind`),
+and adds a -1-discount marker for that card's discount-resource to the
+science seat's discount tableau. Burning a card moves it to the public
+**lost-ideas pile** — gone forever, no recipient. The seat repeats
+buy/burn until their stash drains or they choose to end. The
+borrowed shape is *Splendor*: the discount snowball is the engine, and
+specialization compounds.
+
+The role's identity moves from *gift-giver* (occasional tech drop on
+completion) to *village researcher / gardener* — every round they
+choose what the village learns AND what it permanently never discovers.
+The face-up burn pile across a full match is a visible record of paths
+not taken.
+
+**Why this design (the diagnosis the redesign was built to solve)**
+
+The retired 3×4-grid mechanic gave the science seat one or two decisions
+per round and a hard "1 completion per round" cap, so a richer round
+didn't translate into more science output — extra resources just sat in
+stash. The Library replaces both of those with stash-as-throttle: a
+well-fed round buys multiple cards; a starved round burns one and ends.
+The cap is now structural (the deck and stash) rather than a printed
+rule, which lets the chief's distribution decision shape science
+density round-to-round. The full diagnosis lives in the master plan
+(`plans/science-library-redesign.md`).
 
 **Alternatives considered**
 
-- *Option 1 (pure):* shuffle 27/36/27 cards into 9 piles; flip them all;
-  player chooses from 9. Closer to *Splendor*. Rejected as too random.
+- *Option 1 (pure):* shuffle every science card into 9 piles by tier;
+  flip them all; player chooses from 9. Closer to early *Splendor*.
+  Rejected as too random.
 - *Option 1b:* player drives the deal — flip one at a time and place in
   the smallest pile. More agency, but undercuts the surprise.
 - *Option 2:* a single line of 5 cards, *Suburbia*/sister-game style;
-  buy from the line, sweep to backfill. Rejected because the column-
-  driven progression is nicer for visualizing tech tiers.
+  buy from the line, sweep to backfill. The current Library is a fork
+  of this with a 6-slot row, no contribute-and-complete pipeline, and
+  the burn-1 pass option layered on top.
 - *Option 3:* slot-conditioned costs (*Jaipur* sets / *Splendor* color
   requirements). Reserved for an expansion.
 
-**Open questions**
+**Balance levers — paper-play tuning surface**
 
-- "Less random science, or science needs to not be so variable in
-  greatness."
-- "Cars without science" — i.e. some endgame plumbing should be
-  reachable without a specific science being lucky enough to surface.
+All cost numbers live as named constants at the top of
+`src/game/library/costs.ts`:
+
+- `T1_PRIMARY_AMOUNT = 4` — T1 cost (single resource).
+- `T2_PRIMARY_AMOUNT = 7`, `T2_SECONDARY_AMOUNT = 2` — T2 cost.
+- `T3_PRIMARY_AMOUNT = 10`, `T3_SECONDARY_AMOUNT = 3`,
+  `T3_TERTIARY_AMOUNT = 2` — T3 cost.
+- `RESEARCH_COST_TABLE` — the color → resource ladder
+  (gold:gold/food/science, blue:science/wood/steel, green:wood/production/stone,
+  red:stone/steel/gold). Cross-color reach is the design point: every
+  color's T3 is enabled by some other color's lower tier.
+
+The Splendor-style floor-of-1 lives in `effectiveResearchCost` in the
+same file. There is no per-resource discount cap; the structural cap is
+deck size (60 cards).
+
+The boss-debuff thresholds (5 / 10 / 15 cards per color) and the V1
+"sum across colors, flat reduction" implementation live in
+`src/game/library/debuff.ts` (`TIER_1_THRESHOLD`, `TIER_2_THRESHOLD`,
+`TIER_3_THRESHOLD`). Per-color → boss-flavor mapping is the open
+question that keeps the V1 default flat.
+
+**Open questions** (carried forward; full list in the master plan)
+
+- **Per-color boss-flavor mapping.** The V1 debuff is a flat sum across
+  colors. The intended shape is each color hitting a different boss
+  attack flavor (gold ↔ economy, blue ↔ tech-counter, green ↔
+  population, red ↔ military). Blocked on boss content gaining a
+  `flavor` field on `ThreatPattern`.
+- **Color-count rebalance toward 5×4×3 = 60.** The master-plan target
+  is 5 of each (color × tier); the current content tagging in
+  `src/data/` over-shoots in some buckets and under-shoots in gold. The
+  V1 setup uses what it has; rebalancing is a content pass, not an
+  engine change.
+- **Tier-cost numbers (4 / 7+2 / 10+3+2).** Placeholder. Paper play
+  should adjust toward the user's "multi-buy only when overfed" pacing.
+- **Burn-pile end-of-game readout.** Should the win-resolution screen
+  surface "the village never discovered: …" as a closing beat?
+
+See `plans/science-library-redesign.md` for the full open-question list
+and `plans/sl-orchestrator.md` for the implementation log.
 
 ### 3.3 Domestic
 
@@ -193,13 +255,16 @@ The four roles are wired together by:
 - **One shared bank.** Every role pulls from / pushes to it.
 - **The chief's distribution decision.** Per round, the chief decides
   who gets what fuel for the round's actions.
-- **The science → other-roles tech pipeline.** Completing a science
-  card distributes its 4 tech cards to specific roles by color
-  (`scienceComplete` in `src/game/roles/science/complete.ts`):
-  - red → Defense
-  - gold → Chief
-  - green → Domestic
-  - blue → Science
+- **The science → other-roles content pipeline.** Each Library buy
+  hands one card to one recipient role's hand (or techHand by `kind`):
+  - gold → Chief's gold-event hand
+  - blue → Science's blue hand / techHand
+  - green → Domestic's hand / techHand
+  - red → Defense's hand / techHand
+  Routing lives in `src/game/roles/science/libraryBuy.ts`. The chief's
+  distribute decision implicitly steers what science can afford to
+  research that round (wood → green, stone → red, etc.), which is the
+  low-comm version of "lobby for what to research" without chat.
 - **Domestic buildings interact with Defense via placement bonuses.**
   Per the redesign (D18), the bonus is authored on the *unit* — a
   unit's card prints "+1 strength on Forge" or "+1 range on Tower" —
@@ -234,8 +299,9 @@ code locations and defaults.
 | Chief starter worker pool     | 3       | `src/game/setup.ts` (`chief: { workers: 3 }`)             |
 | Turn cap                      | 80      | `src/game/endConditions.ts` `TURN_CAP_DEFAULT`            |
 | Win flag (boss-resolved)      | flag    | `src/game/endConditions.ts` `endIf`; flipped by `resolveBoss` in `src/game/track/boss.ts` |
-| Science colors picked         | 4 of 4  | `src/game/roles/science/setup.ts` `setupScience` (all four colors always present) |
-| Tech cards under each science | 4       | same                                                      |
+| Library row width             | 6 slots | `src/game/library/setup.ts` `ROW_SIZE`                    |
+| T1 / T2 / T3 cost amounts     | 4 / 7+2 / 10+3+2 | `src/game/library/costs.ts` (`T1_PRIMARY_AMOUNT`, …) |
+| Boss-debuff thresholds        | 5 / 10 / 15 | `src/game/library/debuff.ts`                          |
 | Event hand size               | 4       | `src/game/events/state.ts` `HAND_SIZE`                    |
 | Track flips per round         | 1       | `src/game/roles/chief/flipTrack.ts` (D22)                 |
 | Building upgrade cost factor  | ×0.5    | `src/game/roles/domestic/upgrade.ts` (V1 stub)            |
@@ -270,18 +336,21 @@ Treat these as historical targets; live content lives in `src/data/`.
 
 Carried over from the original design doc, partially still live:
 
-- **Random science variance.** The 3×4 grid still randomizes which
-  specific card fills each (tier, color) cell per match, so some games
-  will surface stronger combinations than others. Is the remaining
-  variance acceptable, or do we need a "less random science" treatment?
+- **Library variance.** The Library is shuffled within each tier-stack,
+  so a match can reveal stronger T1 combinations early than another
+  match. The discount snowball compounds the variance — early luck
+  cheapens later turns. Acceptable, or do we want a partially-stratified
+  reveal (e.g. one slot per color in T1)? See open question #4 in
+  `plans/science-library-redesign.md`.
 - **Cars without science.** Endgame items shouldn't be locked behind a
-  specific tech that may or may not appear.
+  specific tech that may or may not surface in the Library before the
+  deck depletes.
 - **Leader taxes.** Should the chief have a way to tax produced goods
   rather than only redistribute the bank's contents?
 - **Event richness.** Beyond the immediate / modifier / awaiting-input
   buckets, should events have card-driven "this turn must…" mandates?
-  (Examples in the original doc: "must do random science this turn,"
-  "must buy cheapest science," "can swap 2 science cards," etc.)
+  (Examples: "must buy the cheapest available Library card," "may swap
+  two cards in the Library row," "next Library buy is doubled.")
 - **Defense incentive density.** The original doc asks: "There needs to
   be a necessity to have some science, domestic, and defense…" — the
   boss's two thresholds (Science / Economy) cancel attacks, and the

@@ -186,6 +186,7 @@ describe('chiefTax (chief super-power)', () => {
       { player: chiefSeat, move: 'chiefTax' },
       { player: chiefSeat, move: 'chiefFlipTrack' },
       { player: chiefSeat, move: 'chiefEndPhase' },
+      { player: sciSeat, move: 'scienceLibraryBurn', args: [0] },
       { player: sciSeat, move: 'scienceSeatDone' },
       { player: domSeat, move: 'domesticSeatDone' },
       { player: defSeat, move: 'defenseSeatDone' },

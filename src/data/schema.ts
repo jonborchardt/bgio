@@ -111,6 +111,15 @@ export type TrackCardDef =
   | ModifierCard
   | BossCard;
 
+// Science Library redesign — SL 1.1. Cards in the library deck carry two
+// extra fields beyond their existing schema: which tier-stack they belong
+// to, and which science-color resource ladder applies on a buy. Both are
+// optional in JSON (back-filled by sub-plan 6 — content tagging) but
+// required at runtime once the card is treated as a `LibraryCard` (see
+// `src/game/library/types.ts`).
+export type LibraryTier = 1 | 2 | 3;
+export type LibraryColor = 'gold' | 'blue' | 'green' | 'red';
+
 export interface BuildingDef {
   name: string;
   // Gold-equivalent cost, used as a value heuristic (AI sort, refund math,
@@ -131,6 +140,10 @@ export interface BuildingDef {
   // Read at runtime in 1.3 (building HP / repair); declared here in 1.1
   // so the loader and JSON are in sync with no behaviour change yet.
   maxHp: number;
+  // Science Library SL 1.1 — optional library tagging. Back-filled by
+  // sub-plan 6.
+  tier?: LibraryTier;
+  scienceColor?: LibraryColor;
 }
 
 // Defense redesign D18 — placement-bonus effects authored on a unit's card.
@@ -201,6 +214,10 @@ export interface UnitDef {
   // returns an empty array when absent so call sites can iterate
   // unconditionally.
   placementBonus: PlacementBonus[];
+  // Science Library SL 1.1 — optional library tagging. Back-filled by
+  // sub-plan 6.
+  tier?: LibraryTier;
+  scienceColor?: LibraryColor;
 }
 
 export interface TechnologyDef {
@@ -228,7 +245,7 @@ export interface TechnologyDef {
   //   legacy `cost: string` slot stays for now; consumers prefer `costBag`
   //   when present.
   // - `onAcquireEffects`: dispatched once when the card is distributed
-  //   into a hand by `scienceComplete` (05.3).
+  //   into a hand by `scienceLibraryBuy`.
   // - `onPlayEffects`: dispatched when the holder explicitly plays the
   //   card via `<role>PlayTech` (08.6). Must be non-empty for those
   //   moves to accept the play.
@@ -250,7 +267,55 @@ export interface TechnologyDef {
   // strings stay as effect-text; this typed list says "for graph
   // purposes, these are the cards I link to." Optional.
   unlockEvents?: Array<{ color: 'blue' | 'green' | 'red' | 'gold'; name: string }>;
+  // Science Library SL 1.1 — optional library tagging. Back-filled by
+  // sub-plan 6.
+  tier?: LibraryTier;
+  scienceColor?: LibraryColor;
 }
+
+// --- library tag helpers (SL 1.1) ------------------------------------------
+
+const LIBRARY_TIERS: ReadonlySet<LibraryTier> = new Set([1, 2, 3]);
+const LIBRARY_COLORS: ReadonlySet<LibraryColor> = new Set([
+  'gold',
+  'blue',
+  'green',
+  'red',
+]);
+
+// Helpers used by validators below — defined up-front so they can be
+// referenced from any of the three (Building / Unit / Technology)
+// validators. `obj` may be the JSON entry or a plain object; we read by
+// key.
+const optionalLibraryTier = (
+  obj: Record<string, unknown>,
+  index: number,
+  type: string,
+): LibraryTier | undefined => {
+  const v = obj.tier;
+  if (v === undefined) return undefined;
+  if (typeof v !== 'number' || !LIBRARY_TIERS.has(v as LibraryTier)) {
+    throw new Error(
+      `${type}[${index}]: field "tier" must be 1|2|3 when present, got ${String(v)}`,
+    );
+  }
+  return v as LibraryTier;
+};
+
+const optionalLibraryColor = (
+  obj: Record<string, unknown>,
+  index: number,
+  type: string,
+): LibraryColor | undefined => {
+  const v = obj.scienceColor;
+  if (v === undefined) return undefined;
+  if (typeof v !== 'string' || !LIBRARY_COLORS.has(v as LibraryColor)) {
+    throw new Error(
+      `${type}[${index}]: field "scienceColor" must be one of gold|blue|green|red when present, got ${String(v)}`,
+    );
+  }
+  return v as LibraryColor;
+};
 
 // --- helpers ---------------------------------------------------------------
 
@@ -341,6 +406,10 @@ export const validateBuildings = (raw: unknown): BuildingDef[] => {
     };
     const costBag = optionalCostBag(obj, 'costBag', i, 'BuildingDef');
     if (costBag !== undefined) def.costBag = costBag;
+    const tier = optionalLibraryTier(obj, i, 'BuildingDef');
+    if (tier !== undefined) def.tier = tier;
+    const scienceColor = optionalLibraryColor(obj, i, 'BuildingDef');
+    if (scienceColor !== undefined) def.scienceColor = scienceColor;
     return def;
   });
 };
@@ -379,6 +448,10 @@ export const validateUnits = (raw: unknown): UnitDef[] => {
     if (costBag !== undefined) def.costBag = costBag;
     const requiresList = optionalStringArray(obj, 'requiresList', i, 'UnitDef');
     if (requiresList !== undefined) def.requiresList = requiresList;
+    const tier = optionalLibraryTier(obj, i, 'UnitDef');
+    if (tier !== undefined) def.tier = tier;
+    const scienceColor = optionalLibraryColor(obj, i, 'UnitDef');
+    if (scienceColor !== undefined) def.scienceColor = scienceColor;
     return def;
   });
 };
@@ -605,6 +678,10 @@ export const validateTechnologies = (raw: unknown): TechnologyDef[] => {
     if (unlocksU !== undefined) tech.unlocksUnits = unlocksU;
     const unlockE = optionalUnlockEvents(obj, 'unlockEvents', i, 'TechnologyDef');
     if (unlockE !== undefined) tech.unlockEvents = unlockE;
+    const tier = optionalLibraryTier(obj, i, 'TechnologyDef');
+    if (tier !== undefined) tech.tier = tier;
+    const scienceColor = optionalLibraryColor(obj, i, 'TechnologyDef');
+    if (scienceColor !== undefined) tech.scienceColor = scienceColor;
 
     return tech;
   });

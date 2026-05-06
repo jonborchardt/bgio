@@ -13,8 +13,8 @@
 // 3.7's polish pass.
 //
 // Defense plays the card free of resource cost (the science seat
-// already paid via `scienceContribute` / `scienceComplete` when the
-// red tech was distributed). The PlayableHand component understands
+// already paid via `scienceLibraryBuy` when the red tech was
+// distributed). The PlayableHand component understands
 // "free" via an empty entries list, so we forward the seat's stash
 // for affordability checks but most red techs have no `costBag`.
 

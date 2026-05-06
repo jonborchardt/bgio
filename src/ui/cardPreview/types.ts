@@ -7,15 +7,12 @@
 
 import type { ComponentType } from 'react';
 import type { BuildingDef, TechnologyDef, UnitDef } from '../../data/schema.ts';
-import type { CanonicalScienceCardDef } from '../../data/scienceCards.ts';
 import type { CardSize } from '../cards/sizes.ts';
 
 export type SampleCardKind =
   | 'domesticBuilding'
   | 'domesticBuildingComplex'
   | 'placedVillage'
-  | 'scienceCard'
-  | 'scienceAdvanced'
   | 'defenseUnit'
   | 'army'
   | 'chiefTech'
@@ -25,8 +22,6 @@ export type SampleCard =
   | { kind: 'domesticBuilding'; def: BuildingDef }
   | { kind: 'domesticBuildingComplex'; def: BuildingDef }
   | { kind: 'placedVillage'; def: BuildingDef; count: number }
-  | { kind: 'scienceCard'; def: CanonicalScienceCardDef }
-  | { kind: 'scienceAdvanced'; def: CanonicalScienceCardDef }
   | { kind: 'defenseUnit'; def: UnitDef }
   | { kind: 'army'; def: UnitDef; count: number }
   | { kind: 'chiefTech'; def: TechnologyDef }
@@ -66,8 +61,6 @@ export const SAMPLE_LABELS: Record<SampleCardKind, string> = {
   domesticBuilding: 'Domestic — basic building',
   domesticBuildingComplex: 'Domestic — multi-cost building',
   placedVillage: 'Placed village (multi-copy)',
-  scienceCard: 'Science — beginner cell',
-  scienceAdvanced: 'Science — advanced cell',
   defenseUnit: 'Defense — basic unit',
   army: 'Army (multi-unit, with reqs)',
   chiefTech: 'Chief — tech (resources only)',

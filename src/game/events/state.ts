@@ -70,7 +70,7 @@ const HAND_SIZE = 4;
  * here would indicate a misconfigured assignments table, not a normal game
  * state. Callers that *must* find a seat should treat `null` as fatal.
  */
-const seatHoldingColor = (
+export const seatHoldingColor = (
   assignments: Record<PlayerID, Role[]>,
   color: EventColor,
 ): PlayerID | null => {

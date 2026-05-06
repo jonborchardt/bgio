@@ -5,11 +5,14 @@
 //   ┌──────────────────────────────────────────────────────────┐
 //   │ [track strip]                                            │
 //   │ 1fr · village · 1fr · science · economy · 1fr            │
+//   │                            [lost ideas pile]             │
 //   └──────────────────────────────────────────────────────────┘
 //
 // The 1fr gutters absorb extra page width without stretching the
 // village or the trackers. Science + Economy sit together on the
-// right so the table reads them as a paired boss telegraph.
+// right so the table reads them as a paired boss telegraph; the
+// lost-ideas pile drops in under that pair as the public record of
+// what the village never discovered.
 //
 // Thin layout shell. Each slot is a ReactNode the parent fills in;
 // CentralBoard owns the surrounding Paper frame, the grid template,
@@ -24,6 +27,9 @@ export interface CentralBoardProps {
   track: ReactNode;
   /** The village grid — already-built `<BuildingGrid>` from the parent. */
   village: ReactNode;
+  /** The lost-ideas burn pile. Rendered beneath the science + economy
+   *  trackers, spanning the right gutter. */
+  lostIdeas?: ReactNode;
   /** Science progress tracker. Rendered to the right of the village. */
   scienceTracker?: ReactNode;
   /** Economy progress tracker. Rendered next to the science tracker. */
@@ -36,6 +42,7 @@ export interface CentralBoardProps {
 export function CentralBoard({
   track,
   village,
+  lostIdeas,
   scienceTracker,
   economyTracker,
   overlay,
@@ -75,9 +82,8 @@ export function CentralBoard({
           sx={{
             position: 'relative',
             display: 'grid',
-            // 1fr | village | 1fr | science | economy | 1fr
-            gridTemplateColumns:
-              '1fr auto 1fr auto auto 1fr',
+            // 1fr | village | 1fr | trackers+pile | 1fr
+            gridTemplateColumns: '1fr auto 1fr auto 1fr',
             alignItems: 'flex-start',
             columnGap: 1.5,
             minWidth: 0,
@@ -100,18 +106,33 @@ export function CentralBoard({
           {/* Mid 1fr gutter between the village and the trackers. */}
           <Box aria-hidden />
 
-          <Box
-            data-testid="central-board-science-slot"
-            sx={{ pt: 1.5, display: 'flex', justifyContent: 'center' }}
+          <Stack
+            spacing={1}
+            sx={{ pt: 1.5, alignItems: 'center', minWidth: 0 }}
           >
-            {scienceTracker}
-          </Box>
-          <Box
-            data-testid="central-board-economy-slot"
-            sx={{ pt: 1.5, display: 'flex', justifyContent: 'center' }}
-          >
-            {economyTracker}
-          </Box>
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start' }}>
+              <Box
+                data-testid="central-board-science-slot"
+                sx={{ display: 'flex', justifyContent: 'center' }}
+              >
+                {scienceTracker}
+              </Box>
+              <Box
+                data-testid="central-board-economy-slot"
+                sx={{ display: 'flex', justifyContent: 'center' }}
+              >
+                {economyTracker}
+              </Box>
+            </Stack>
+            {lostIdeas !== undefined ? (
+              <Box
+                data-testid="central-board-lost-ideas-slot"
+                sx={{ display: 'flex', justifyContent: 'center' }}
+              >
+                {lostIdeas}
+              </Box>
+            ) : null}
+          </Stack>
 
           {/* Trailing 1fr gutter (empty). */}
           <Box aria-hidden />

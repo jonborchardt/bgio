@@ -38,7 +38,6 @@ const CARD_REF_KIND_BY_PREFIX: Record<string, CardRefKind> = {
   building: 'building',
   unit: 'unit',
   tech: 'tech',
-  science: 'science',
 };
 
 const cardKindOfTarget = (targetId: string): CardRefKind | null => {

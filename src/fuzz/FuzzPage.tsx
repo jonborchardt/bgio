@@ -35,7 +35,6 @@ import { Settlement } from '../game/index.ts';
 import type { SettlementState } from '../game/types.ts';
 import { rolesAtSeat } from '../game/roles.ts';
 import { chiefBot } from '../game/ai/chiefBot.ts';
-import { scienceBot } from '../game/ai/scienceBot.ts';
 import { domesticBot } from '../game/ai/domesticBot.ts';
 import { defenseBot } from '../game/ai/defenseBot.ts';
 
@@ -78,13 +77,19 @@ const readSeed = (): string => {
   return 'e2e-default';
 };
 
+// Stub science bot: the legacy heuristic was tied to the retired 3×4
+// grid. Always returning null falls through to the per-stage seat-done
+// fallback below, which is good enough for the fuzz harness while the
+// new Library-driven heuristic is unimplemented.
+const scienceBotStub: { play: () => null } = { play: () => null };
+
 /** Per-role bot dispatch table — same shape as soloConfig.ts. We
  *  inline it rather than importing buildBotMap because we need to
  *  enumerate "any seat that's currently active" not "the non-human
  *  seats." */
 const ROLE_BOTS = {
   chief: chiefBot,
-  science: scienceBot,
+  science: scienceBotStub,
   domestic: domesticBot,
   defense: defenseBot,
 } as const;

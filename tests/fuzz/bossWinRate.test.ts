@@ -68,6 +68,7 @@ const driveOneTrial = (seed: string): Trial => {
     runMoves(client, [
       { player: chiefSeat, move: 'chiefFlipTrack' },
       { player: chiefSeat, move: 'chiefEndPhase' },
+      { player: sci, move: 'scienceLibraryBurn', args: [0] },
       { player: sci, move: 'scienceSeatDone' },
       { player: dom, move: 'domesticSeatDone' },
       { player: def, move: 'defenseSeatDone' },
@@ -142,6 +143,7 @@ describe('Full-track bot run (defense redesign 2.7 win-rate gate)', () => {
       runMoves(client, [
         { player: chiefSeat, move: 'chiefFlipTrack' },
         { player: chiefSeat, move: 'chiefEndPhase' },
+        { player: sci, move: 'scienceLibraryBurn', args: [0] },
         { player: sci, move: 'scienceSeatDone' },
         { player: dom, move: 'domesticSeatDone' },
         { player: def, move: 'defenseSeatDone' },

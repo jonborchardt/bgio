@@ -27,6 +27,8 @@ export type {
   ThreatPattern,
   BossThresholds,
   Direction,
+  LibraryTier,
+  LibraryColor,
 } from './schema.ts';
 
 export { TRACK_CARDS } from './trackCards.ts';

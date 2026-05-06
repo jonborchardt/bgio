@@ -10,7 +10,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   resolveBoss,
-  countCompletedScience,
+  countLibraryCardsBought,
   sumUnitStrength,
   countMetThresholds,
 } from '../../../src/game/track/boss.ts';
@@ -26,6 +26,40 @@ import {
 } from '../../../src/game/roles/domestic/grid.ts';
 import { seedFreshGame } from '../../helpers/factories.ts';
 import { endIf } from '../../../src/game/endConditions.ts';
+import type { LibraryCard } from '../../../src/game/library/types.ts';
+
+// Synthetic library cards stamped into the science seat's discount
+// tableau so `countLibraryCardsBought` returns the desired number. The
+// boss-threshold check only reads `tableau.length`, so the per-card
+// fields don't matter for these tests.
+const seatLibraryBought = (G: SettlementState, n: number): void => {
+  if (G.library === undefined) {
+    G.library = {
+      row: [null, null, null, null, null, null],
+      deck: [],
+      lostIdeas: [],
+      discountTableaus: {},
+    };
+  }
+  const tableau: LibraryCard[] = [];
+  for (let i = 0; i < n; i += 1) {
+    tableau.push({
+      kind: 'building',
+      tier: 1,
+      scienceColor: 'green',
+      def: {
+        name: `synth-${i}`,
+        cost: 0,
+        benefit: '',
+        note: '',
+        maxHp: 1,
+        tier: 1,
+        scienceColor: 'green',
+      },
+    });
+  }
+  G.library.discountTableaus['1'] = tableau;
+};
 
 // Deterministic random — `pickOne` always picks index 0; `shuffle` is
 // identity. Mirrors the stub in resolver.spec.ts so the boss tests share
@@ -105,18 +139,18 @@ const buildG = (units: UnitInstance[] = []): SettlementState => {
   return G;
 };
 
-describe('countCompletedScience', () => {
-  it('returns the length of G.science.completed', () => {
+describe('countLibraryCardsBought', () => {
+  it('sums per-seat discount tableau lengths', () => {
     const G = seedFreshGame(2);
-    expect(countCompletedScience(G)).toBe(0);
-    G.science!.completed.push('sci-1', 'sci-2', 'sci-3');
-    expect(countCompletedScience(G)).toBe(3);
+    expect(countLibraryCardsBought(G)).toBe(0);
+    seatLibraryBought(G, 3);
+    expect(countLibraryCardsBought(G)).toBe(3);
   });
 
-  it('returns 0 when G.science is absent', () => {
+  it('returns 0 when G.library is absent', () => {
     const G = seedFreshGame(2);
-    G.science = undefined;
-    expect(countCompletedScience(G)).toBe(0);
+    G.library = undefined;
+    expect(countLibraryCardsBought(G)).toBe(0);
   });
 });
 
@@ -174,7 +208,7 @@ describe('countMetThresholds', () => {
     const G = buildG([]);
     G.bank.gold = 10;
     G.economyHigh = 10;
-    G.science!.completed = ['s1', 's2', 's3'];
+    seatLibraryBought(G, 3);
     expect(
       countMetThresholds(
         G,
@@ -210,7 +244,7 @@ describe('resolveBoss — attacks-met math', () => {
     ]);
     G.bank.gold = 99;
     G.economyHigh = 99;
-    G.science!.completed = ['s1', 's2', 's3', 's4', 's5', 's6'];
+    seatLibraryBought(G, 6);
     const initialMillHp = G.domestic!.grid[cellKey(0, 1)]!.hp;
     resolveBoss(
       G,
@@ -232,7 +266,7 @@ describe('resolveBoss — attacks-met math', () => {
     const G = buildG([]);
     G.bank.gold = 0;
     G.economyHigh = 0;
-    G.science!.completed = [];
+    seatLibraryBought(G, 0);
     // Each attack walks N at offset 0; first impact is the Mill at (0,1).
     // baseAttacks = 4, thresholds met = 0 → 4 attacks of strength 1 each
     // chip the Mill from 4 → 1 (clamped, can't fall below 1).
@@ -263,7 +297,7 @@ describe('resolveBoss — attacks-met math', () => {
     ]);
     G.bank.gold = 99;
     G.economyHigh = 99;
-    G.science!.completed = ['s1', 's2', 's3', 's4', 's5', 's6'];
+    seatLibraryBought(G, 6);
     const initialHp = G.domestic!.grid[cellKey(0, 1)]!.hp;
     resolveBoss(
       G,
@@ -286,7 +320,7 @@ describe('resolveBoss — pattern cycling', () => {
     const G = buildG([]);
     G.bank.gold = 0;
     G.economyHigh = 0;
-    G.science!.completed = [];
+    seatLibraryBought(G, 0);
     resolveBoss(
       G,
       detRandom(),

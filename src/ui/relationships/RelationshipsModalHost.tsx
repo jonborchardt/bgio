@@ -4,10 +4,8 @@
 //   - any card's `?` button → `cardInfo.open(cardId)`
 //   - the dev sidebar       → `cardInfo.openWithoutFocus()`
 //
-// `matchState` is forwarded to the modal so per-match relationships
-// (currently: `science-rewards-tech` from `G.science.underCards`)
-// reflect this game's actual cell→tech assignment instead of the
-// depth-derivation fallback.
+// `matchState` is forwarded to the modal as a hook for future
+// per-match relationships. Today no per-match edges are emitted.
 
 import { useCardInfo } from '../cards/cardInfoContextValue.ts';
 import { RelationshipsModal } from './RelationshipsModal.tsx';

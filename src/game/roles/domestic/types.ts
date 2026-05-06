@@ -15,7 +15,7 @@
 //
 // 2. The hand splits into two named slots — `hand: BuildingDef[]` for the
 //    buy-and-place pile, and `techHand?: TechnologyDef[]` for green-color
-//    tech cards distributed by `scienceComplete`. They started life as a
+//    tech cards distributed by `scienceLibraryBuy`. They started life as a
 //    single `hand` slot before tech-card distribution landed; keeping them
 //    separate now keeps each move's domain narrow.
 
@@ -61,9 +61,10 @@ export interface DomesticState {
   // Pile of building cards the Domestic seat may buy & place. Pre-shuffled
   // at setup; 06.2 will own the buy/upgrade move.
   hand: BuildingDef[];
-  // Optional tech-card hand populated by 05.3's `scienceComplete` whenever
-  // a green-color science card resolves. Distinct from `hand` (which is
-  // BuildingDef[]); see the file-level note for the rename rationale.
+  // Optional tech-card hand populated by `scienceLibraryBuy` whenever
+  // a green-color tech-flavored Library card is bought. Distinct from
+  // `hand` (which is BuildingDef[]); see the file-level note for the
+  // rename rationale.
   techHand?: TechnologyDef[];
   // Placed-buildings map, keyed by `cellKey(x, y) === \`${x},${y}\``.
   grid: Record<string, DomesticBuilding>;

@@ -93,6 +93,7 @@ describe('round shape (defense redesign 2.4)', () => {
     runMoves(client, [
       { player: chiefSeat, move: 'chiefFlipTrack' },
       { player: chiefSeat, move: 'chiefEndPhase' },
+      { player: sci, move: 'scienceLibraryBurn', args: [0] },
       { player: sci, move: 'scienceSeatDone' },
       { player: dom, move: 'domesticSeatDone' },
       { player: def, move: 'defenseSeatDone' },
@@ -130,6 +131,7 @@ describe('round shape (defense redesign 2.4)', () => {
         runMoves(client, [
           { player: chiefSeat, move: 'chiefFlipTrack' },
           { player: chiefSeat, move: 'chiefEndPhase' },
+          { player: sci, move: 'scienceLibraryBurn', args: [0] },
           { player: sci, move: 'scienceSeatDone' },
           { player: dom, move: 'domesticSeatDone' },
           { player: def, move: 'defenseSeatDone' },
@@ -168,6 +170,7 @@ describe('round shape (defense redesign 2.4)', () => {
 
       runMoves(client, [
         { player: chiefSeat, move: 'chiefEndPhase' },
+        { player: sci, move: 'scienceLibraryBurn', args: [0] },
         { player: sci, move: 'scienceSeatDone' },
         { player: dom, move: 'domesticSeatDone' },
         { player: def, move: 'defenseSeatDone' },

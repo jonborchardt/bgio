@@ -8,23 +8,17 @@
 // kind: ..." throw.
 //
 // New effect kinds should be added here first, then implemented in
-// dispatcher.ts. Effects fall into three buckets:
+// dispatcher.ts. Effects fall into two buckets:
 //
 //   - Immediate / deterministic: applied directly during dispatch
 //     (`gainResource`, `addEventCard`).
-//   - Modifier: pushed onto `G._modifiers` and consumed later by the move
-//     it conditions (`doubleScience`, `forbidBuy`, `forceCheapestScience`).
 //   - Awaiting-input: stashed on `G._awaitingInput[playerID]` and
 //     resolved by a follow-up `eventResolve(payload)` move
-//     (`swapTwoScienceCards`, generic `awaitInput`).
+//     (generic `awaitInput`).
 
 import type { ResourceBag } from '../resources/types.ts';
 
 export type EventEffect =
   | { kind: 'gainResource'; bag: Partial<ResourceBag>; target: 'bank' | 'stash' }
-  | { kind: 'doubleScience' } // sci pays 2x advancement this turn
-  | { kind: 'forbidBuy' } // sci can't complete a card this turn
-  | { kind: 'forceCheapestScience' }
-  | { kind: 'swapTwoScienceCards' } // requires user pick — uses awaitInput flow
-  | { kind: 'addEventCard'; cardID: string } // appends to a color deck
+  | { kind: 'addEventCard'; cardID: string }
   | { kind: 'awaitInput'; prompt: string; payloadKind: string };

@@ -66,38 +66,6 @@ describe('cards/relationships', () => {
     expect(has).toBe(true);
   });
 
-  it('chains science cells by level (one science-cell-prereq per gap)', () => {
-    const has = graph.edges.some((e) => e.kind === 'science-cell-prereq');
-    expect(has).toBe(true);
-  });
-
-  it('each tech gets exactly one incoming science-rewards-tech edge', () => {
-    const incomingByTech = new Map<string, number>();
-    for (const e of graph.edges) {
-      if (e.kind !== 'science-rewards-tech') continue;
-      incomingByTech.set(e.target, (incomingByTech.get(e.target) ?? 0) + 1);
-    }
-    // We don't require *every* tech to have one (a tech in a branch
-    // whose color was filtered out wouldn't), but no tech should have
-    // more than one — that's the duplicate-edge case the user
-    // complained about.
-    for (const [, count] of incomingByTech) {
-      expect(count).toBe(1);
-    }
-  });
-
-  it('science-rewards-tech edges are spread across multiple tiers (not just top)', () => {
-    const sourceIds = new Set<string>();
-    for (const e of graph.edges) {
-      if (e.kind === 'science-rewards-tech') sourceIds.add(e.source);
-    }
-    // We expect edges originating from at least two distinct cells per
-    // color (depth 0 → beginner, depth ≥1 → intermediate/advanced).
-    // The current content is varied enough that we'll hit at least 2
-    // source cells overall.
-    expect(sourceIds.size).toBeGreaterThanOrEqual(2);
-  });
-
   it('transitive reduction: Jeep Archer drops its Hotwire car edge and keeps Driving (which depends on Hotwire)', () => {
     // The JSON encodes: Hotwire car has order "after Lock pick + Loot
     // car"; Driving has order "after Hotwire car"; Jeep Archer's
@@ -139,7 +107,6 @@ describe('cards/relationships', () => {
       switch (e.kind) {
         case 'tech-unlocks-building':
         case 'tech-unlocks-unit':
-        case 'science-rewards-tech':
           prereq = e.source;
           dependent = e.target;
           break;
@@ -147,7 +114,6 @@ describe('cards/relationships', () => {
         case 'unit-requires-building':
         case 'building-requires-tech':
         case 'tech-prereq-tech':
-        case 'science-cell-prereq':
           prereq = e.target;
           dependent = e.source;
           break;

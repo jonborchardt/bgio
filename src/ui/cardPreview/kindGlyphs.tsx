@@ -1,8 +1,8 @@
 // Per-kind SVG glyphs. Each card kind gets its own visually distinct
-// silhouette: building / village / unit / army / science cell / tech
-// scroll. Variations use these as kind badges (vs role color, which is
-// orthogonal). The glyphs are stroke-only so a variation can recolour
-// the entire mark via `currentColor`.
+// silhouette: building / village / unit / army / tech scroll. Variations
+// use these as kind badges (vs role color, which is orthogonal). The
+// glyphs are stroke-only so a variation can recolour the entire mark
+// via `currentColor`.
 //
 // Shared so all "good" variations stay consistent on iconography even
 // while their typography / surface treatments diverge.
@@ -42,18 +42,6 @@ const PATHS: Record<
     viewBox: '0 0 32 32',
     d: 'M3 16 L9 10 L15 16 L15 26 L3 26 Z M14 18 L19 13 L24 18 L24 26 L14 26 Z M22 20 L26 16 L30 20 L30 26 L22 26 Z',
     extra: 'M7 22 L7 26 M18 22 L18 26 M26 23 L26 26',
-  },
-  // Beaker (science L0+) with tick marks.
-  scienceCard: {
-    viewBox: '0 0 32 32',
-    d: 'M11 4 L11 12 L6 24 Q6 28 12 28 L20 28 Q26 28 26 24 L21 12 L21 4 Z',
-    extra: 'M9 4 L23 4 M11 17 L21 17',
-  },
-  // Pyramid of nested flasks — feels more "advanced lab".
-  scienceAdvanced: {
-    viewBox: '0 0 32 32',
-    d: 'M13 4 L13 10 L8 22 Q8 26 13 26 L19 26 Q24 26 24 22 L19 10 L19 4 Z',
-    extra: 'M11 4 L21 4 M13 14 L19 14 M16 18 L16 22',
   },
   // Helmeted soldier head + spear.
   defenseUnit: {

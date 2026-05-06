@@ -112,7 +112,7 @@ describe('endIf', () => {
     const G = seedFreshGame(2);
     G.round = 30;
     G.bank.gold = 100;
-    G.science!.completed = ['s1', 's2', 's3', 's4', 's5', 's6'];
+    G.economyHigh = 100;
     const boss: BossCard = {
       kind: 'boss',
       id: 'b-test',
@@ -120,7 +120,7 @@ describe('endIf', () => {
       phase: 10,
       description: '',
       baseAttacks: 1,
-      thresholds: { science: 1, economy: 1 },
+      thresholds: { science: 0, economy: 1 },
       attackPattern: [{ direction: 'N', offset: 0, strength: 1 }],
     };
     const r: RandomAPI = {

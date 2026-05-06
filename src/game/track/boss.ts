@@ -1,7 +1,7 @@
 // Defense redesign 2.7 — boss resolution.
 //
 // The boss is the unique, terminal card on the Global Event Track (D21).
-// When it flips, three printed thresholds are checked against the live
+// When it flips, two printed thresholds are checked against the live
 // game state, each met threshold removes one attack from the boss's
 // `baseAttacks` budget, and each remaining attack is dispatched as a
 // synthetic `ThreatCard` through the existing `resolveThreat` pipeline
@@ -17,12 +17,13 @@
 // `endConditions.onEnd` reads `G` after the dust settles.
 //
 // Threshold semantics:
-//   - `science`: count of completed science cards on `G.science.completed`
-//     (the canonical roster of "we finished researching this").
-//   - `economy`: bank gold (`G.bank.gold`).
-//   - `military`: sum of `UnitDef.attack` for every unit currently on
-//     the village grid (`G.defense.inPlay`). The unit's printed `attack`
-//     stat is the canonical "strength" lever per spec §5.
+//   - `science`: count of Library cards bought across every seat's
+//     discount tableau, via `countLibraryCardsBought` reading
+//     `G.library.discountTableaus` (the canonical "how many things have
+//     we researched" roster after the Library redesign).
+//   - `economy`: running maximum of bank gold (`G.economyHigh`), so a
+//     chief who briefly stockpiles can't lose the threshold by spending
+//     afterwards.
 //
 // Attacks model:
 //   `attacks = max(0, baseAttacks - thresholdsMet)`. With the V1 boss
@@ -39,14 +40,24 @@ import type { BossCard, ThreatCard } from '../../data/schema.ts';
 import { UNITS } from '../../data/index.ts';
 import type { RandomAPI } from '../random.ts';
 import { resolveThreat } from './resolver.ts';
+import {
+  aggregateLibraryDebuffs,
+  totalDebuffReduction,
+} from '../library/debuff.ts';
 
-/** Count completed science cards. Uses `G.science.completed` (the canonical
- *  list maintained by `scienceComplete`); returns 0 when science state is
- *  absent so older fixtures don't crash the threshold check. */
-export const countCompletedScience = (G: SettlementState): number => {
-  const science = G.science;
-  if (science === undefined) return 0;
-  return science.completed.length;
+/** Count Library cards bought. Sums the per-seat discount tableaus —
+ *  every Library buy pushes the bought card onto the buyer's tableau, so
+ *  the total length across seats is the canonical "how many things have
+ *  we researched" reading. Returns 0 when the library slice is absent so
+ *  older fixtures don't crash the threshold check. */
+export const countLibraryCardsBought = (G: SettlementState): number => {
+  const lib = G.library;
+  if (lib === undefined) return 0;
+  let n = 0;
+  for (const seat of Object.keys(lib.discountTableaus)) {
+    n += lib.discountTableaus[seat]?.length ?? 0;
+  }
+  return n;
 };
 
 /** Sum of unit-def `attack` (printed "strength" per spec §5) across every
@@ -74,7 +85,7 @@ export const countMetThresholds = (
   card: BossCard,
 ): number => {
   let met = 0;
-  if (countCompletedScience(G) >= card.thresholds.science) met += 1;
+  if (countLibraryCardsBought(G) >= card.thresholds.science) met += 1;
   if ((G.economyHigh ?? G.bank.gold ?? 0) >= card.thresholds.economy) met += 1;
   return met;
 };
@@ -94,6 +105,12 @@ export const resolveBoss = (
   const met = countMetThresholds(G, card);
   const attacks = Math.max(0, card.baseAttacks - met);
 
+  // SL 4 — sum the library debuff levels across all four colors. The V1
+  // default (master plan #1) applies the total as a flat reduction on
+  // every attack's strength, floored at 0. A 5-gold + 5-blue tableau
+  // therefore knocks 2 off each attack.
+  const debuffReduction = totalDebuffReduction(aggregateLibraryDebuffs(G));
+
   // Defensive: an empty attackPattern means we have no shape to feed
   // resolveThreat. The 2.1 schema loader already rejects empty patterns,
   // so this branch only protects synthetic test fixtures.
@@ -101,6 +118,7 @@ export const resolveBoss = (
     for (let i = 0; i < attacks; i += 1) {
       const pattern = card.attackPattern[i % card.attackPattern.length];
       if (pattern === undefined) continue;
+      const reducedStrength = Math.max(0, pattern.strength - debuffReduction);
       const synthetic: ThreatCard = {
         kind: 'threat',
         id: `${card.id}-attack-${i + 1}`,
@@ -109,7 +127,7 @@ export const resolveBoss = (
         description: card.description,
         direction: pattern.direction,
         offset: pattern.offset,
-        strength: pattern.strength,
+        strength: reducedStrength,
       };
       resolveThreat(G, random, synthetic);
     }

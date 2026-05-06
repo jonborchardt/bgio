@@ -25,7 +25,6 @@ import type {
 } from '../../src/game/types.ts';
 import { setup } from '../../src/game/setup.ts';
 import type { BgioRandomLike } from '../../src/game/random.ts';
-import { bagOf } from '../../src/game/resources/bag.ts';
 import { cellKey } from '../../src/game/roles/domestic/grid.ts';
 import { BUILDINGS, UNITS } from '../../src/data/index.ts';
 import type { ResourceBag } from '../../src/game/resources/types.ts';
@@ -159,34 +158,6 @@ export const seedWithUnit = (
       placementOrder: start + i,
     });
   }
-  return base;
-};
-
-/**
- * Mark `G.science.paid[cardID]` as having received `paid` resources.
- * Use this to skip a long chain of `scienceContribute` moves when the
- * test wants the under-test path to start at "card 80% paid".
- */
-export const seedMidScienceProgress = (
-  cardID: string,
-  paid: Partial<ResourceBag>,
-  base: SettlementState = seedFreshGame(2),
-): SettlementState => {
-  if (!base.science) {
-    throw new Error('seedMidScienceProgress: base state has no science slice');
-  }
-  // Lazy-init the per-card paid bag — the real `setupScience` already
-  // seeds entries for every card in the grid, but a hand-built base may
-  // not. Use `bagOf({})` so the bag is mutable (not the frozen
-  // `EMPTY_BAG`).
-  const current = base.science.paid[cardID] ?? bagOf({});
-  for (const [r, v] of Object.entries(paid)) {
-    if (typeof v === 'number') {
-      current[r as keyof ResourceBag] =
-        (current[r as keyof ResourceBag] ?? 0) + v;
-    }
-  }
-  base.science.paid[cardID] = current;
   return base;
 };
 

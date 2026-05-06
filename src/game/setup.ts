@@ -22,6 +22,7 @@ import { TURN_CAP_DEFAULT } from './endConditions.ts';
 import { TRACK_CARDS, UNITS } from '../data/index.ts';
 import type { UnitDef } from '../data/schema.ts';
 import { buildTrack } from './track.ts';
+import { buildLibrary } from './library/setup.ts';
 
 // Defense redesign 2.5 — starter unit hand for the defense seat. The
 // militia starters are the units in `units.json` with no `requires`
@@ -101,17 +102,13 @@ export const setup = (
   };
   const r = fromBgio(random ?? fallbackRandom);
 
-  // Build the science slice first so we can derive the set of
-  // TechnologyDef.name values already taken by Science under-cards. 06.1
-  // accepts that set on `setupDomestic` so the Domestic hand can avoid
-  // duplicating any tech that's already gated under a science card. Today
-  // the Domestic hand is `BuildingDef[]` so this set is reserved for
-  // future widening — see the doc on `setupDomestic`.
-  const science = setupScience(r);
+  const science = setupScience();
+  // Reserved for a future widening of `setupDomestic` — today the
+  // Domestic hand is `BuildingDef[]`, but the parameter exists so a
+  // tech-bearing hand can de-dupe against techs already slotted
+  // elsewhere. With the Library replacing the science grid, no techs are
+  // pre-allocated at setup time.
   const techsAlreadyUsedBy = new Set<string>();
-  for (const stack of Object.values(science.underCards)) {
-    for (const tech of stack) techsAlreadyUsedBy.add(tech.name);
-  }
 
   const startingBank = initialBank(setupData?.startingBank);
   // Seed the audit trail with the starting balance so the chief tooltip
@@ -213,6 +210,12 @@ export const setup = (
     // Cross-cutting events (08.1): four decks (gold/blue/green/red) with
     // 4 cards dealt to the role-holding seat's hand per color.
     events: setupEvents(roleAssignments, r),
+    // Science Library (SL redesign): tier-stacked deck built from every
+    // tagged building / unit / tech / event in `src/data/`. Pre-tagging
+    // (V1 default) the deck is empty; sub-plan 6 backfills the JSON
+    // tags and the deck becomes real content. Refill / buy / burn
+    // moves land in SL 3.x.
+    library: buildLibrary(r, Object.keys(roleAssignments)),
     // Defense redesign 2.8 — wander deck retired. Its end-of-round role
     // (boon / modifier flips) is now played by the global event track;
     // see `./track.ts` and the spec §5 (D19).

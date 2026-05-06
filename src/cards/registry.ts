@@ -19,14 +19,6 @@ import type {
   UnitDef,
   TechnologyDef,
 } from '../data/schema.ts';
-import {
-  SCIENCE_CANONICAL_CARDS,
-  canonicalScienceCardId,
-} from '../data/scienceCards.ts';
-import type {
-  ScienceCardDef,
-  CanonicalScienceCardDef,
-} from '../data/scienceCards.ts';
 import { EVENT_CARDS } from '../data/events.ts';
 import type { EventCardDef } from '../data/events.ts';
 
@@ -34,14 +26,12 @@ export type CardKind =
   | 'building'
   | 'unit'
   | 'tech'
-  | 'science'
   | 'event';
 
 export const CARD_KINDS: ReadonlyArray<CardKind> = [
   'building',
   'unit',
   'tech',
-  'science',
   'event',
 ];
 
@@ -49,7 +39,6 @@ export const CARD_KIND_LABELS: Record<CardKind, string> = {
   building: 'Buildings',
   unit: 'Units',
   tech: 'Technologies',
-  science: 'Science',
   event: 'Events',
 };
 
@@ -57,23 +46,13 @@ export type AnyCardEntry =
   | { id: string; kind: 'building'; def: BuildingDef }
   | { id: string; kind: 'unit'; def: UnitDef }
   | { id: string; kind: 'tech'; def: TechnologyDef }
-  | { id: string; kind: 'science'; def: CanonicalScienceCardDef }
   | { id: string; kind: 'event'; def: EventCardDef };
 
 // Stable id format: `${kind}:${name-or-id}`. Buildings, units and techs
-// use `name` (no `id` field in their JSON); the rest use the def's `id`.
-//
-// Science is special: every (color, tier, level) cost variant collapses
-// to a single canonical id. Pass either a variant or a canonical card —
-// `idForScience` derives the canonical id from the (color, tier, level)
-// tuple either way, so clicking `?` on an in-game variant opens the
-// canonical card and the relationships graph treats it as one node.
+// use `name` (no `id` field in their JSON); events use the def's `id`.
 export const idForBuilding = (def: BuildingDef): string => `building:${def.name}`;
 export const idForUnit = (def: UnitDef): string => `unit:${def.name}`;
 export const idForTech = (def: TechnologyDef): string => `tech:${def.name}`;
-export const idForScience = (
-  def: { color: ScienceCardDef['color']; tier: ScienceCardDef['tier']; level: ScienceCardDef['level'] },
-): string => `science:${canonicalScienceCardId(def)}`;
 export const idForEvent = (def: EventCardDef): string => `event:${def.id}`;
 
 const buildingEntries: AnyCardEntry[] = BUILDINGS.map((def) => ({
@@ -91,11 +70,6 @@ const techEntries: AnyCardEntry[] = TECHNOLOGIES.map((def) => ({
   kind: 'tech' as const,
   def,
 }));
-const scienceEntries: AnyCardEntry[] = SCIENCE_CANONICAL_CARDS.map((def) => ({
-  id: idForScience(def),
-  kind: 'science' as const,
-  def,
-}));
 const eventEntries: AnyCardEntry[] = EVENT_CARDS.map((def) => ({
   id: idForEvent(def),
   kind: 'event' as const,
@@ -106,7 +80,6 @@ export const ALL_CARDS: ReadonlyArray<AnyCardEntry> = Object.freeze([
   ...buildingEntries,
   ...unitEntries,
   ...techEntries,
-  ...scienceEntries,
   ...eventEntries,
 ]);
 
@@ -123,10 +96,6 @@ export const cardsOfKind = (kind: CardKind): ReadonlyArray<AnyCardEntry> =>
 
 // Helper: a human-readable name for any card. Used by labels, tooltips,
 // search. Centralized so callers don't reach into the def shape.
-//
-// Science cards are the canonical (color, tier, level) entity — the
-// raw cost variants are surfaced inside the card body, not in the name,
-// so the name reads as one card the way the gameplay treats it.
 export const cardName = (entry: AnyCardEntry): string => {
   switch (entry.kind) {
     case 'building':
@@ -135,8 +104,6 @@ export const cardName = (entry: AnyCardEntry): string => {
       return entry.def.name;
     case 'tech':
       return entry.def.name;
-    case 'science':
-      return `${entry.def.color} L${entry.def.level} ${entry.def.tier}`;
     case 'event':
       return entry.def.name;
   }

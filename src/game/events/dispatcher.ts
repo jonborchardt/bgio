@@ -6,11 +6,8 @@
 // content surfaces immediately as a thrown "unknown effect kind: ..."
 // error rather than a silent no-op.
 //
-// Effects fall into three buckets, mirrored in the switch below:
+// Effects fall into two buckets, mirrored in the switch below:
 //   - Immediate / deterministic: mutate G in place.
-//   - Modifier: push onto `G._modifiers`. The move that's conditioned by
-//     the modifier is responsible for `hasModifierActive` /
-//     `consumeModifier` at its own call site.
 //   - Awaiting-input: stash on `G._awaitingInput[playerID]` and enter the
 //     `playingEvent` stage. The follow-up `eventResolve(payload)` move
 //     (08.3 / `resolveMove.ts`) feeds the payload back to apply the
@@ -132,16 +129,6 @@ export const dispatch = (
         break;
       }
 
-      case 'doubleScience':
-      case 'forbidBuy':
-      case 'forceCheapestScience': {
-        // Modifier: queue for the next conditioned move to consume.
-        if (G._modifiers === undefined) G._modifiers = [];
-        G._modifiers.push(effect);
-        break;
-      }
-
-      case 'swapTwoScienceCards':
       case 'awaitInput': {
         const seat = context?.playerID;
         if (seat === undefined) {
@@ -191,9 +178,9 @@ export const dispatch = (
   // Hand over the optional `payload` for the awaiting-input flow's
   // *follow-up* dispatch — `eventResolve` synthesizes a card whose
   // single effect carries the kind to apply, and threads `payload`
-  // through here. Right now the only payload-aware kind is the swap;
-  // the application itself lives in `resolveMove.ts` so this dispatcher
-  // stays agnostic to higher-level move shape.
+  // through here. Concrete payload application lives in
+  // `resolveMove.ts` so this dispatcher stays agnostic to higher-level
+  // move shape.
   void payload;
 };
 

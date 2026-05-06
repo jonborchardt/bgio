@@ -46,21 +46,6 @@ const renderSignedAmounts = (
   return out;
 };
 
-const renderPositiveAmounts = (
-  amounts: Partial<ResourceBag> | undefined,
-  sign: '+' | '-',
-): ActivityPart[] => {
-  const out: ActivityPart[] = [];
-  if (!amounts || typeof amounts !== 'object') return out;
-  for (const r of RESOURCES) {
-    const v = (amounts as Record<string, unknown>)[r];
-    if (typeof v !== 'number' || v <= 0) continue;
-    if (out.length > 0) out.push(' ');
-    out.push(res(r, v, sign));
-  }
-  return out;
-};
-
 const seatLabel = (seat: unknown): string =>
   typeof seat === 'string' ? `P${Number(seat) + 1}` : '?';
 
@@ -103,27 +88,20 @@ export const FORMATTERS: Record<string, Formatter> = {
   },
 
   // ---- Science ------------------------------------------------------------
-  scienceContribute: (args) => {
-    const cardID = String(args[0] ?? '');
-    const amounts = args[1] as Partial<ResourceBag> | undefined;
-    const tokens = renderPositiveAmounts(amounts, '+');
-    const parts: ActivityPart[] = ['Contributed'];
-    if (tokens.length > 0) {
-      parts.push(' ', ...tokens);
-    }
-    parts.push(' to ', card(`science:${cardID}`, cardID));
-    return { role: 'science', parts };
+  scienceLibraryBuy: (args) => {
+    const slot = args[0];
+    return {
+      role: 'science',
+      parts: [`Bought slot ${typeof slot === 'number' ? slot + 1 : '?'}`],
+    };
   },
 
-  scienceComplete: (args, G) => {
-    const cardID = String(args[0] ?? '');
-    const found = G.science?.grid.flat().find((c) => c.id === cardID);
-    const parts: ActivityPart[] = [
-      'Completed ',
-      card(`science:${cardID}`, cardID),
-    ];
-    if (found !== undefined) parts.push(` (${found.color})`);
-    return { role: 'science', parts };
+  scienceLibraryBurn: (args) => {
+    const slot = args[0];
+    return {
+      role: 'science',
+      parts: [`Burned slot ${typeof slot === 'number' ? slot + 1 : '?'}`],
+    };
   },
 
   // ---- Domestic -----------------------------------------------------------

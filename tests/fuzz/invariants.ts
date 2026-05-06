@@ -14,13 +14,9 @@ import type { Resource, ResourceBag } from '../../src/game/resources/types.ts';
  * Asserts that no resource count anywhere in `G` is negative. Walks:
  *   - `G.bank`
  *   - `G.mats[seat].in` / `out` / `stash` for every non-chief seat
- *   - `G.science.paid[cardId]` for every science card
  *
  * Throws an `Error` with a human-readable path on the first violation so a
- * fuzz failure points directly at the offending bag. Other potential
- * negative-count surfaces (chief `workers`) aren't
- * resource bags — they have their own per-move guards and aren't bundled
- * here.
+ * fuzz failure points directly at the offending bag.
  */
 export const assertNoNegativeResources = (G: SettlementState): void => {
   const checkBag = (bag: ResourceBag, path: string): void => {
@@ -41,21 +37,14 @@ export const assertNoNegativeResources = (G: SettlementState): void => {
     checkBag(mat.out, `mats['${seat}'].out`);
     checkBag(mat.stash, `mats['${seat}'].stash`);
   }
-
-  if (G.science !== undefined) {
-    for (const [cardId, paid] of Object.entries(G.science.paid)) {
-      checkBag(paid, `science.paid['${cardId}']`);
-    }
-  }
 };
 
 /**
- * Sums every resource across `bank`, all per-seat mat bags, and the
- * science `paid` ledger into a single scalar. Used as the basis of the
- * loose conservation check. The total isn't expected to be strictly
- * conserved — production, refunds, event effects, and bank top-ups all
- * legitimately mint or burn resources — but a *huge* per-move spike is
- * a smell.
+ * Sums every resource across `bank` and all per-seat mat bags into a
+ * single scalar. Used as the basis of the loose conservation check. The
+ * total isn't expected to be strictly conserved — production, refunds,
+ * event effects, and bank top-ups all legitimately mint or burn
+ * resources — but a *huge* per-move spike is a smell.
  */
 const totalResources = (G: SettlementState): number => {
   let total = 0;
@@ -69,9 +58,6 @@ const totalResources = (G: SettlementState): number => {
     sumBag(mat.in);
     sumBag(mat.out);
     sumBag(mat.stash);
-  }
-  if (G.science !== undefined) {
-    for (const paid of Object.values(G.science.paid)) sumBag(paid);
   }
   return total;
 };

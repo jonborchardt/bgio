@@ -6,7 +6,6 @@
 import type { Renderer, RendererProps } from '../types.ts';
 import {
   buildingDisplay,
-  scienceDisplay,
   techDisplay,
   unitDisplay,
 } from '../../cards/cardDisplay.ts';
@@ -24,9 +23,6 @@ export const LiveShellRenderer: Renderer = ({ card, size }: RendererProps) => {
           size={size}
         />
       );
-    case 'scienceCard':
-    case 'scienceAdvanced':
-      return <V9CardShell display={scienceDisplay(card.def)} size={size} />;
     case 'defenseUnit':
       return <V9CardShell display={unitDisplay(card.def)} size={size} />;
     case 'army':

@@ -116,11 +116,9 @@ describe('chiefBot (11.3)', () => {
   it('ends phase when no other seat shows demand (empty roles state)', () => {
     const G = setupG(4);
     G.bank.gold = 7;
-    // Strip all demand: empty domestic hand and mark all science cards
-    // completed.
     if (G.domestic !== undefined) G.domestic.hand = [];
-    if (G.science !== undefined) {
-      G.science.completed = G.science.grid.flat().map((c) => c.id);
+    if (G.library !== undefined) {
+      G.library.row = [null, null, null, null, null, null];
     }
     if (G.track !== undefined) G.track.flippedThisRound = true;
     const action = chiefBot.play({

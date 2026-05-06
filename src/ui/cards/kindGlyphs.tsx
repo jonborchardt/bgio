@@ -13,8 +13,6 @@ export type CardKind =
   | 'building'
   | 'buildingComplex'
   | 'buildingPlaced'
-  | 'science'
-  | 'scienceAdvanced'
   | 'unit'
   | 'army'
   | 'tech'
@@ -44,16 +42,6 @@ const PATHS: Record<CardKind, { viewBox: string; d: string; extra?: string }> = 
     viewBox: '0 0 32 32',
     d: 'M3 16 L9 10 L15 16 L15 26 L3 26 Z M14 18 L19 13 L24 18 L24 26 L14 26 Z M22 20 L26 16 L30 20 L30 26 L22 26 Z',
     extra: 'M7 22 L7 26 M18 22 L18 26 M26 23 L26 26',
-  },
-  science: {
-    viewBox: '0 0 32 32',
-    d: 'M11 4 L11 12 L6 24 Q6 28 12 28 L20 28 Q26 28 26 24 L21 12 L21 4 Z',
-    extra: 'M9 4 L23 4 M11 17 L21 17',
-  },
-  scienceAdvanced: {
-    viewBox: '0 0 32 32',
-    d: 'M13 4 L13 10 L8 22 Q8 26 13 26 L19 26 Q24 26 24 22 L19 10 L19 4 Z',
-    extra: 'M11 4 L21 4 M13 14 L19 14 M16 18 L16 22',
   },
   unit: {
     viewBox: '0 0 32 32',

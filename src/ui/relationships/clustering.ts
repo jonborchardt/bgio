@@ -32,8 +32,6 @@ const branchOrTierLabel = (node: CardNode): string => {
   switch (node.kind) {
     case 'tech':
       return (node.entry.def as { branch?: string }).branch ?? 'Tech';
-    case 'science':
-      return `Science · ${(node.entry.def as { tier: string }).tier}`;
     default:
       return CARD_KIND_LABELS[node.kind];
   }

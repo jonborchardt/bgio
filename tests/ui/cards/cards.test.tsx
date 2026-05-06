@@ -29,13 +29,6 @@ describe('Card components smoke (09.2)', () => {
     expect(typeof mod.default).toBe('function');
   });
 
-  it('ScienceCard (presentational, 09.2) imports without runtime errors', async () => {
-    const mod = await import('../../../src/ui/cards/ScienceCard.tsx');
-    expect(mod).toBeTruthy();
-    expect(typeof mod.ScienceCard).toBe('function');
-    expect(typeof mod.default).toBe('function');
-  });
-
   it('TechCard imports without runtime errors', async () => {
     const mod = await import('../../../src/ui/cards/TechCard.tsx');
     expect(mod).toBeTruthy();

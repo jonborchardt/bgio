@@ -122,38 +122,48 @@ describe('applyTechOnAcquire (08.6)', () => {
 
 describe('techPassives (08.6)', () => {
   it('returns concat of every passive effect from the holder seat\'s tech hands', () => {
+    const sciencePassiveEffect = {
+      kind: 'gainResource',
+      bag: { science: 1 },
+      target: 'bank',
+    } as const;
+    const chiefPassiveEffect = {
+      kind: 'gainResource',
+      bag: { gold: 1 },
+      target: 'bank',
+    } as const;
     const sciencePassive: TechnologyDef = baseTech({
       name: 'sci-passive-1',
-      passiveEffects: [{ kind: 'doubleScience' }],
+      passiveEffects: [sciencePassiveEffect],
     });
     const chiefPassive: TechnologyDef = baseTech({
       name: 'chief-passive-1',
-      passiveEffects: [{ kind: 'forbidBuy' }],
+      passiveEffects: [chiefPassiveEffect],
     });
 
     // 4-player: chief is seat 0, science is seat 1.
     const G = build4pState({
       chief: { workers: 0, hand: [chiefPassive] },
       science: {
-        grid: [],
-        underCards: {},
-        paid: {},
-        completed: [],
-        perRoundCompletions: 0,
         hand: [sciencePassive],
       },
     });
 
-    expect(techPassives(G, '0')).toEqual([{ kind: 'forbidBuy' }]);
-    expect(techPassives(G, '1')).toEqual([{ kind: 'doubleScience' }]);
+    expect(techPassives(G, '0')).toEqual([chiefPassiveEffect]);
+    expect(techPassives(G, '1')).toEqual([sciencePassiveEffect]);
     // Seat with neither role contributes nothing.
     expect(techPassives(G, '2')).toEqual([]);
   });
 
   it('skips techs with no passiveEffects', () => {
+    const passive = {
+      kind: 'gainResource',
+      bag: { gold: 1 },
+      target: 'bank',
+    } as const;
     const techWith: TechnologyDef = baseTech({
       name: 'has-passive',
-      passiveEffects: [{ kind: 'forbidBuy' }],
+      passiveEffects: [passive],
     });
     const techWithout: TechnologyDef = baseTech({ name: 'no-passive' });
 
@@ -161,7 +171,7 @@ describe('techPassives (08.6)', () => {
       chief: { workers: 0, hand: [techWith, techWithout] },
     });
 
-    expect(techPassives(G, '0')).toEqual([{ kind: 'forbidBuy' }]);
+    expect(techPassives(G, '0')).toEqual([passive]);
   });
 
   it('returns [] for a seat with no roles', () => {
@@ -232,8 +242,12 @@ describe('technologies.json parses without throwing (08.6)', () => {
           onAcquireEffects: [
             { kind: 'gainResource', bag: { gold: 1 }, target: 'bank' },
           ],
-          onPlayEffects: [{ kind: 'doubleScience' }],
-          passiveEffects: [{ kind: 'forbidBuy' }],
+          onPlayEffects: [
+            { kind: 'gainResource', bag: { science: 1 }, target: 'bank' },
+          ],
+          passiveEffects: [
+            { kind: 'gainResource', bag: { wood: 1 }, target: 'bank' },
+          ],
         },
       ]),
     ).not.toThrow();

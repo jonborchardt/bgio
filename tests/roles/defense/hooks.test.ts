@@ -25,7 +25,6 @@ import { EMPTY_BAG } from '../../../src/game/resources/types.ts';
 import { initialMats } from '../../../src/game/resources/playerMat.ts';
 import { assignRoles } from '../../../src/game/roles.ts';
 import { setupScience } from '../../../src/game/roles/science/setup.ts';
-import { fromBgio } from '../../../src/game/random.ts';
 import type { ModifierCard, TrackCardDef } from '../../../src/data/index.ts';
 import type { UnitInstance } from '../../../src/game/roles/defense/types.ts';
 // Pull the hook-registration side effects in. The order here matches
@@ -154,7 +153,7 @@ describe('defense:clear-modifiers round-end hook (2.8)', () => {
       phase: 1,
       description: 'A test bend.',
       durationRounds: 1,
-      effect: { kind: 'doubleScience' },
+      effect: { kind: 'awaitInput', prompt: 'noop', payloadKind: 'noop' },
     };
     const G = buildG({
       track: {
@@ -187,10 +186,9 @@ describe('defense:clear-modifiers round-end hook (2.8)', () => {
 
   it('expires unconsumed track-flipped effects from G._modifiers', () => {
     // The resolver's pushModifier mirrors `card.effect` onto
-    // `G._modifiers` so the dispatcher's hasModifierActive consumers
-    // (e.g. scienceComplete reading `doubleScience`) see it. The hook
-    // splices any unconsumed entries back out at end of round so the
-    // "modifiers bend rules for one round" rule actually holds.
+    // `G._modifiers` so dispatcher hasModifierActive consumers see it.
+    // The hook splices any unconsumed entries back out at end of round
+    // so the "modifiers bend rules for one round" rule actually holds.
     const modifier: ModifierCard = {
       id: 'mod-3',
       kind: 'modifier',
@@ -198,7 +196,7 @@ describe('defense:clear-modifiers round-end hook (2.8)', () => {
       phase: 1,
       description: '',
       durationRounds: 1,
-      effect: { kind: 'doubleScience' },
+      effect: { kind: 'awaitInput', prompt: 'noop', payloadKind: 'noop' },
     };
     const G = buildG({
       track: {
@@ -207,7 +205,7 @@ describe('defense:clear-modifiers round-end hook (2.8)', () => {
         currentPhase: 1,
         activeModifiers: [modifier],
       },
-      _modifiers: [{ kind: 'doubleScience' }],
+      _modifiers: [{ kind: 'awaitInput', prompt: 'noop', payloadKind: 'noop' }],
     });
     runRoundEndHooks(G, stubCtx(), stubRandom());
     expect(G.track!.activeModifiers).toEqual([]);
@@ -215,9 +213,10 @@ describe('defense:clear-modifiers round-end hook (2.8)', () => {
   });
 
   it('only removes one matching-kind entry per active card, leaving event-card residue alone', () => {
-    // If an event card pushed `doubleScience` onto _modifiers earlier
-    // and then a track flip pushed another, the round-end clear should
-    // only remove ONE entry (the track-sourced one). The other stays.
+    // If an event card pushed an entry of kind `awaitInput` onto
+    // _modifiers earlier and then a track flip pushed another, the
+    // round-end clear should only remove ONE entry (the track-sourced
+    // one). The other stays.
     const modifier: ModifierCard = {
       id: 'mod-4',
       kind: 'modifier',
@@ -225,8 +224,13 @@ describe('defense:clear-modifiers round-end hook (2.8)', () => {
       phase: 1,
       description: '',
       durationRounds: 1,
-      effect: { kind: 'doubleScience' },
+      effect: { kind: 'awaitInput', prompt: 'noop', payloadKind: 'noop' },
     };
+    const residue = {
+      kind: 'awaitInput',
+      prompt: 'noop',
+      payloadKind: 'noop',
+    } as const;
     const G = buildG({
       track: {
         upcoming: [],
@@ -234,22 +238,17 @@ describe('defense:clear-modifiers round-end hook (2.8)', () => {
         currentPhase: 1,
         activeModifiers: [modifier],
       },
-      _modifiers: [
-        { kind: 'doubleScience' },
-        { kind: 'doubleScience' },
-      ],
+      _modifiers: [residue, residue],
     });
     runRoundEndHooks(G, stubCtx(), stubRandom());
     expect(G.track!.activeModifiers).toEqual([]);
-    expect(G._modifiers).toEqual([{ kind: 'doubleScience' }]);
+    expect(G._modifiers).toEqual([residue]);
   });
 });
 
 describe('science:reset-defense-moves round-end hook (2.8)', () => {
   it('clears scienceDrillUsed and scienceTaughtUsed', () => {
-    const science = setupScience(
-      fromBgio({ Shuffle: <T>(a: T[]) => [...a], Number: () => 0 }),
-    );
+    const science = setupScience();
     science.scienceDrillUsed = true;
     science.scienceTaughtUsed = true;
     const G = buildG({ science });
@@ -270,11 +269,9 @@ describe('end-of-round hook chain (2.8 — full chain executes)', () => {
       phase: 1,
       description: '',
       durationRounds: 1,
-      effect: { kind: 'doubleScience' },
+      effect: { kind: 'awaitInput', prompt: 'noop', payloadKind: 'noop' },
     };
-    const science = setupScience(
-      fromBgio({ Shuffle: <T>(a: T[]) => [...a], Number: () => 0 }),
-    );
+    const science = setupScience();
     science.scienceDrillUsed = true;
     science.scienceTaughtUsed = true;
 

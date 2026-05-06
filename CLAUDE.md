@@ -111,6 +111,21 @@ Tests under `tests/` mirror the `src/` shape, with shared factories in `tests/he
   survival), and `centerBurn.ts` (the special "threat reaches the village vault" beat).
   Track *runtime* state lives on `G.track` — built once at setup from `TRACK_CARDS`
   via `src/game/track.ts` and consumed by `chiefFlipTrack` at the phase boundary.
+- `src/game/library/` — the Science Library engine that replaces the retired 3×4
+  grid: `types.ts` (the `LibraryCard` union over tagged buildings / units / techs /
+  events), `state.ts` (`LibraryState` shape — row of 6 slots, tier-stacked deck,
+  lost-ideas pile, per-seat discount tableaus), `setup.ts` (`buildLibrary` — runs
+  once during `setup`, builds the deck from the data loaders, deals the row off
+  the top), `refill.ts` (`refillLibraryRow` — fired by `scienceSeatDone` so the
+  row only depletes during the science seat's turn), `costs.ts` (`researchCost`,
+  `discountResource`, `effectiveResearchCost` with Splendor floor-1 — paper-play
+  tunables live here as named constants), and `debuff.ts` (boss-debuff thresholds
+  at 5 / 10 / 15 cards per color, summed into a flat strength reduction read by
+  `track/boss.ts`). The `src/ui/library/` directory pairs the engine with
+  table-shared UI: `LibraryRow` / `LibraryCardTile` (the 6-slot strip on the
+  central board, with Buy / Burn buttons gated to the science seat),
+  `DiscountTableau` (the science seat's per-seat snowball view), and
+  `LostIdeasPile` (the public burn-pile read-out with a click-through dialog).
 - `src/game/resources/{types,bag,bank,centerMat,playerMat,bankLog,moves}.ts` — resource
   primitives. `playerMat.ts` defines the per-non-chief-seat `{ in, out, stash }` shape
   populated by `setup` (chief acts on `G.bank` directly and owns no mat). `bankLog.ts`
@@ -335,10 +350,30 @@ installs Python 3 / make / g++ for the SQLite native compile.
   orchestrator's final status). The role ships `defenseBuyAndPlace` / `defensePlay` /
   `defenseSeatDone`; the chief drives `chiefFlipTrack` between chief and others
   phases; the boss card flips `G.bossResolved` on survival, which `endIf` returns as
-  `{ kind: 'win' }`. Boss thresholds are **two**, not three: `science` (count of
-  completed science cards) and `economy` (running max bank gold via `G.economyHigh`).
-  An older note about a third `military` threshold is being removed — the current
-  `BossThresholds` schema in `src/data/schema.ts` has only `science` + `economy`.
+  `{ kind: 'win' }`. Boss thresholds are **two**, not three: `science` (now reads
+  the count of Library cards bought across every seat's discount tableau via
+  `countLibraryCardsBought` in `src/game/track/boss.ts`) and `economy` (running max
+  bank gold via `G.economyHigh`). An older note about a third `military` threshold
+  is removed — the current `BossThresholds` schema in `src/data/schema.ts` has only
+  `science` + `economy`.
+- **Science Library redesign — fully landed.** The retired 3×4 grid /
+  `scienceContribute` / `scienceComplete` / 1-completion-per-round pipeline is
+  gone. Shipped behaviour: a 6-slot face-up Library row fed from a tier-stacked
+  deck (T1 → T2 → T3); per-card cost = color × tier (`src/game/library/costs.ts`)
+  with Splendor floor-1 discounts off the science seat's tableau;
+  `scienceLibraryBuy` routes the bought card to the recipient role's hand by
+  color (gold→chief.hand, blue→science.hand, green→domestic.hand|techHand,
+  red→defense.hand|techHand) and adds a discount marker; `scienceLibraryBurn`
+  pushes to a public, permanent lost-ideas pile; the row refills at
+  `scienceSeatDone`. The boss-debuff thresholds (5 / 10 / 15 per color) are
+  applied as a flat strength reduction across all four colors (see
+  `src/game/library/debuff.ts`). Deferred items still on the table: per-color →
+  boss-flavor mapping (blocked on `ThreatPattern.flavor`); content-tagging
+  rebalance toward 5×4×3 = 60 cards (current tagging over-shoots in some
+  buckets); RandomBot smoke-round-progress assertion was deferred as a bot-policy
+  issue (see `plans/sl-fix-5-test-coverage.md`). Master plan:
+  `plans/science-library-redesign.md`; orchestration log:
+  `plans/sl-orchestrator.md`.
 - **Server runner is `vite-node`, not `tsx`.** 14.14 swapped it because tsx 4.x mis-resolves
   bgio subpath imports (`boardgame.io/server`, `/core`, …). `npm run dev:server` now points at
   `server/start.ts`, a thin wrapper that always boots — no ambient-detection block. The

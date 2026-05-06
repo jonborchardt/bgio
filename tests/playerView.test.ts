@@ -12,6 +12,9 @@ import { playerViewFor as playerView } from '../src/game/playerView.ts';
 import { assignRoles } from '../src/game/roles.ts';
 import type { SettlementState } from '../src/game/types.ts';
 import { initialBank } from '../src/game/resources/bank.ts';
+import type { LibraryCard } from '../src/game/library/types.ts';
+import type { LibraryState } from '../src/game/library/state.ts';
+import { emptyLibraryState } from '../src/game/library/state.ts';
 
 // Minimal Ctx — `playerView` only consumes `playerID`, but bgio's signature
 // asks for the full Ctx so we cast a stub. Tests that need a real Ctx should
@@ -139,5 +142,158 @@ describe('playerView', () => {
     const spectator = playerView(G, fakeCtx, null);
     expect(spectator.hands['0']).toEqual({});
     expect(spectator.hands['1']).toEqual({});
+  });
+});
+
+// SL fix-2 — `G.library.deck` is the tier-stacked draw pile. Length must
+// stay visible (the UI can show "N cards remaining"); the contents and
+// order of upcoming flips are hidden information at a real table. Row,
+// lostIdeas, and discountTableaus stay public.
+describe('playerView — library deck redaction', () => {
+  // Minimal LibraryCard fixtures. We don't need the full def shape to
+  // verify redaction — only that the entries we put in differ from
+  // `null`.
+  // Redaction only inspects the array shape, not the entry shape — a
+  // minimal stand-in def keeps fixtures cheap. We cast through `unknown`
+  // because the fully-typed `BuildingDef` carries fields the redactor
+  // never touches.
+  const makeCard = (
+    name: string,
+    tier: 1 | 2 | 3 = 1,
+  ): LibraryCard =>
+    ({
+      kind: 'building',
+      tier,
+      scienceColor: 'green',
+      def: { id: name, name },
+    }) as unknown as LibraryCard;
+
+  const buildStateWithLibrary = (): SettlementState => {
+    const roleAssignments = assignRoles(2);
+    const seats = Object.keys(roleAssignments);
+    const library: LibraryState = emptyLibraryState(seats);
+    // 30-entry deck, mixed tiers.
+    library.deck = Array.from({ length: 30 }, (_, i) =>
+      makeCard(`deck-${i}`, ((i % 3) + 1) as 1 | 2 | 3),
+    );
+    // Public row + burn pile + per-seat tableau.
+    library.row = [
+      makeCard('row-0'),
+      null,
+      makeCard('row-2'),
+      null,
+      makeCard('row-4'),
+      null,
+    ];
+    library.lostIdeas = [makeCard('lost-A'), makeCard('lost-B')];
+    library.discountTableaus[seats[0]] = [makeCard('tab-0a')];
+    library.discountTableaus[seats[1]] = [makeCard('tab-1a'), makeCard('tab-1b')];
+
+    return {
+      bank: initialBank(),
+      centerMat: {},
+      roleAssignments,
+      round: 1,
+      bossResolved: false,
+      mats: {},
+      hands: { '0': {}, '1': {} },
+      library,
+    };
+  };
+
+  it('preserves deck length but nulls every entry', () => {
+    const G = buildStateWithLibrary();
+    const view = playerView(G, fakeCtx, '0');
+
+    expect(view.library?.deck.length).toBe(30);
+    // Every entry redacted — no card name leaks through.
+    for (const entry of view.library?.deck ?? []) {
+      expect(entry).toBeNull();
+    }
+  });
+
+  it('redacted deck contents do not match source deck', () => {
+    const G = buildStateWithLibrary();
+    const sourceNames = G.library!.deck.map((c) => c.def.name);
+    const view = playerView(G, fakeCtx, '0');
+    const viewedDeck = view.library?.deck ?? [];
+
+    // None of the redacted entries should equal a source card object,
+    // and none should expose the source `def.name` strings.
+    for (const entry of viewedDeck) {
+      expect(entry).toBeNull();
+      // Defensive: also confirm we can't traverse `.def.name` on it.
+      expect(
+        (entry as null | { def?: { name?: string } } | undefined)?.def?.name,
+      ).toBeUndefined();
+    }
+    // Sanity-check the source side wasn't mutated either.
+    expect(G.library!.deck.map((c) => c.def.name)).toEqual(sourceNames);
+  });
+
+  it('leaves library.row, library.lostIdeas, and library.discountTableaus untouched', () => {
+    const G = buildStateWithLibrary();
+    const view = playerView(G, fakeCtx, '0');
+
+    // Row preserved — both filled slots and null gaps.
+    expect(view.library?.row.length).toBe(6);
+    expect(view.library?.row[0]?.def.name).toBe('row-0');
+    expect(view.library?.row[1]).toBeNull();
+    expect(view.library?.row[2]?.def.name).toBe('row-2');
+    expect(view.library?.row[4]?.def.name).toBe('row-4');
+
+    // Lost-ideas preserved.
+    expect(view.library?.lostIdeas.map((c) => c.def.name)).toEqual([
+      'lost-A',
+      'lost-B',
+    ]);
+
+    // Per-seat discount tableaus preserved for every seat. (Even
+    // another seat's discount cards are public table information per
+    // the SL master plan — the whole table can see another seat's
+    // accumulated discounts.)
+    expect(view.library?.discountTableaus['0']?.map((c) => c.def.name)).toEqual([
+      'tab-0a',
+    ]);
+    expect(view.library?.discountTableaus['1']?.map((c) => c.def.name)).toEqual([
+      'tab-1a',
+      'tab-1b',
+    ]);
+  });
+
+  it('redacts deck for a spectator (playerID = null) too', () => {
+    const G = buildStateWithLibrary();
+    const view = playerView(G, fakeCtx, null);
+
+    expect(view.library?.deck.length).toBe(30);
+    for (const entry of view.library?.deck ?? []) {
+      expect(entry).toBeNull();
+    }
+    // Public row still readable to spectators.
+    expect(view.library?.row[0]?.def.name).toBe('row-0');
+  });
+
+  it('does not mutate the source library.deck', () => {
+    const G = buildStateWithLibrary();
+    const before = G.library!.deck.slice();
+    playerView(G, fakeCtx, '0');
+    // Same array contents post-call.
+    expect(G.library!.deck).toEqual(before);
+    // Source entries still readable.
+    expect(G.library!.deck[0]?.def.name).toBe('deck-0');
+  });
+
+  it('no-ops cleanly when G.library is undefined', () => {
+    const G: SettlementState = {
+      bank: initialBank(),
+      centerMat: {},
+      roleAssignments: assignRoles(2),
+      round: 0,
+      bossResolved: false,
+      hands: { '0': {}, '1': {} },
+      mats: {},
+    };
+    expect(() => playerView(G, fakeCtx, '0')).not.toThrow();
+    expect(playerView(G, fakeCtx, '0').library).toBeUndefined();
   });
 });

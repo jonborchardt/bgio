@@ -28,12 +28,11 @@
   },
   {
     "id": "trk-p1-003",
-    "kind": "modifier",
+    "kind": "boon",
     "name": "Calm Winds",
     "phase": 1,
-    "description": "Steady weather lets the science seat work doubly hard this round.",
-    "durationRounds": 1,
-    "effect": { "kind": "doubleScience" }
+    "description": "Steady weather; observers add a touch of science to the bank.",
+    "effect": { "kind": "gainResource", "bag": { "science": 1 }, "target": "bank" }
   },
 
   {
@@ -101,12 +100,11 @@
   },
   {
     "id": "trk-p3-004",
-    "kind": "modifier",
+    "kind": "boon",
     "name": "Whetstone Day",
     "phase": 3,
-    "description": "Sharpening day in the village; science work doubles up.",
-    "durationRounds": 1,
-    "effect": { "kind": "doubleScience" }
+    "description": "Sharpening day in the village; insights flow into the bank's science pool.",
+    "effect": { "kind": "gainResource", "bag": { "science": 2 }, "target": "bank" }
   },
 
   {
@@ -177,12 +175,11 @@
   },
   {
     "id": "trk-p5-003",
-    "kind": "modifier",
+    "kind": "boon",
     "name": "Market Day",
     "phase": 5,
-    "description": "A bustling market disrupts buying — chief can't approve trades.",
-    "durationRounds": 1,
-    "effect": { "kind": "forbidBuy" }
+    "description": "A bustling market fills the bank with food and gold from passing merchants.",
+    "effect": { "kind": "gainResource", "bag": { "gold": 2, "food": 1 }, "target": "bank" }
   },
 
   {
@@ -218,12 +215,11 @@
   },
   {
     "id": "trk-p6-004",
-    "kind": "modifier",
+    "kind": "boon",
     "name": "Drilling Yard",
     "phase": 6,
-    "description": "Drilling exercises double science output this round.",
-    "durationRounds": 1,
-    "effect": { "kind": "doubleScience" }
+    "description": "Drilling exercises sharpen technique; the bank gains science.",
+    "effect": { "kind": "gainResource", "bag": { "science": 2 }, "target": "bank" }
   },
 
   {
@@ -294,12 +290,11 @@
   },
   {
     "id": "trk-p8-004",
-    "kind": "modifier",
+    "kind": "boon",
     "name": "Forge Light",
     "phase": 8,
-    "description": "Forges burn through the night; science work doubles.",
-    "durationRounds": 1,
-    "effect": { "kind": "doubleScience" }
+    "description": "Forges burn through the night; the bank gains science and steel.",
+    "effect": { "kind": "gainResource", "bag": { "science": 2, "steel": 1 }, "target": "bank" }
   },
 
   {

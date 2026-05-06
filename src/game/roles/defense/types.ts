@@ -43,8 +43,7 @@ export interface UnitInstance {
  *
  * - `hand`     : unit cards available to buy (Phase 2 will repopulate
  *                this; for 1.4 it stays empty).
- * - `techHand` : red-color tech cards distributed by `scienceComplete`
- *                (existing 05.3 plumbing).
+ * - `techHand` : red-color tech cards distributed by `scienceLibraryBuy`.
  * - `inPlay`   : units currently on the village grid. Empty in 1.4 — no
  *                moves yet place anything.
  * - `_placementSeq` : Defense redesign 2.5 — monotonic next-to-issue

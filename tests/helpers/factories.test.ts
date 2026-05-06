@@ -8,7 +8,6 @@ import { describe, expect, it } from 'vitest';
 import {
   seedAfterChiefDistribute,
   seedFreshGame,
-  seedMidScienceProgress,
   seedWithBuilding,
   seedWithUnit,
 } from './factories.ts';
@@ -106,15 +105,3 @@ describe('seedWithUnit', () => {
   });
 });
 
-describe('seedMidScienceProgress', () => {
-  it('credits the named card with the supplied paid bag', () => {
-    const G = seedFreshGame(2);
-    // Pick any one card id from the science grid.
-    const cardId = Object.keys(G.science!.paid)[0];
-    expect(cardId).toBeDefined();
-    seedMidScienceProgress(cardId as string, { science: 1, gold: 2 }, G);
-    expect(G.science!.paid[cardId as string]?.science).toBe(1);
-    expect(G.science!.paid[cardId as string]?.gold).toBe(2);
-    expect(() => assertNoNegativeResources(G)).not.toThrow();
-  });
-});

@@ -18,6 +18,8 @@ import type { Resource } from '../resources/types.ts';
 import { rolesAtSeat, seatOfRole } from '../roles.ts';
 import { STAGES } from '../phases/stages.ts';
 import { enumerateDefense as enumerateDefenseRole } from '../roles/defense/ai.ts';
+import { canAfford } from '../resources/bag.ts';
+import { effectiveResearchCost } from '../library/costs.ts';
 
 export interface MoveCandidate {
   move: string;
@@ -161,34 +163,21 @@ const enumerateScience = (
 
   const stash = G.mats?.[playerID]?.stash;
 
-  // scienceContribute: one candidate per uncomplete card × {gold:1} or
-  // {wood:1}. Skip cards already completed.
-  const flatCards = science.grid.flat();
-  for (const card of flatCards) {
-    if (science.completed.includes(card.id)) continue;
-    for (const r of ['gold', 'wood'] as const) {
-      if (stash === undefined || (stash[r] ?? 0) <= 0) continue;
-      out.push({ move: 'scienceContribute', args: [card.id, { [r]: 1 }] });
-    }
-  }
-
-  // scienceComplete: candidate for every uncomplete card whose paid covers
-  // its cost (cheap to check; the move re-validates).
-  for (const card of flatCards) {
-    if (science.completed.includes(card.id)) continue;
-    const paid = science.paid[card.id];
-    if (paid === undefined) continue;
-    let covers = true;
-    for (const [r, need] of Object.entries(card.cost) as Array<
-      [Resource, number]
-    >) {
-      if ((paid[r] ?? 0) < (need ?? 0)) {
-        covers = false;
-        break;
+  // Library moves: one buy candidate per affordable face-up slot, one
+  // burn candidate per non-null slot. The move bodies re-validate cost,
+  // stage, and seat.
+  const library = G.library;
+  if (library !== undefined) {
+    const tableau = library.discountTableaus[playerID] ?? [];
+    for (let slot = 0; slot < library.row.length; slot += 1) {
+      const card = library.row[slot];
+      if (card === null || card === undefined) continue;
+      out.push({ move: 'scienceLibraryBurn', args: [slot] });
+      if (stash === undefined) continue;
+      const cost = effectiveResearchCost(card, tableau);
+      if (canAfford(stash, cost)) {
+        out.push({ move: 'scienceLibraryBuy', args: [slot] });
       }
-    }
-    if (covers) {
-      out.push({ move: 'scienceComplete', args: [card.id] });
     }
   }
 
@@ -243,8 +232,14 @@ const enumerateScience = (
     }
   }
 
-  // scienceSeatDone: always a fallback so the bot can bail out cleanly.
-  out.push({ move: 'scienceSeatDone', args: [] });
+  // scienceSeatDone: emitted only when the burn requirement is satisfied
+  // (either already burned this round, or no face-up cards left to burn,
+  // or no library at all). Otherwise the move would INVALID_MOVE and the
+  // bot would bounce off it every turn.
+  const rowHasCards = library?.row.some((c) => c !== null) === true;
+  if (science.scienceBurnedThisRound === true || !rowHasCards) {
+    out.push({ move: 'scienceSeatDone', args: [] });
+  }
 
   return out;
 };
@@ -347,35 +342,12 @@ const enumerateDefense = (
 };
 
 const enumeratePlayingEvent = (
-  G: SettlementState,
-  playerID: PlayerID,
+  _G: SettlementState,
+  _playerID: PlayerID,
 ): MoveCandidate[] => {
-  const out: MoveCandidate[] = [];
-  const effect = G._awaitingInput?.[playerID];
-
-  if (effect?.kind === 'swapTwoScienceCards' && G.science !== undefined) {
-    // Generate a small number of (a, b) candidate pairs so MCTS has
-    // *something* to branch on. We only take the first few science cards;
-    // a 9-card grid has 36 distinct pairs — too many to enumerate without
-    // exploding the candidate count.
-    const cards = G.science.grid.flat();
-    const ids = cards.map((c) => c.id).slice(0, 4);
-    for (let i = 0; i < ids.length; i++) {
-      for (let j = i + 1; j < ids.length; j++) {
-        out.push({
-          move: 'eventResolve',
-          args: [{ a: ids[i]!, b: ids[j]! }],
-        });
-      }
-    }
-  } else {
-    // For any other parked effect (or `awaitInput`), an empty-payload
-    // resolve is the catch-all — the dispatcher accepts it and pops the
-    // stage.
-    out.push({ move: 'eventResolve', args: [undefined] });
-  }
-
-  return out;
+  // Generic resolve: an empty-payload call is the catch-all that the
+  // dispatcher accepts to pop the seat back to the prior stage.
+  return [{ move: 'eventResolve', args: [undefined] }];
 };
 
 /**
@@ -418,7 +390,28 @@ export const enumerate = (
   // overshoot it's the bulk of the role-specific list that gets trimmed —
   // which is fine: MCTS doesn't need *every* candidate, just a fair
   // sample.
+  //
+  // SL fix-5 gap #7: preserve any `<role>SeatDone` candidate across the
+  // trim. A degenerate worst-case (e.g. a science turn with a full
+  // library row + deep stash + a big blue-event hand + drill / teach
+  // candidates) can fan out enough buy / burn / event candidates to push
+  // SeatDone past index 49 in the unsorted list. Dropping it leaves the
+  // bot with no way to declare its turn finished — the round stalls and
+  // the smoke test (gap #4) goes silent. We splice SeatDone out of `out`
+  // before the slice, take the first MAX_CANDIDATES - 2 of the rest,
+  // then re-attach SeatDone and the trailing `pass`.
   if (out.length > MAX_CANDIDATES) {
+    const seatDoneIdx = out.findIndex((c) => /SeatDone$/.test(c.move));
+    if (seatDoneIdx >= 0) {
+      const seatDone = out[seatDoneIdx]!;
+      const without = out.filter((_, i) => i !== seatDoneIdx);
+      // Reserve 2 slots at the tail for seatDone + pass; cap the rest.
+      return [
+        ...without.slice(0, MAX_CANDIDATES - 2),
+        seatDone,
+        { move: 'pass', args: [] },
+      ];
+    }
     return [...out.slice(0, MAX_CANDIDATES - 1), { move: 'pass', args: [] }];
   }
   return out;

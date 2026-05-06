@@ -19,7 +19,7 @@ import {
 } from '../../cards/registry.ts';
 import { AnyCard } from './AnyCard.tsx';
 
-export type CardRefKind = 'building' | 'unit' | 'tech' | 'science';
+export type CardRefKind = 'building' | 'unit' | 'tech';
 
 export interface CardRefChipProps {
   name: string;
@@ -31,10 +31,7 @@ export interface CardRefChipProps {
    *  open the relationships modal. Used in the requests row, where
    *  the player just wants to see what was asked for, not navigate. */
   previewOnly?: boolean;
-  /** When provided, used in place of `findXId(name)` — useful for
-   *  kinds whose target id is not derivable from the display name
-   *  (e.g. science cards, where the canonical id is the (color, tier,
-   *  level) triple, not the label "red L0"). */
+  /** When provided, used in place of `findXId(name)`. */
   cardId?: string;
 }
 
@@ -49,10 +46,6 @@ const lookupId = (
       return findUnitId(name);
     case 'tech':
       return findTechId(name);
-    case 'science':
-      // Science cards are addressed by canonical id, not name —
-      // callers must pass `cardId` for this kind.
-      return undefined;
   }
 };
 

@@ -65,17 +65,12 @@ const stubEnumerate = (
   out.push({ move: 'chiefFlipTrack', args: [] });
   out.push({ move: 'chiefPlaceWorker', args: [{ x: 0, y: 0 }] });
 
-  // Science: contribute 1 gold to a card we can name; the move resolves
-  // the id and rejects gracefully when the id doesn't match.
-  if (G.science !== undefined) {
-    const firstCard = G.science.grid.flat()[0];
-    if (firstCard !== undefined) {
-      out.push({
-        move: 'scienceContribute',
-        args: [firstCard.id, { gold: 1 }],
-      });
-      out.push({ move: 'scienceComplete', args: [firstCard.id] });
-    }
+  // Science: try a Library buy / burn against slot 0 — the move
+  // resolves slot legality and rejects gracefully on null slots.
+  if (G.library !== undefined) {
+    out.push({ move: 'scienceLibraryBuy', args: [0] });
+    out.push({ move: 'scienceLibraryBurn', args: [0] });
+    out.push({ move: 'scienceSeatDone', args: [] });
   }
 
   // Domestic: try buying / upgrading from grid origin. Buy uses the first

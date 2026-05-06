@@ -1,7 +1,6 @@
-// Typed loader for src/data/events.json — mirrors the pattern in
-// src/data/index.ts and src/data/scienceCards.ts but lives in its own file
-// because EventCardDef is specific to the cross-cutting events system (08.x)
-// and the `effects` schema will be filled in by 08.2 once the dispatch types
+// Typed loader for src/data/events.json — lives in its own file because
+// EventCardDef is specific to the cross-cutting events system (08.x) and
+// the `effects` schema will be filled in by 08.2 once the dispatch types
 // are nailed down.
 //
 // As with the other loaders, validation runs at module load — if the JSON
@@ -13,6 +12,7 @@
 // bookkeeping without coupling to the (still-evolving) dispatcher contract.
 
 import eventsRaw from './events.json';
+import type { LibraryTier, LibraryColor } from './schema.ts';
 
 export type EventColor = 'gold' | 'blue' | 'green' | 'red';
 
@@ -23,6 +23,10 @@ export interface EventCardDef {
   // Loose at this stage. 08.2 will replace `unknown[]` with a typed union of
   // effect entries (e.g. `{ kind: 'gainGold'; amount: number } | ...`).
   effects: unknown[];
+  // Science Library SL 1.1 — optional library tagging. Back-filled by
+  // sub-plan 6.
+  tier?: LibraryTier;
+  scienceColor?: LibraryColor;
 }
 
 const COLORS: ReadonlySet<EventColor> = new Set([
@@ -69,7 +73,7 @@ const validateEvents = (raw: unknown): EventCardDef[] => {
         `EventCardDef[${i}]: field "effects" must be an array`,
       );
     }
-    return {
+    const out: EventCardDef = {
       id,
       color: color as EventColor,
       name,
@@ -77,6 +81,34 @@ const validateEvents = (raw: unknown): EventCardDef[] => {
       // Frozen below alongside the wrapping array.
       effects: [...effects],
     };
+    const tierRaw = entry.tier;
+    if (tierRaw !== undefined) {
+      if (
+        typeof tierRaw !== 'number' ||
+        (tierRaw !== 1 && tierRaw !== 2 && tierRaw !== 3)
+      ) {
+        throw new Error(
+          `EventCardDef[${i}]: field "tier" must be 1|2|3 when present, got ${String(tierRaw)}`,
+        );
+      }
+      out.tier = tierRaw as LibraryTier;
+    }
+    const colorRaw = entry.scienceColor;
+    if (colorRaw !== undefined) {
+      if (
+        typeof colorRaw !== 'string' ||
+        (colorRaw !== 'gold' &&
+          colorRaw !== 'blue' &&
+          colorRaw !== 'green' &&
+          colorRaw !== 'red')
+      ) {
+        throw new Error(
+          `EventCardDef[${i}]: field "scienceColor" must be one of gold|blue|green|red when present, got ${String(colorRaw)}`,
+        );
+      }
+      out.scienceColor = colorRaw as LibraryColor;
+    }
+    return out;
   });
 };
 

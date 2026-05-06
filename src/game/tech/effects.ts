@@ -1,8 +1,8 @@
 // 08.6 — Tech-card effect glue.
 //
 // Tech cards carry three optional effect lists (per 08.6's `TechEffect`
-// interface): `onAcquire` (fired once at distribution time by 05.3's
-// `scienceComplete`), `onPlay` (fired by `<role>PlayTech` when the
+// interface): `onAcquire` (fired once at distribution time by
+// `scienceLibraryBuy`), `onPlay` (fired by `<role>PlayTech` when the
 // holder explicitly plays it), and `passive` (read by `techPassives` so
 // the modifier pipeline can layer per-card bonuses on top of dispatched
 // effects).

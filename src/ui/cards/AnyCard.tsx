@@ -9,7 +9,6 @@ import type { AnyCardEntry } from '../../cards/registry.ts';
 import { BuildingCard } from './BuildingCard.tsx';
 import { UnitCard } from './UnitCard.tsx';
 import { TechCard } from './TechCard.tsx';
-import { ScienceCard } from './ScienceCard.tsx';
 import { EventCard } from './EventCard.tsx';
 import type { CardSize } from './sizes.ts';
 
@@ -26,8 +25,6 @@ export function AnyCard({ entry, size = 'normal' }: AnyCardProps) {
       return <UnitCard def={entry.def} size={size} />;
     case 'tech':
       return <TechCard def={entry.def} size={size} />;
-    case 'science':
-      return <ScienceCard def={entry.def} size={size} />;
     case 'event':
       return <EventCard def={entry.def} size={size} />;
   }

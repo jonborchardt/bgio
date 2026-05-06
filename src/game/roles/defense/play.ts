@@ -1,7 +1,7 @@
 // Defense redesign 2.5 — `defensePlay` move (red-tech card play).
 //
-// Red tech cards live on `G.defense.techHand` (distributed by 05.3's
-// `scienceComplete`). Per spec D24 they fall into two flavours:
+// Red tech cards live on `G.defense.techHand` (distributed by
+// `scienceLibraryBuy`). Per spec D24 they fall into two flavours:
 //
 //   1. **Unit-upgrade techs** — target a unit instance in `inPlay` and
 //      grant a durable `taughtSkill` from the V1 skill table
@@ -41,7 +41,7 @@
 // sub-phase note "tech cards usually cost the science seat's
 // contribution already"). The tech's `costBag`, if present, is ignored
 // by this move — the science seat already paid for it during
-// `scienceContribute` / `scienceComplete`.
+// `scienceLibraryBuy`.
 
 import type { Move } from 'boardgame.io';
 import { INVALID_MOVE } from 'boardgame.io/core';

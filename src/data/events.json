@@ -3,25 +3,33 @@
     "id": "evt-gold-001",
     "color": "gold",
     "name": "Bounty",
-    "effects": [{ "kind": "gainResource", "bag": { "gold": 1 }, "target": "bank" }]
+    "effects": [{ "kind": "gainResource", "bag": { "gold": 1 }, "target": "bank" }],
+    "tier": 1,
+    "scienceColor": "gold"
   },
   {
     "id": "evt-gold-002",
     "color": "gold",
     "name": "Tax Levy",
-    "effects": [{ "kind": "gainResource", "bag": { "gold": 2 }, "target": "bank" }]
+    "effects": [{ "kind": "gainResource", "bag": { "gold": 2 }, "target": "bank" }],
+    "tier": 2,
+    "scienceColor": "gold"
   },
   {
     "id": "evt-gold-003",
     "color": "gold",
     "name": "Royal Treasury",
-    "effects": [{ "kind": "gainResource", "bag": { "gold": 3 }, "target": "bank" }]
+    "effects": [{ "kind": "gainResource", "bag": { "gold": 3 }, "target": "bank" }],
+    "tier": 3,
+    "scienceColor": "gold"
   },
   {
     "id": "evt-gold-004",
     "color": "gold",
     "name": "Tribute",
-    "effects": [{ "kind": "gainResource", "bag": { "gold": 1 }, "target": "bank" }]
+    "effects": [{ "kind": "gainResource", "bag": { "gold": 1 }, "target": "bank" }],
+    "tier": 1,
+    "scienceColor": "gold"
   },
   {
     "id": "evt-blue-001",

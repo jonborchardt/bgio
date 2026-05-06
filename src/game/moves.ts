@@ -19,10 +19,10 @@ import { domesticUpgradeBuilding } from './roles/domestic/upgrade.ts';
 import { domesticProduce } from './roles/domestic/produce.ts';
 import { domesticRepair } from './roles/domestic/repair.ts';
 import { undoLast } from './undo.ts';
-import { scienceContribute } from './roles/science/contribute.ts';
-import { scienceComplete } from './roles/science/complete.ts';
 import { scienceDrill } from './roles/science/drill.ts';
 import { scienceTeach } from './roles/science/teach.ts';
+import { scienceLibraryBuy } from './roles/science/libraryBuy.ts';
+import { scienceLibraryBurn } from './roles/science/libraryBurn.ts';
 import { eventResolve } from './events/resolveMove.ts';
 import { chiefPlayTech } from './roles/chief/playTech.ts';
 import { sciencePlayTech } from './roles/science/playTech.ts';
@@ -59,16 +59,17 @@ export {
   chiefTax,
 };
 
-// Science role moves (05.2 contribute, 05.3 complete, 2.6 drill/teach).
-// The Science seat drives them all inside the `scienceTurn` stage of
-// `othersPhase`; gating is enforced inside each move against
-// `ctx.activePlayers?.[playerID]` so the bgio-level stage config only has
-// to authorize the science seat in that stage. `scienceDrill` and
-// `scienceTeach` apply the defense-redesign D27 unit upgrades — drill is
-// a one-shot +1 strength marker; teach grants a durable skill from the
-// SKILLS table. Both are once-per-round and gated on the science seat's
-// own stash.
-export { scienceContribute, scienceComplete, scienceDrill, scienceTeach };
+// Science role moves. The Science seat drives them all inside the
+// `scienceTurn` stage of `othersPhase`; gating is enforced inside each
+// move against `ctx.activePlayers?.[playerID]` so the bgio-level stage
+// config only has to authorize the science seat in that stage.
+// `scienceDrill` / `scienceTeach` apply the defense-redesign D27 unit
+// upgrades; both are once-per-round and gated on the science seat's
+// own stash. `scienceLibraryBuy(slotIndex)` / `scienceLibraryBurn(slotIndex)`
+// drive the Library market: buy pays from stash, hands the card to the
+// recipient role, and grows the per-seat discount tableau; burn pushes
+// the slot's card to the public lost-ideas pile.
+export { scienceDrill, scienceTeach, scienceLibraryBuy, scienceLibraryBurn };
 
 // Per-color event-card moves (05.4 / 06.6). Defense's red event move is
 // retired in 1.4 (D14) — the trade / battle effects it dispatched are gone.
@@ -77,10 +78,10 @@ export { scienceContribute, scienceComplete, scienceDrill, scienceTeach };
 export { sciencePlayBlueEvent, domesticPlayGreenEvent };
 
 // 08.3 — `eventResolve` is the follow-up move for play*Event-dispatched
-// `awaitInput` effects (e.g. `swapTwoScienceCards`). It reads the parked
-// effect from `G._awaitingInput[playerID]`, applies it with the supplied
-// payload, and pops the seat back to the prior stage. Stage gating is
-// enforced inside the move (must be in `playingEvent`).
+// `awaitInput` effects. It reads the parked effect from
+// `G._awaitingInput[playerID]`, applies it with the supplied payload,
+// and pops the seat back to the prior stage. Stage gating is enforced
+// inside the move (must be in `playingEvent`).
 export { eventResolve };
 
 // 08.6 — Per-role tech-play moves. Each gates on the caller holding the

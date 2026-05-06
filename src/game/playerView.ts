@@ -212,11 +212,11 @@ export const playerViewFor = (
     events = { ...events, hands: nextHands };
   }
 
-  // 08.2 awaiting-input parks an effect a seat is resolving (e.g. a
-  // swapTwoScienceCards prompt). The effect itself describes what
-  // they're picking from, which can be sensitive — only the seat
-  // actually resolving needs it. We drop other seats' entries entirely
-  // (rather than null-ing them) since the type is
+  // 08.2 awaiting-input parks an effect a seat is resolving (an
+  // `awaitInput` prompt). The effect itself describes what they're
+  // picking from, which can be sensitive — only the seat actually
+  // resolving needs it. We drop other seats' entries entirely (rather
+  // than null-ing them) since the type is
   // `Record<PlayerID, EventEffect>` and null isn't assignable.
   let awaitingInput = G._awaitingInput;
   if (awaitingInput !== undefined) {
@@ -239,6 +239,22 @@ export const playerViewFor = (
   // `history`, and `currentPhase`. The face-up next card is the design's
   // table-presence telegraph (D19), so we deliberately do *not* redact
   // it here. No code below this comment touches `G.track`.
+
+  // Science Library SL fix-2 — `G.library.deck` is the tier-stacked draw
+  // pile. The face-up `row`, the public `lostIdeas` burn pile, and every
+  // seat's `discountTableaus` (each seat's own bought cards) are public
+  // table information; viewers see those unchanged. The deck order,
+  // though, is hidden information at a real table — players know that
+  // T1 reveals before T2 before T3, but not the specific sequence
+  // within a tier. We redact the deck the same way hands are redacted:
+  // length preserved (so the UI can show "N cards remaining"), contents
+  // nulled. No UI consumer currently reads `library.deck` (only setup
+  // and refill on the server touch it), so a plain `null`-fill is
+  // safe — we don't need to expose tier-per-slot today.
+  let library = G.library;
+  if (library !== undefined) {
+    library = { ...library, deck: redactDeckOrder(library.deck) };
+  }
 
   // Help requests: each row is visible only to the requester and the
   // recipient. Spectators see none. The list is small (a handful of
@@ -265,7 +281,8 @@ export const playerViewFor = (
     science === G.science &&
     events === G.events &&
     awaitingInput === G._awaitingInput &&
-    requests === G.requests
+    requests === G.requests &&
+    library === G.library
   ) {
     return { ...G };
   }
@@ -279,6 +296,7 @@ export const playerViewFor = (
     events,
     _awaitingInput: awaitingInput,
     requests,
+    library,
   };
 };
 

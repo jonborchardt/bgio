@@ -97,9 +97,8 @@ export const isPlacementLegal = (
  * by other roles' Science under-card stacks. Today it's reserved.
  *
  * @param techsAlreadyUsedBy - optional set of TechnologyDef.name values
- *   that have been claimed elsewhere (typically derived by flattening
- *   `G.science.underCards` in `setup.ts`). Reserved for filtering once
- *   the hand mixes BuildingDef and TechnologyDef.
+ *   that have been claimed elsewhere. Reserved for filtering once the
+ *   hand mixes BuildingDef and TechnologyDef.
  */
 export const setupDomestic = (
   techsAlreadyUsedBy?: Set<string>,

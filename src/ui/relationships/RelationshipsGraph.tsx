@@ -48,12 +48,6 @@ const EDGE_COLOR_TOKEN: Record<EdgeKind, 'role.science' | 'role.domestic' | 'rol
   'tech-prereq-tech': 'role.science',
   // Building → its enabling tech reads as domestic infrastructure.
   'building-requires-tech': 'role.domestic',
-  // Science → tech rewards: science role accent.
-  'science-rewards-tech': 'role.science',
-  // Cell-to-cell chain within a color column: muted, since the chain
-  // is a structural backbone rather than the user-actionable
-  // "what does this unlock" reading.
-  'science-cell-prereq': 'status.muted',
 };
 
 const resolveEdgeColor = (

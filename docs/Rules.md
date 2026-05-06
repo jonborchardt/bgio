@@ -77,12 +77,12 @@ At game start:
 
 - The bank is seeded with **3 gold** (overridable per match).
 - The chief gets a starter pool of **3 worker tokens**.
-- **Science** lays out a 3×4 grid of science cards — one column per
-  color, fixed in role order: **chief (gold), science (blue),
-  domestic (green), defense (red)**. Each column is ordered with the
-  lowest level closest to the player. Under each science card go 4
-  random tech cards from the matching tech branch (gold→Exploration,
-  blue→Education, green→Civic, red→Fighting).
+- **The Library** is built and seeded. The Library deck is composed of
+  every tagged card from `src/data/` (chief events, science techs,
+  domestic buildings, defense units), sorted into three tier-stacks
+  (T1 → T2 → T3) and shuffled within each tier. The face-up **row** is
+  filled to **6 cards** off the top of the stacked deck. The
+  **lost-ideas pile** and every seat's **discount tableau** start empty.
 - **Domestic** receives a hand containing every starter building, an
   empty placement grid, and the fixed **center tile** at `(0, 0)` (the
   village vault — always present, never destroyed; see Phase 2 for the
@@ -158,24 +158,95 @@ into the bank or another seat's mat.
 #### 5.2.1 Science
 
 - May **play 1 blue event card** at any time during the round.
-- **Contribute** resources from stash toward science cards on the grid.
-  - Within each color column, only the **lowest-level uncompleted** card
-    may receive contributions.
-  - Contributions accumulate across turns; a card stays "in progress"
-    until the running tally covers its full cost.
-  - Over-contribution is silently capped at the card's remaining cost.
-- **Complete** a science card whose paid tally covers its cost. On
-  completion:
-  - Spent resources move from the paid ledger to the bank.
-  - The 4 tech cards under the completed card are distributed by color:
-    - red tech → Defense hand
-    - gold tech → Chief hand
-    - green tech → Domestic hand
-    - blue tech → Science hand
-  - **At most 1 science card may be completed per round.**
 - May **play tech cards** from the science hand whose `onPlayEffects` are
   defined.
-- **End my turn** when ready.
+- May **Drill** or **Teach** Defense units (per Phase 2.6 of the defense
+  redesign): Drill grants a unit a one-shot +1-strength token; Teach
+  grants a one-shot taught skill. Each is gated by a per-round latch.
+- The bulk of the science seat's turn is spent at **The Library**.
+
+##### 5.2.1.1 The Library
+
+The Library is a face-up 6-slot **row** on the central board, fed from a
+single tier-stacked deck (all T1 cards reveal before any T2; all T2
+before any T3). The cards in the row are **real domestic buildings,
+defense units, science techs, and chief events** drawn from `src/data/`,
+each tagged with a **color** (gold / blue / green / red) and a **tier**
+(1 / 2 / 3). The science research cost a card prints in the Library is
+not the card's deploy cost — it is derived from the card's color × tier
+via a fixed table (see below) and is what the **science** seat pays to
+move the card into the recipient role's hand.
+
+On their turn, the science seat may, in any order, repeat as many times
+as their stash allows:
+
+- **Buy** any face-up card. Pay its effective research cost from stash
+  (base cost minus the seat's discount tableau, floored at 1 per
+  resource). The card is **handed to the recipient role** by color —
+  gold to the chief's gold-event hand, blue to the science seat's blue
+  hand (or techHand by `kind`), green to the domestic hand or techHand,
+  red to the defense hand or techHand. A copy of the bought card is
+  also pushed onto the science seat's **discount tableau**, granting
+  -1 of the card's discount-resource on every future Library buy.
+- **Burn** any face-up card. The card is moved to the public
+  **lost-ideas pile** on the central board. Its content is gone forever
+  — no buyer ever receives it. No payment, no tableau update.
+
+The row only depletes during the science seat's turn (no mid-turn
+refill). When the seat **ends my turn**, the row refills from the deck
+back to 6.
+
+##### 5.2.1.2 Per-card research cost
+
+Costs come from `src/game/library/costs.ts`. Each tier-N card costs N
+distinct resources; the Nth (newest) resource is the one whose discount
+the card grants when bought.
+
+| Color   | T1 (primary)        | T2 adds (secondary)         | T3 adds (tertiary)         |
+| ------- | ------------------- | --------------------------- | -------------------------- |
+| Gold    | gold                | food                        | science                    |
+| Blue    | science             | wood                        | steel                      |
+| Green   | wood                | production                  | stone                      |
+| Red     | stone               | steel                       | gold                       |
+
+Amounts (placeholder, paper-play tunable):
+
+- T1: **4 of primary**.
+- T2: **7 of primary + 2 of secondary**.
+- T3: **10 of primary + 3 of secondary + 2 of tertiary**.
+
+Floor: **1 per resource type** that appears in the base cost (Splendor
+rule). A wood-discount of -5 against a T1 wood card (cost 4 wood) still
+costs 1 wood.
+
+##### 5.2.1.3 The discount tableau
+
+Each card the science seat buys grants -1 on its **discount-resource**
+(the highest-tier resource in its cost) on every future Library buy.
+Discounts stack with no per-resource cap — the structural cap is the
+deck itself (5 cards × 4 colors × 3 tiers = 60 cards). The tableau
+persists across rounds; the snowball is the whole point.
+
+##### 5.2.1.4 The lost-ideas pile
+
+The lost-ideas pile is **public, face-up, permanent**. It is a visible
+record of what the village never discovered across the run. Burned
+cards never return to the deck and are never re-shuffled.
+
+##### 5.2.1.5 Boss-debuff thresholds
+
+The total count of cards bought of a given color (across every seat's
+discount tableau) crosses one of three thresholds at **5 / 10 / 15**
+cards, granting that color a tier-1 / tier-2 / tier-3 boss debuff.
+Reaching tier-3 in a single color requires buying every card of that
+color across all three tiers and burning none.
+
+V1 implementation (`src/game/library/debuff.ts`): the four colors'
+debuff levels are summed and applied as a flat strength reduction on
+every boss attack (floored at 0). A per-color → boss-flavor mapping is
+deferred until boss content gains a `flavor` field.
+
+- **End my turn** when ready. The Library row refills to 6 from the deck.
 
 #### 5.2.2 Domestic
 
@@ -242,10 +313,9 @@ fall into three buckets:
 - **Immediate** — applied at play time (e.g. a resource gain to bank or
   stash, an extra event card added to a color deck).
 - **Modifier** — pushed onto a stack and consumed by the next matching
-  move (e.g. *double science cost this turn*, *can't complete a card
-  this turn*, *must complete the cheapest available*).
+  move (e.g. *double the next Library buy's cost*, *can't burn this turn*).
 - **Awaiting input** — opens a follow-up move that asks the player to
-  pick something (e.g. *swap two science cards*).
+  pick something (e.g. *swap two cards in the Library row*).
 
 Within each color, a seat cycles through the deck: once you've played
 every card in your hand, the cycle resets and the same cards become
@@ -269,7 +339,8 @@ bookkeeping:
 3. **Per-round latches reset.**
    - Per-seat "I played an event of my color" flag is cleared.
    - Science's per-round `scienceDrillUsed` / `scienceTaughtUsed`
-     latches and completion counter are cleared.
+     latches are cleared. (The Library's discount tableau and
+     lost-ideas pile persist — they are not per-round state.)
    - Domestic's "produced this round" flag is cleared.
    - The chief's per-round `flippedThisRound` latch is cleared.
    - The chief's per-round `taxedThisRound` latch is cleared.
@@ -289,7 +360,10 @@ condition (per spec D26: there is no fail mode).
 
 The two thresholds are:
 
-- **Science** — count of completed science cards on `G.science.completed`.
+- **Science** — count of Library cards bought across every seat's
+  discount tableau (`countLibraryCardsBought` in
+  `src/game/track/boss.ts`, summing the lengths of
+  `G.library.discountTableaus`).
 - **Economy** — running maximum of `G.bank.gold` ever observed during
   the match (`G.economyHigh`). The high-water-mark reading means a chief
   who briefly stockpiles before redistributing keeps credit toward the
@@ -308,7 +382,7 @@ no loss condition.
   - Out ← domestic production; sweeps to Bank on next chief-phase begin.
   - Stash = working pool, the only place spend moves draw from.
 - **Roles by player count**: 1p = one seat with all four; 2p = chief+science / domestic+defense; 3p = chief+science / domestic / defense; 4p = one role each.
-- **Per round**: each seat may play ≤1 event of its color; science completes ≤1 card; domestic auto-produces.
+- **Per round**: each seat may play ≤1 event of its color; science buys/burns Library cards until stash drained or they choose to end; domestic auto-produces.
 - **End condition**: **win** when the village survives the boss card at
   the end of the global event track (`G.bossResolved`); otherwise
   **timeUp** if `round` reaches the turn cap (default 80). No loss

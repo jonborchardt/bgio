@@ -1,7 +1,7 @@
 // PlayableHand — horizontal row of tech cards a role currently holds, each
 // with a "Pay & play" affordance. Used by the four role panels (Chief,
 // Science, Domestic, Defense) to surface the tech-cards-in-hand list the
-// engine already populates via `scienceComplete` and (later) other
+// engine already populates via `scienceLibraryBuy` and (later) other
 // card-spawning effects.
 //
 // The four `<role>PlayTech` moves all funnel through `playTechStub`, which

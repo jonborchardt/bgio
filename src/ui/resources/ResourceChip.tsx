@@ -7,7 +7,7 @@
 // here.
 //
 // The optional `label` prop lets callers override the default
-// `"<resource>: <count>"` text (e.g. ScienceCard wants "wood 1/3").
+// `"<resource>: <count>"` text.
 
 import { Chip } from '@mui/material';
 import { RESOURCE_DISPLAY, type Resource } from '../../game/resources/types.ts';

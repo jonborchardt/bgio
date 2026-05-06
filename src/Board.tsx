@@ -31,7 +31,7 @@ import { RelationshipsModalHost } from './ui/relationships/RelationshipsModalHos
 import { DevSidebar } from './ui/layout/DevSidebar.tsx';
 import { EventLogDrawer } from './ui/log/EventLogDrawer.tsx';
 import { TrackStrip } from './ui/track/TrackStrip.tsx';
-import { countCompletedScience } from './game/track/boss.ts';
+import { countLibraryCardsBought } from './game/track/boss.ts';
 import {
   ResolveAnimationProvider,
   ResolveTraceWatcher,
@@ -43,6 +43,7 @@ import { CentralBoard } from './ui/centralBoard/CentralBoard.tsx';
 import { ProgressBoxes } from './ui/centralBoard/ProgressBoxes.tsx';
 import { VillagePlacementContext } from './ui/layout/VillagePlacementContext.ts';
 import { RESOURCES } from './game/resources/types.ts';
+import { LostIdeasPile } from './ui/library/LostIdeasPile.tsx';
 
 // Build the <TrackStrip> node from the current G.track slice. Lifted
 // out of the SettlementBoard render to keep the central-board assembly
@@ -87,7 +88,7 @@ function findBoss(G: SettlementState) {
 function buildScienceTracker(G: SettlementState): ReactNode {
   const boss = findBoss(G);
   const target = boss?.thresholds.science ?? 0;
-  const current = countCompletedScience(G);
+  const current = countLibraryCardsBought(G);
   return (
     <ProgressBoxes
       label="Science"
@@ -221,6 +222,11 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
       {G.track !== undefined || G.domestic !== undefined ? (
         <CentralBoard
           track={buildTrackNode(G)}
+          lostIdeas={
+            G.library !== undefined ? (
+              <LostIdeasPile lostIdeas={G.library.lostIdeas} />
+            ) : null
+          }
           village={
             G.domestic !== undefined ? (
               <BuildingGrid

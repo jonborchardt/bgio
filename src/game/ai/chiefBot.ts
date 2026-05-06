@@ -13,16 +13,18 @@
 //      chief phase.
 //
 // The "demand" model is intentionally rough: domestic demand is the
-// cheapest hand BuildingDef cost, science demand is the smallest remaining
-// gold cost across non-completed cards, defense demand is currently 0
-// (Phase 2 will add the real recruit / placement loop and re-introduce
-// per-defense-seat demand). The bot only routes gold — chief distribution
+// cheapest hand BuildingDef cost, science demand is the cheapest research
+// cost across face-up Library slots, defense demand is currently 0 (Phase
+// 2 will add the real recruit / placement loop and re-introduce per-
+// defense-seat demand). The bot only routes gold — chief distribution
 // of other resources is reserved for a future heuristic.
 
 import type { Ctx } from 'boardgame.io';
 import type { PlayerID, SettlementState } from '../types.ts';
 import { rolesAtSeat, seatOfRole } from '../roles.ts';
 import type { MoveCandidate } from './enumerate.ts';
+import type { LibraryCard } from '../library/types.ts';
+import { researchCost } from '../library/costs.ts';
 
 export type BotAction = MoveCandidate;
 
@@ -50,17 +52,22 @@ const domesticDemandAt = (G: SettlementState): number => {
   return Number.isFinite(cheapest) ? cheapest : 0;
 };
 
+// Library cost includes a primary research resource that isn't always
+// gold; for the chief's gold-routing heuristic we only count the
+// printed gold demand of the cheapest face-up slot.
+const goldCostFor = (card: LibraryCard): number => {
+  const cost = researchCost(card);
+  return cost.gold ?? 0;
+};
+
 const scienceDemandAt = (G: SettlementState): number => {
-  const science = G.science;
-  if (science === undefined) return 0;
+  const library = G.library;
+  if (library === undefined) return 0;
   let smallest = Number.POSITIVE_INFINITY;
-  for (const card of science.grid.flat()) {
-    if (science.completed.includes(card.id)) continue;
-    const paid = science.paid[card.id];
-    const need = card.cost.gold ?? 0;
-    const haveGold = paid?.gold ?? 0;
-    const remaining = Math.max(0, need - haveGold);
-    if (remaining > 0 && remaining < smallest) smallest = remaining;
+  for (const slot of library.row) {
+    if (slot === null || slot === undefined) continue;
+    const need = goldCostFor(slot);
+    if (need > 0 && need < smallest) smallest = need;
   }
   return Number.isFinite(smallest) ? smallest : 0;
 };

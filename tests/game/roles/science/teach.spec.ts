@@ -25,11 +25,6 @@ const ctxScienceTurn = (seat: string): Ctx =>
   }) as unknown as Ctx;
 
 const minimalScience = (): ScienceState => ({
-  grid: [],
-  underCards: {},
-  paid: {},
-  completed: [],
-  perRoundCompletions: 0,
   hand: [],
 });
 

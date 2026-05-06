@@ -6,19 +6,13 @@
 //
 //   - boon     → applies the printed effect through the same dispatcher
 //                the per-color event-card moves use.
-//   - modifier → pushes the card's effect onto `G._modifiers` (the same
-//                queue the event-card dispatcher uses) so any role move
-//                that gates on `hasModifierActive(G, kind)` /
-//                `consumeModifier(G, kind)` from
-//                `events/dispatcher.ts` can read it uniformly,
-//                regardless of whether the modifier came from a track
-//                flip or an event card. (V1 ships these helpers but
-//                does not yet wire role moves to consult them; the
-//                queue plumbing is correct so consumers can be added
-//                without further engine work.) The card itself is
-//                also recorded on `G.track.activeModifiers` so the
-//                end-of-round hook can expire any unconsumed entries
-//                (spec §2 D20: "modifiers bend rules for one round").
+//   - modifier → records the card on `G.track.activeModifiers` so the
+//                end-of-round hook can expire it (spec §2 D20:
+//                "modifiers bend rules for one round"). No live
+//                `EventEffect` kinds are modifier-shaped today, so
+//                `G._modifiers` is not populated; reintroducing a
+//                modifier kind in `EventEffect` is the integration point
+//                for that path to fire.
 //   - threat   → walks the path / fire / impact pipeline (spec §3 + §4).
 //   - boss     → no-op stub. Phase 2.7 lands the real boss resolver.
 //
@@ -90,7 +84,6 @@ import { RESOURCES, type Resource, type ResourceBag } from '../resources/types.t
 import { appendBankLog } from '../resources/bankLog.ts';
 import { dispatch } from '../events/dispatcher.ts';
 import type { EventCardDef } from '../events/state.ts';
-import type { EventEffect } from '../events/effects.ts';
 import {
   computeGridBounds,
   computePath,
@@ -500,31 +493,17 @@ export const resolveThreat = (
   publishTrace(G, trace);
 };
 
-/** Modifier-kind effects that the event dispatcher consumes via
- *  `hasModifierActive` / `consumeModifier`. Track-flipped modifier cards
- *  carry one of these as their `effect`; the resolver pushes the effect
- *  onto `G._modifiers` so the conditioned moves see it. */
-const MODIFIER_KINDS: ReadonlySet<EventEffect['kind']> = new Set([
-  'doubleScience',
-  'forbidBuy',
-  'forceCheapestScience',
-]);
-
 /**
- * Push a `modifier` track card's effect onto `G._modifiers` so the
- * existing dispatcher-side consumers see it, and record the card on
- * `G.track.activeModifiers` so the round-end hook can expire any
- * unconsumed entries.
+ * Record a `modifier` track card on `G.track.activeModifiers` so the
+ * round-end hook can expire it. The dispatcher-side modifier queue
+ * (`G._modifiers`) is not populated here because no live `EventEffect`
+ * kinds are modifier-shaped today; reintroducing a modifier kind in
+ * `EventEffect` is the integration point for that path to fire.
  */
 const pushModifier = (G: SettlementState, card: ModifierCard): void => {
   if (G.track === undefined) return;
   if (G.track.activeModifiers === undefined) G.track.activeModifiers = [];
   G.track.activeModifiers.push(card);
-
-  const effect = card.effect as EventEffect | undefined;
-  if (effect === undefined || !MODIFIER_KINDS.has(effect.kind)) return;
-  if (G._modifiers === undefined) G._modifiers = [];
-  G._modifiers.push(effect);
 };
 
 /** Defense redesign 3.3 — emit a degenerate trace for non-threat flips

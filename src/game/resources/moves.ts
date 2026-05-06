@@ -15,7 +15,9 @@
 import type { PlayerID, SettlementState } from '../types.ts';
 import type { ResourceBag } from './types.ts';
 import { transfer } from './bank.ts';
-import { appendBankLog } from './bankLog.ts';
+import { appendBankLog, negateBag } from './bankLog.ts';
+import { canAfford } from './bag.ts';
+import { RESOURCES } from './types.ts';
 
 /**
  * Helper used by Science / Domestic (and Phase 2 Defense) purchase
@@ -40,4 +42,64 @@ export const payFromStash = (
   }
   transfer(mat.stash, G.bank, cost);
   appendBankLog(G, 'stashPayment', cost, `from seat ${playerID}`);
+};
+
+/**
+ * Stash-or-bank fallback used by Library buys when the science seat is
+ * also the chief seat (1p / 2p / 3p assignments). In those layouts there
+ * is no `mats[chiefSeat]` — the chief acts on `G.bank` directly — so
+ * `payFromStash` would throw. This helper forks on the presence of a mat:
+ *
+ *   - mat present → identical to `payFromStash` (deduct from stash,
+ *     credit the bank, append a `'stashPayment'` log entry).
+ *   - mat absent  → deduct from `G.bank` directly and append a
+ *     `'stashPayment'` log entry tagged with the seat so the audit trail
+ *     captures the spend.
+ *
+ * Affordability is the caller's job — this helper throws on underflow,
+ * matching `payFromStash`.
+ */
+export const payFromStashOrBank = (
+  G: SettlementState,
+  playerID: PlayerID,
+  cost: Partial<ResourceBag>,
+  source: 'stashPayment' = 'stashPayment',
+): void => {
+  const mat = G.mats?.[playerID];
+  if (mat !== undefined) {
+    transfer(mat.stash, G.bank, cost);
+    appendBankLog(G, source, cost, `from seat ${playerID}`);
+    return;
+  }
+  if (!canAfford(G.bank, cost)) {
+    for (const r of RESOURCES) {
+      const need = cost[r] ?? 0;
+      if (G.bank[r] < need) {
+        throw new RangeError(
+          `payFromStashOrBank underflow on ${r}: bank has ${G.bank[r]}, need ${need}`,
+        );
+      }
+    }
+  }
+  for (const r of RESOURCES) {
+    const amt = cost[r] ?? 0;
+    if (amt === 0) continue;
+    G.bank[r] -= amt;
+  }
+  appendBankLog(G, source, negateBag(cost), `from seat ${playerID} (bank)`);
+};
+
+/**
+ * Affordability counterpart for `payFromStashOrBank`: when the seat has
+ * no mat, the affordability check has to fall back to `G.bank` rather
+ * than the (nonexistent) stash.
+ */
+export const canAffordFromStashOrBank = (
+  G: SettlementState,
+  playerID: PlayerID,
+  cost: Partial<ResourceBag>,
+): boolean => {
+  const mat = G.mats?.[playerID];
+  if (mat !== undefined) return canAfford(mat.stash, cost);
+  return canAfford(G.bank, cost);
 };

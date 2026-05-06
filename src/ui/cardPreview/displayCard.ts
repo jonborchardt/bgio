@@ -93,8 +93,6 @@ const KIND_TO_ROLE: Record<SampleCardKind, Role> = {
   domesticBuilding: 'domestic',
   domesticBuildingComplex: 'domestic',
   placedVillage: 'domestic',
-  scienceCard: 'science',
-  scienceAdvanced: 'science',
   defenseUnit: 'defense',
   army: 'defense',
   chiefTech: 'chief',
@@ -105,8 +103,6 @@ const KIND_TO_GLYPH: Record<SampleCardKind, string> = {
   domesticBuilding: 'D',
   domesticBuildingComplex: 'D',
   placedVillage: 'V',
-  scienceCard: 'S',
-  scienceAdvanced: 'S',
   defenseUnit: 'D',
   army: 'A',
   chiefTech: 'C',
@@ -124,21 +120,16 @@ const KIND_LABEL: Record<SampleCardKind, string> = {
   domesticBuilding: 'Building',
   domesticBuildingComplex: 'Building',
   placedVillage: 'Village',
-  scienceCard: 'Science',
-  scienceAdvanced: 'Science',
   defenseUnit: 'Unit',
   army: 'Army',
   chiefTech: 'Tech',
   chiefTechGrant: 'Tech',
 };
 
-// Faint background mark used by some variations as decorative flavour.
 const KIND_MOTIF: Record<SampleCardKind, string> = {
   domesticBuilding: '🏛',
   domesticBuildingComplex: '🛠',
   placedVillage: '🏠',
-  scienceCard: '⚗',
-  scienceAdvanced: '🧪',
   defenseUnit: '⚔',
   army: '⚔',
   chiefTech: '👑',
@@ -169,14 +160,6 @@ const bagToList = (
     if (v > 0) out.push({ resource: r, count: v });
   }
   return out;
-};
-
-const compactBagText = (
-  bag: Partial<ResourceBag> | undefined,
-): string => {
-  const list = bagToList(bag);
-  if (list.length === 0) return 'free';
-  return list.map((b) => `${b.count}${b.resource[0]}`).join(' ');
 };
 
 export function toDisplayCard(card: SampleCard): DisplayCard {
@@ -233,29 +216,6 @@ export function toDisplayCard(card: SampleCard): DisplayCard {
       if (def.requires)
         result.benefit = `Requires: ${def.requires}`;
       return result;
-    }
-    case 'scienceCard':
-    case 'scienceAdvanced': {
-      const def = card.def;
-      const recipientRole = ROLE_BY_SCIENCE_COLOR[def.color];
-      const cellLabel =
-        `${def.color[0]!.toUpperCase()}${def.color.slice(1)} L${def.level}`;
-      // Show the first variant cost as the headline cost, plus a count
-      // of additional variants in the subtitle.
-      const head = def.variants[0]?.cost ?? {};
-      const variantCount = def.variants.length;
-      return {
-        ...base,
-        // Science card's "role" is its color → recipient.
-        role: recipientRole,
-        roleLabel: ROLE_LABEL[recipientRole],
-        title: cellLabel,
-        subtitle: `${def.tier} · ${variantCount} variant${variantCount === 1 ? '' : 's'} · → ${ROLE_LABEL[recipientRole]}`,
-        cost: { bag: bagToList(head), short: compactBagText(head) },
-        benefit: `Reward: 4 random ${def.color} techs.`,
-        flavor:
-          'Each match places one variant in this cell. Costs differ; rewards are identical.',
-      };
     }
     case 'chiefTech':
     case 'chiefTechGrant': {

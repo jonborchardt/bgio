@@ -27,11 +27,18 @@
 import type { PlayerID, Role, SettlementState } from '../game/types.ts';
 import { assignRoles, rolesAtSeat, seatOfRole } from '../game/roles.ts';
 import { chiefBot } from '../game/ai/chiefBot.ts';
-import { scienceBot } from '../game/ai/scienceBot.ts';
 import { domesticBot } from '../game/ai/domesticBot.ts';
 import { defenseBot } from '../game/ai/defenseBot.ts';
 import type { MoveCandidate } from '../game/ai/enumerate.ts';
 import type { Ctx } from 'boardgame.io';
+
+// Stub science bot: the legacy heuristic was tied to the retired 3×4
+// grid. Always returning null lets the composed bot fall back to the
+// next role (or to the harness's seat-done flow) until a Library-aware
+// heuristic lands.
+const scienceBot: {
+  play: (state: { G: SettlementState; ctx: Ctx; playerID: PlayerID }) => MoveCandidate | null;
+} = { play: () => null };
 
 /** Lobby form payload — what `CreateMatchForm` produces and what the
  * server stashes in `match.setupData` for solo matches. */

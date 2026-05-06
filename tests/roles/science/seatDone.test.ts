@@ -70,8 +70,12 @@ describe('scienceSeatDone (14.2)', () => {
     ]);
     expect(client.getState()!.ctx.phase).toBe('othersPhase');
 
-    // Science seat flips done — domestic and defense still pending.
-    runMoves(client, [{ player: scienceSeat, move: 'scienceSeatDone' }]);
+    // Science seat must burn at least one card per the post-fix rule
+    // before flipping done. Slot 0 is always populated in fresh setup.
+    runMoves(client, [
+      { player: scienceSeat, move: 'scienceLibraryBurn', args: [0] },
+      { player: scienceSeat, move: 'scienceSeatDone' },
+    ]);
     expect(client.getState()!.G.othersDone?.[scienceSeat]).toBe(true);
     expect(client.getState()!.ctx.phase).toBe('othersPhase');
 
@@ -104,5 +108,25 @@ describe('scienceSeatDone (14.2)', () => {
     const G = baseState();
     const result = callSeatDone(G, undefined, ctxAt('1', 'scienceTurn'));
     expect(result).toBe(INVALID_MOVE);
+  });
+
+  // SL fix-5 gap #6 — refill is gated on G.library presence. Older /
+  // minimal fixtures may dispatch scienceSeatDone against a state that
+  // never seeded G.library; the move must not crash and the existing
+  // seat-done end-of-turn behavior (othersDone flag) must still fire.
+  it('with G.library absent, does not crash and still flips othersDone[seat]', () => {
+    const G = baseState();
+    // baseState() returns a state without G.library — mirroring legacy
+    // fixtures that pre-date SL 2.2.
+    expect(G.library).toBeUndefined();
+
+    // 4-player layout: seat '1' holds the science role.
+    const result = callSeatDone(G, '1', ctxAt('1', 'scienceTurn'));
+
+    expect(result).not.toBe(INVALID_MOVE);
+    expect(G.othersDone?.['1']).toBe(true);
+    // The library slot stays absent — the guard short-circuits the
+    // refill helper rather than synthesizing one on demand.
+    expect(G.library).toBeUndefined();
   });
 });
