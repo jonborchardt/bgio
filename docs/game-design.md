@@ -69,7 +69,29 @@ mechanic, this is the menu.
 
 **Current:** divvy gold and other resources from the bank into seats'
 `In` slots; place workers; play one gold event per round; act on a
-shared bank.
+shared bank. The chief also has one super-power: **Tax** — once per
+round, take `floor(stash / 2)` per resource from every non-chief seat;
+the bank gains `ceil(taken / 2)` per resource and the rest evaporates.
+Tax punishes hoarding (small hauls barely lose; large hauls bleed),
+funnels resources into the chief's distribute pool with a one-round
+delay (chief acts first next round), and pumps `economyHigh` toward
+the boss's Economy threshold.
+
+**Tax — balance levers** (all live; tune via these knobs only):
+
+- **Ratio** — `floor(stash / 2)` per resource per stash. Tuning lever:
+  swap to `floor(/3)` for softer; cap per-resource per-seat to limit
+  the worst raids. Lives at the top of `src/game/roles/chief/tax.ts`.
+- **Bank share** — `ceil(taken / 2)` per resource. Symmetric: changing
+  this to `floor` shifts more loss to the village, `taken` (no
+  evaporation) makes Tax pure consolidation.
+- **Frequency** — once per round, free. Toggleable by switching the
+  latch (`G.chief.taxedThisRound`) to a different cadence (per-game,
+  per-N-rounds) or by gating on a stash cost the chief pays first.
+- **Scope** — all 10 resource types. Trim to a "currency" subset
+  (gold/wood/stone/steel/horse) to leave role-flavored resources
+  (science/food/production/happiness/worker) untaxed if testers find
+  the broad sweep too punitive on specialization.
 
 **Alternative considered**
 

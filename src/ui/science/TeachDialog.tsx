@@ -63,8 +63,6 @@ export function TeachButton({
   });
   const disabled = reason !== null;
 
-  const status = taughtUsed ? 'used this round' : 'available';
-
   const close = (): void => {
     setOpen(false);
     setChosenSkill(null);
@@ -79,40 +77,34 @@ export function TeachButton({
   const skill = chosenSkill !== null ? SKILLS[chosenSkill] : null;
 
   return (
-    <Stack spacing={0.5} data-teach-control="true">
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-        <Tooltip title={reason ?? ''} disableHoverListener={!disabled}>
-          <Box component="span" sx={{ display: 'inline-flex' }}>
-            <Button
-              variant="contained"
-              disabled={disabled}
-              onClick={() => setOpen(true)}
-              aria-label="Teach a skill to a unit"
-              data-teach-button="true"
-              data-teach-disabled={disabled ? 'true' : 'false'}
-              sx={{
-                bgcolor: (t) => t.palette.role.science.main,
-                color: (t) => t.palette.role.science.contrastText,
-                '&:hover': {
-                  bgcolor: (t) => t.palette.role.science.dark,
-                },
-              }}
-            >
-              Teach a skill
-            </Button>
-          </Box>
-        </Tooltip>
-        <Typography
-          variant="caption"
-          data-teach-status={taughtUsed ? 'used' : 'available'}
-          sx={{
-            color: (t) =>
-              taughtUsed ? t.palette.status.muted : t.palette.role.science.light,
-          }}
-        >
-          Teach: {status}
-        </Typography>
-      </Stack>
+    <Stack
+      spacing={0.5}
+      data-teach-control="true"
+      data-teach-status={taughtUsed ? 'used' : 'available'}
+    >
+      <Tooltip
+        title={reason ?? (taughtUsed ? 'Teach used this round' : 'Teach available')}
+      >
+        <Box component="span" sx={{ display: 'inline-flex' }}>
+          <Button
+            variant="contained"
+            disabled={disabled}
+            onClick={() => setOpen(true)}
+            aria-label="Teach a skill to a unit"
+            data-teach-button="true"
+            data-teach-disabled={disabled ? 'true' : 'false'}
+            sx={{
+              bgcolor: (t) => t.palette.role.science.main,
+              color: (t) => t.palette.role.science.contrastText,
+              '&:hover': {
+                bgcolor: (t) => t.palette.role.science.dark,
+              },
+            }}
+          >
+            Teach a skill
+          </Button>
+        </Box>
+      </Tooltip>
 
       <UnitPickerDialog
         open={open}

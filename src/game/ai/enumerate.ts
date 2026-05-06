@@ -127,6 +127,27 @@ const enumerateChief = (
     }
   }
 
+  // chiefTax: once per round, surface a single candidate when the latch
+  // is unset and at least one non-chief stash has ≥ 2 of any resource
+  // (anything less floors to a take of zero). The move re-validates.
+  if (G.chief?.taxedThisRound !== true) {
+    let hasTaxable = false;
+    for (const [seat, mat] of Object.entries(G.mats ?? {})) {
+      if (mat === undefined) continue;
+      if (rolesAtSeat(G.roleAssignments, seat).includes('chief')) continue;
+      for (const r of SINGLE_RESOURCE_BUMPS) {
+        if ((mat.stash[r] ?? 0) >= 2) {
+          hasTaxable = true;
+          break;
+        }
+      }
+      if (hasTaxable) break;
+    }
+    if (hasTaxable) {
+      out.push({ move: 'chiefTax', args: [] });
+    }
+  }
+
   return out;
 };
 

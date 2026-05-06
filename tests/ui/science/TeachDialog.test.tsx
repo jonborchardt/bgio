@@ -57,14 +57,12 @@ describe('TeachButton (defense redesign 3.7)', () => {
     expect(html).toContain('data-teach-button="true"');
     expect(html).toContain('data-teach-disabled="false"');
     expect(html).toContain('data-teach-status="available"');
-    expect(html).toContain('Teach: available');
   });
 
   it('disabled with "used this round" status when the latch is set', () => {
     const html = render({ taughtUsed: true });
     expect(html).toContain('data-teach-disabled="true"');
     expect(html).toContain('data-teach-status="used"');
-    expect(html).toContain('Teach: used this round');
   });
 
   it('disabled when the seat cannot act (off-stage)', () => {

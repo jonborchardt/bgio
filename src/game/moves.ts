@@ -11,6 +11,7 @@ import { chiefEndPhase } from './roles/chief/endPhase.ts';
 import { chiefFlipTrack } from './roles/chief/flipTrack.ts';
 import { chiefPlaceWorker } from './roles/chief/workerPlacement.ts';
 import { chiefPlayGoldEvent } from './roles/chief/playGoldEvent.ts';
+import { chiefTax } from './roles/chief/tax.ts';
 import { sciencePlayBlueEvent } from './roles/science/playBlueEvent.ts';
 import { domesticPlayGreenEvent } from './roles/domestic/playGreenEvent.ts';
 import { domesticBuyBuilding } from './roles/domestic/buy.ts';
@@ -55,6 +56,7 @@ export {
   chiefFlipTrack,
   chiefPlaceWorker,
   chiefPlayGoldEvent,
+  chiefTax,
 };
 
 // Science role moves (05.2 contribute, 05.3 complete, 2.6 drill/teach).

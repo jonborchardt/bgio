@@ -39,6 +39,12 @@ export type BankLogSource =
   // the audit trail can tell new-system rewards from legacy entries
   // that may live in saved-game DBs.
   | 'threatReward'
+  // Chief Tax super-power. Posted by `chiefTax` when the chief taxes
+  // every non-chief stash. Half of what's taken (rounded up) reaches
+  // the bank as a positive delta; the other half evaporates (the cost
+  // of using the power) and is not logged separately because it isn't
+  // a bank mutation.
+  | 'tax'
   // Dev-only: top-up via DevSidebar's "Bank: +N of each" button. Tagged
   // distinctly so the chief tooltip's income/stash split (computeBankView)
   // doesn't lump the injection in with real round-zero setup amounts.

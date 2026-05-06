@@ -217,11 +217,14 @@ export interface SettlementState {
   // Chief-role-specific runtime state — worker token reserve, etc. Filled
   // out incrementally as chief features land (04.3 introduces `workers`).
   // 05.3 adds the optional `hand` slot: the Chief receives gold-color
-  // technology cards distributed by `scienceComplete`. Optional so existing
-  // tests / fixtures stay clean.
+  // technology cards distributed by `scienceComplete`. The `taxedThisRound`
+  // latch belongs to the chief Tax super-power: once-per-round gate that
+  // the `chief:reset-tax` round-end hook clears. Optional so existing tests
+  // / fixtures stay clean.
   chief?: {
     workers: number;
     hand?: TechnologyDef[];
+    taxedThisRound?: boolean;
   };
 
   // Domestic role state — the full shape lands in 06.1 (hand of buildings

@@ -122,6 +122,14 @@ The chief may then, in any order:
   end their phase.
 - **Place workers** on Domestic-grid buildings from the chief's worker
   reserve (1 worker per cell, max 1).
+- **Tax** (once per round). The chief levies a tax on every non-chief
+  stash. For each of the 10 resource types, every non-chief seat loses
+  `floor(stash / 2)` of that resource. The bank gains `ceil(taken / 2)`
+  per resource; the rest **evaporates** — that's the cost of using the
+  power. Small hauls barely lose (take 1 → bank gets 1, lose 0); big
+  hauls bleed (take 7 → bank gets 4, lose 3). The chief seat owns no
+  mat and is never taxed. Because the bank rises, Tax also pumps
+  `economyHigh`, which counts toward the boss's Economy threshold.
 
 Players may *talk* about what they want during this phase; they are not
 bound by what they say.
@@ -264,6 +272,7 @@ bookkeeping:
      latches and completion counter are cleared.
    - Domestic's "produced this round" flag is cleared.
    - The chief's per-round `flippedThisRound` latch is cleared.
+   - The chief's per-round `taxedThisRound` latch is cleared.
 4. The round counter increments and the next chief phase begins.
 
 ## 6. Win condition

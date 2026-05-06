@@ -56,48 +56,40 @@ export function DrillButton({
   });
   const disabled = reason !== null;
 
-  const status = drillUsed ? 'used this round' : 'available';
-
   const handlePick = (unitID: string): void => {
     onDrill(unitID);
     setOpen(false);
   };
 
   return (
-    <Stack spacing={0.5} data-drill-control="true">
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-        <Tooltip title={reason ?? ''} disableHoverListener={!disabled}>
-          <Box component="span" sx={{ display: 'inline-flex' }}>
-            <Button
-              variant="contained"
-              disabled={disabled}
-              onClick={() => setOpen(true)}
-              aria-label="Drill a unit"
-              data-drill-button="true"
-              data-drill-disabled={disabled ? 'true' : 'false'}
-              sx={{
-                bgcolor: (t) => t.palette.role.science.main,
-                color: (t) => t.palette.role.science.contrastText,
-                '&:hover': {
-                  bgcolor: (t) => t.palette.role.science.dark,
-                },
-              }}
-            >
-              Drill ({drillCost} science)
-            </Button>
-          </Box>
-        </Tooltip>
-        <Typography
-          variant="caption"
-          data-drill-status={drillUsed ? 'used' : 'available'}
-          sx={{
-            color: (t) =>
-              drillUsed ? t.palette.status.muted : t.palette.role.science.light,
-          }}
-        >
-          Drill: {status}
-        </Typography>
-      </Stack>
+    <Stack
+      spacing={0.5}
+      data-drill-control="true"
+      data-drill-status={drillUsed ? 'used' : 'available'}
+    >
+      <Tooltip
+        title={reason ?? (drillUsed ? 'Drill used this round' : 'Drill available')}
+      >
+        <Box component="span" sx={{ display: 'inline-flex' }}>
+          <Button
+            variant="contained"
+            disabled={disabled}
+            onClick={() => setOpen(true)}
+            aria-label="Drill a unit"
+            data-drill-button="true"
+            data-drill-disabled={disabled ? 'true' : 'false'}
+            sx={{
+              bgcolor: (t) => t.palette.role.science.main,
+              color: (t) => t.palette.role.science.contrastText,
+              '&:hover': {
+                bgcolor: (t) => t.palette.role.science.dark,
+              },
+            }}
+          >
+            Drill ({drillCost} science)
+          </Button>
+        </Box>
+      </Tooltip>
 
       <UnitPickerDialog
         open={open}

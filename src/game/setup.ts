@@ -204,7 +204,7 @@ export const setup = (
     // "1 worker token" but the parent task pinned the starter pool to 3
     // so 04.3's placement flow has a few moves to exercise before the
     // reserve runs out. Tune this when the formal rules pass.
-    chief: { workers: 3 },
+    chief: { workers: 3, taxedThisRound: false },
     // Now that `domestic.grid` exists, flip the feature flag that 04.3's
     // `chiefPlaceWorker` stub gates behind. With the flag on, the move
     // exits its early-bail branch and runs the real placement

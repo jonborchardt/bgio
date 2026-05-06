@@ -26,6 +26,7 @@ import type { Resource, ResourceBag } from '../../game/resources/types.ts';
 import { rolesAtSeat } from '../../game/roles.ts';
 import { CircleEditor } from './CircleEditor.tsx';
 import { ChiefActionButton } from './ChiefActionButton.tsx';
+import { TaxButton } from './TaxButton.tsx';
 import { RolePanel } from '../layout/RolePanel.tsx';
 import { SectionHeading } from '../layout/SectionHeading.tsx';
 import { PlayableHand } from '../cards/PlayableHand.tsx';
@@ -85,6 +86,10 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
     if (seatCtx) seatCtx.setSeat(firstNonChiefSeat(G));
   };
 
+  const handleTax = (): void => {
+    moves.chiefTax();
+  };
+
   return (
     <RolePanel
       role="chief"
@@ -120,6 +125,30 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
     >
       <Stack spacing={1.5}>
         <RequestsRow G={G} playerID={playerID} panelRole="chief" />
+
+        {/* Tax — chief super-power, once per round. Mirrors the
+            "Science moves" section the Science panel uses for its
+            Drill / Teach buttons: a labeled row right under the
+            requests strip so the move is visible as part of the
+            chief's repertoire, not buried in the action bar. The
+            button itself previews the take and gates on the
+            `taxedThisRound` latch. */}
+        {isChiefPhase ? (
+          <Stack
+            spacing={0.75}
+            aria-label="Chief moves"
+            data-chief-tax-section="true"
+          >
+            <SectionHeading role="chief">Chief moves</SectionHeading>
+            <Stack
+              direction="row"
+              spacing={2}
+              sx={{ flexWrap: 'wrap', rowGap: 1 }}
+            >
+              <TaxButton G={G} canAct={isChiefPhase} onTax={handleTax} />
+            </Stack>
+          </Stack>
+        ) : null}
 
         <PlayableHand
           techs={G.chief?.hand ?? []}

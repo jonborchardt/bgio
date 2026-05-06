@@ -13,7 +13,7 @@
 //
 // What we *do* assert in this file:
 //   - The trigger button's data-disabled attribute matches the helper.
-//   - The status caption reflects the per-round latch.
+//   - The data-drill-status attribute reflects the per-round latch.
 //   - The cost label reflects the `drillCost` prop.
 
 import { describe, expect, it } from 'vitest';
@@ -68,7 +68,6 @@ describe('DrillButton (defense redesign 3.7)', () => {
     expect(html).toContain('data-drill-button="true"');
     expect(html).toContain('data-drill-disabled="false"');
     expect(html).toContain('data-drill-status="available"');
-    expect(html).toContain('Drill: available');
     expect(html).toContain('Drill (1 science)');
   });
 
@@ -76,7 +75,6 @@ describe('DrillButton (defense redesign 3.7)', () => {
     const html = render({ drillUsed: true });
     expect(html).toContain('data-drill-disabled="true"');
     expect(html).toContain('data-drill-status="used"');
-    expect(html).toContain('Drill: used this round');
   });
 
   it('disabled when the seat cannot act (off-stage)', () => {

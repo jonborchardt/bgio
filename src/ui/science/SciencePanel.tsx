@@ -156,10 +156,10 @@ export function SciencePanel(props: BoardProps<SettlementState>) {
 
         <Stack
           spacing={0.75}
-          aria-label="Defense moves"
-          data-science-defense-moves="true"
+          aria-label="Science moves"
+          data-science-moves="true"
         >
-          <SectionHeading role="science">Defense moves</SectionHeading>
+          <SectionHeading role="science">Science moves</SectionHeading>
           <Stack
             direction="row"
             spacing={2}
