@@ -84,7 +84,7 @@ Python 3 / make / a C++ toolchain. The Dockerfile installs them automatically.
 │   │   ├── ai/                # enumerate + per-role bot heuristics
 │   │   └── roles/{chief,science,domestic,defense}/  # per-role moves
 │   ├── cards/                 # card registry + cross-card relationship index
-│   ├── data/                  # JSON + typed loaders (BUILDINGS / UNITS / TECHNOLOGIES / EVENT_CARDS / TRACK_CARDS / ADJACENCY_RULES)
+│   ├── data/                  # typed loaders only — BUILDINGS / UNITS / TECHNOLOGIES / EVENT_CARDS / TRACK_CARDS / ADJACENCY_RULES (content lives under card-decks/)
 │   ├── ui/                    # MUI panels + cards + chrome
 │   │   ├── layout/            # RolePanel, GameOverBanner, PhaseHint, DevSidebar, …
 │   │   ├── chief/ science/ domestic/ defense/   # per-role panels
@@ -110,11 +110,36 @@ Python 3 / make / a C++ toolchain. The Dockerfile installs them automatically.
 ├── tests-e2e/smoke.spec.ts    # Playwright
 ├── scripts/                   # dev-seed.ts, build-networked.mjs, free-ports.mjs
 ├── .github/workflows/         # ci.yml, deploy-pages.yml, deploy-server.yml
+├── card-decks/                # content. One folder per deck variant (00-initial = baseline; 06-merged-best = active default). Selected by deck.config.json + the VITE_DECK env override.
 ├── render.yaml                # Render blueprint (free-tier docker + persistent disk)
 ├── vite.config.ts             # Vite + Vitest config (port 5179 strict)
 ├── playwright.config.ts
 └── eslint.config.js           # bans Math.random in src/
 ```
+
+## Card decks
+
+Game content (buildings, units, technologies, events, track cards, adjacency
+rules) lives under [`card-decks/`](card-decks/). Each subfolder is a complete
+deck variant; the active deck is selected by
+[`card-decks/deck.config.json`](card-decks/deck.config.json) and can be
+overridden per-build with the `VITE_DECK` env var:
+
+```bash
+# permanent: edit card-decks/deck.config.json `active` field
+# per-build: VITE_DECK=06-merged-best npm run build
+# A/B by env: set VITE_DECK in .env.production / .env.staging
+```
+
+The default and currently shipping deck is **`06-merged-best`** (synergy +
+color-balanced library + formula-derived costs). The **`00-initial`** folder
+is a baseline snapshot of the live deck at the time the rewrite proposals
+were authored. Each `card-decks/<id>/REPORT.md` explains its design goal and
+the diff against the baseline. Tests run against a small fixture under
+[`tests/fixtures/deck/`](tests/fixtures/deck/) so test stability is
+decoupled from content edits — only [`tests/data/liveDeck.test.ts`](tests/data/liveDeck.test.ts)
+and [`tests/data/library-content-coverage.test.ts`](tests/data/library-content-coverage.test.ts)
+exercise the actually-shipped deck (via `?live` query suffix).
 
 ## Deploying
 

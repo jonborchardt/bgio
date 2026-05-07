@@ -1,7 +1,7 @@
 {
   "$schema": "./deck.config.schema.json",
-  "active": "00-initial",
-  "default": "00-initial",
+  "active": "06-merged-best",
+  "default": "06-merged-best",
   "decks": [
     {
       "id": "00-initial",

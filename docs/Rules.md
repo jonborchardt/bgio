@@ -78,20 +78,22 @@ At game start:
 - The bank is seeded with **3 gold** (overridable per match).
 - The chief gets a starter pool of **3 worker tokens**.
 - **The Library** is built and seeded. The Library deck is composed of
-  every tagged card from `src/data/` (chief events, science techs,
-  domestic buildings, defense units), sorted into three tier-stacks
-  (T1 → T2 → T3) and shuffled within each tier. The face-up **row** is
-  filled to **6 cards** off the top of the stacked deck. The
-  **lost-ideas pile** and every seat's **discount tableau** start empty.
+  every tagged card from the active deck under `card-decks/<id>/`
+  (chief events, science techs, domestic buildings, defense units),
+  sorted into three tier-stacks (T1 → T2 → T3) and shuffled within
+  each tier. The face-up **row** is filled to **6 cards** off the top
+  of the stacked deck. The **lost-ideas pile** and every seat's
+  **discount tableau** start empty.
 - **Domestic** receives a hand containing every starter building, an
   empty placement grid, and the fixed **center tile** at `(0, 0)` (the
   village vault — always present, never destroyed; see Phase 2 for the
   threat-resolution interaction).
 - **Defense** receives a starter hand of the militia units listed in
-  `units.json` with no `requires` gate (Scout, Archer, Brute). The hand
-  is a pool — recruiting a unit does not consume the card; tech-driven
-  unlocks push additional units onto the same pile. Recruited units
-  occupy non-center building tiles on the Domestic grid.
+  the active deck's `units.json` with no `requires` gate (Scout, Archer,
+  Brute). The hand is a pool — recruiting a unit does not consume the
+  card; tech-driven unlocks push additional units onto the same pile.
+  Recruited units occupy non-center building tiles on the Domestic
+  grid.
 - **Events**: each color (gold/blue/green/red) has its own pool of cards;
   4 cards are dealt face-up to the seat that holds the matching role
   (chief→gold, science→blue, domestic→green, defense→red).
@@ -170,9 +172,11 @@ into the bank or another seat's mat.
 The Library is a face-up 6-slot **row** on the central board, fed from a
 single tier-stacked deck (all T1 cards reveal before any T2; all T2
 before any T3). The cards in the row are **real domestic buildings,
-defense units, science techs, and chief events** drawn from `src/data/`,
-each tagged with a **color** (gold / blue / green / red) and a **tier**
-(1 / 2 / 3). The science research cost a card prints in the Library is
+defense units, science techs, and chief events** drawn from the active
+deck under `card-decks/<id>/` (selected via `card-decks/deck.config.json`
+or the `VITE_DECK` build env var), each tagged with a **color** (gold /
+blue / green / red) and a **tier** (1 / 2 / 3). The science research
+cost a card prints in the Library is
 not the card's deploy cost — it is derived from the card's color × tier
 via a fixed table (see below) and is what the **science** seat pays to
 move the card into the recipient role's hand.

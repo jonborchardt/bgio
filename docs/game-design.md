@@ -178,10 +178,11 @@ question that keeps the V1 default flat.
   population, red ↔ military). Blocked on boss content gaining a
   `flavor` field on `ThreatPattern`.
 - **Color-count rebalance toward 5×4×3 = 60.** The master-plan target
-  is 5 of each (color × tier); the current content tagging in
-  `src/data/` over-shoots in some buckets and under-shoots in gold. The
-  V1 setup uses what it has; rebalancing is a content pass, not an
-  engine change.
+  is 5 of each (color × tier); the active deck under
+  `card-decks/<id>/` is the source of truth (default
+  `06-merged-best`). The rebalance is a content pass, not an
+  engine change — swap decks via `card-decks/deck.config.json` or the
+  `VITE_DECK` env var to A/B different content distributions.
 - **Tier-cost numbers (4 / 7+2 / 10+3+2).** Placeholder. Paper play
   should adjust toward the user's "multi-buy only when overfed" pacing.
 - **Burn-pile end-of-game readout.** Should the win-resolution screen
@@ -305,7 +306,8 @@ code locations and defaults.
 | Event hand size               | 4       | `src/game/events/state.ts` `HAND_SIZE`                    |
 | Track flips per round         | 1       | `src/game/roles/chief/flipTrack.ts` (D22)                 |
 | Building upgrade cost factor  | ×0.5    | `src/game/roles/domestic/upgrade.ts` (V1 stub)            |
-| Building maxHp range          | 1–4     | `src/data/buildings.json` per `BuildingDef.maxHp`         |
+| Building maxHp range          | 1–4     | active deck's `buildings.json` per `BuildingDef.maxHp`    |
+| Active deck                   | id      | `card-decks/deck.config.json#active` (env override `VITE_DECK`) |
 
 The lobby form (`SettlementSetupData`) exposes `turnCap`,
 `chiefStipendPerRound`, `startingBank`, and `soloMode`/`humanRole`. New
@@ -328,11 +330,11 @@ Targets the V1 content pass aims for. Update as the deck reshapes.
 
 | Deck                  | V1 size       | Notes                                                    |
 | --------------------- | ------------- | -------------------------------------------------------- |
-| Buildings (domestic)  | ~58           | Current pile in `src/data/buildings.json`.               |
-| Technologies          | ~82           | Cross-role tech tree; spans 4 colors / 4 branches.       |
-| Units (defense)       | ~67           | Includes Militia starters; Phase 2 reshapes the schema.  |
+| Buildings (domestic)  | ~37           | Active deck (`06-merged-best`); see `card-decks/<id>/buildings.json`. |
+| Technologies          | ~86           | Cross-role tech tree; spans 4 colors / 4 branches; balanced ~22 per color. |
+| Units (defense)       | ~50           | Includes Militia starters; ~90% carry placement bonuses.  |
 | Track cards           | 30–40         | 10 phases × 3–4 cards; threats / boons / modifiers + boss.|
-| Event cards           | 16 (4 / color)| Each role's hand is 4; cycle resets after exhausting.    |
+| Event cards           | 24 (6 gold / 6 blue / 6 green / 6 red) | Each role's hand is 4; cycle resets after exhausting.    |
 
 Round-time target is **20–60 minutes** for a full match (roughly 20–60
 rounds at the cap of 80).
@@ -341,7 +343,11 @@ The full pre-V1 wishlist sized for "20–60 turns": ~92 science cards
 total, 20 domestic-played-twice = 40 buildings used, ~10 defense units
 played multiple times = 20 unit deck, 4 events × 4 roles = 16 events,
 30–40 track cards (1 boss + ~9 phases of threats / boons / modifiers).
-Treat these as historical targets; live content lives in `src/data/`.
+Treat these as historical targets; live content lives under
+`card-decks/<id>/` and the active id is read from
+`card-decks/deck.config.json` (override at build time with
+`VITE_DECK=<id>`). Each deck folder ships a `REPORT.md` with its
+design goal and the diff against the `00-initial` baseline.
 
 ## 7. Open design questions
 

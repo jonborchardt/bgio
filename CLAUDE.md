@@ -66,9 +66,12 @@ implementing.
 
 ## Layout you should know
 
-The game logic lives under `src/game/`, the React UI lives under `src/ui/`, JSON content
-plus typed loaders live under `src/data/`, and the bgio Koa server lives under `server/`.
-Tests under `tests/` mirror the `src/` shape, with shared factories in `tests/helpers/`.
+The game logic lives under `src/game/`, the React UI lives under `src/ui/`, content
+JSON lives under `card-decks/<id>/` (with typed loaders in `src/data/`), and the bgio
+Koa server lives under `server/`. Tests under `tests/` mirror the `src/` shape, with
+shared factories in `tests/helpers/`. The active deck is selected by
+`card-decks/deck.config.json#active` (default `06-merged-best`); override at build time
+with `VITE_DECK=<id>`.
 
 - `src/game/` — barrel; `src/game/index.ts` exports the `Settlement` game object plus the
   public types. This is the only entry point UI / tests / server should import the game
@@ -339,9 +342,15 @@ Game changes are role-scoped. The workflow is:
 4. **Update the matching panel** under `src/ui/<role>/` so the role's UI surfaces the new
    state and dispatches the new moves. Shared chrome (cards, resource chips, center mat)
    lives outside the role folders — touch those only when the change is genuinely shared.
-5. If you add a card / unit / building / tech, edit the JSON under `src/data/` and let the
-   loader in `src/data/index.ts` re-export it. Don't import the JSON directly from game or
-   UI code — go through the typed loader.
+5. If you add a card / unit / building / tech, edit the JSON under `card-decks/<id>/` (the
+   active deck per `card-decks/deck.config.json#active`, default `06-merged-best`) and let
+   the loader in `src/data/index.ts` re-export it. Don't import the JSON directly from
+   game or UI code — go through the typed loader. To A/B a different deck, set
+   `VITE_DECK=<id>` at build time. Tests run against the fixture under
+   `tests/fixtures/deck/` (wired via vite alias) and don't notice content edits unless
+   they're in the live-deck linter — see `tests/data/liveDeck.test.ts` and
+   `tests/data/library-content-coverage.test.ts`, which use a `?live` query suffix to
+   bypass the alias.
 
 A future rename pass will move the codename "Settlement" to a real name; until then, leave
 the symbol alone and don't propagate the codename into copy.
@@ -415,9 +424,12 @@ installs Python 3 / make / g++ for the SQLite native compile.
   default at boot stays in-memory — `setAccountsStore(...)` is the one-line swap. The
   `runs` history table from migration `002_users_and_runs.sql` is the remaining 10.7
   follow-up; everything else under that plan has landed.
-- **In-flight content gaps:** events.json migrated to typed `gainResource` shape (review
-  fix ride-along). Tech / track / event content is a starter set; balancing comes after
-  Stage 14.
+- **In-flight content gaps:** events migrated to typed `gainResource` shape (review fix
+  ride-along). Tech / track / event content shipped via the deck-config rewrite —
+  `06-merged-best` is the active default (synergy + color-balanced library +
+  formula-derived costs). Other decks under `card-decks/<id>/` are alternative
+  rewrites (`00-initial` is the baseline; `01..05` are single-goal proposals); each
+  ships a `REPORT.md` with its design rationale.
 - **Networked playtest is still unverified end-to-end** in production-like conditions.
   Resume steps for a human run: `npm install`, `npm run dev:full`, build the client with
   `VITE_CLIENT_MODE=networked` (or visit the dev URL), register two accounts via
