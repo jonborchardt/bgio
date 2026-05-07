@@ -311,6 +311,17 @@ The lobby form (`SettlementSetupData`) exposes `turnCap`,
 `chiefStipendPerRound`, `startingBank`, and `soloMode`/`humanRole`. New
 per-match knobs go through that interface.
 
+### 5.x Paper-play notes (issue 058)
+
+- **Boss economy threshold (`12` in current content vs starting bank `3`
+  + chief stipend `2/round`).** A 4-player game accumulating only the
+  baseline stipend reaches 12 gold around turn 5; with stash inflows
+  from production buildings the chief usually crosses 12 before the
+  boss flips. Watch this in playtest — if the threshold ever feels
+  unreachable, the path of least resistance is bumping
+  `CHIEF_STIPEND_DEFAULT` rather than retuning the boss card. Revisit
+  after the content rebalance pass (issue 008) lands.
+
 ## 6. Content targets
 
 Targets the V1 content pass aims for. Update as the deck reshapes.

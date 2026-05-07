@@ -23,16 +23,18 @@ createRoot(rootEl).render(
           justifyContent: 'center',
           px: 2,
           py: 4,
-          // boardgame.io's Client wrapper renders as `<div class="bgio-client">`
-          // with no explicit width, so it collapses to its content's intrinsic
-          // width. Without this rule the Board's `width: min(100%, 60rem)`
-          // resolves `100%` against that collapsed parent, and each role
-          // panel renders at a different width depending on its content's
-          // min-content size. Force it to fill the flex slot.
-          '& .bgio-client': { width: '100%', minWidth: 0 },
         }}
       >
-        <App />
+        {/* Issue 057f — earlier this used a `& .bgio-client` selector
+            to size bgio's auto-rendered wrapper. That couples to a
+            bgio-internal class name; we wrap the App ourselves so
+            our Box wins the flex slot regardless of what bgio names
+            its child div. Without the explicit width the Board's
+            `width: min(100%, 60rem)` would resolve `100%` against a
+            collapsed parent. */}
+        <Box sx={{ width: '100%', minWidth: 0 }}>
+          <App />
+        </Box>
       </Box>
     </ThemeProvider>
   </StrictMode>,

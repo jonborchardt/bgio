@@ -56,7 +56,16 @@ export const othersPhase: PhaseConfig<SettlementState> = {
   },
 
   endIf: ({ G }) => {
-    const chiefSeat = seatOfRole(G.roleAssignments, 'chief');
+    // Issue 056g — `seatOfRole` throws if the chief role isn't
+    // assigned. Phase config gets evaluated against fixtures /
+    // partial states in tests, where a chief may be missing; treat
+    // "no chief" as "every seat counts" rather than crashing.
+    let chiefSeat: string | null = null;
+    try {
+      chiefSeat = seatOfRole(G.roleAssignments, 'chief');
+    } catch {
+      chiefSeat = null;
+    }
     const others = Object.keys(G.roleAssignments).filter(
       (seat) => seat !== chiefSeat,
     );

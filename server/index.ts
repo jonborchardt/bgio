@@ -145,6 +145,39 @@ export const createServer = (opts: CreateServerOptions = {}): CreatedServer => {
   });
   botDriver.start();
 
+  // Issue 054 — periodic log compaction. Drops the per-move log for
+  // matches whose metadata.gameover landed more than COMPACT_AGE_MS
+  // ago. The log is bgio's replay source; dropping it means a finished
+  // match can no longer be replayed move-by-move, which is acceptable
+  // — we keep the final state + metadata. Only fires when the
+  // active storage adapter exposes the method (the SQLite adapter
+  // does; the in-memory and FlatFile adapters don't).
+  const COMPACT_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+  const COMPACT_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+  type Compactor = { compactCompletedMatches: (ms: number) => Promise<number> };
+  const compactable = (server as unknown as { db?: unknown }).db as
+    | Compactor
+    | undefined;
+  let compactionTimer: ReturnType<typeof setInterval> | undefined;
+  if (
+    compactable &&
+    typeof compactable.compactCompletedMatches === 'function'
+  ) {
+    compactionTimer = setInterval(() => {
+      void compactable.compactCompletedMatches(COMPACT_AGE_MS).catch((err) => {
+        console.warn(
+          '[compact] log compaction tick failed:',
+          err instanceof Error ? err.message : err,
+        );
+      });
+    }, COMPACT_INTERVAL_MS);
+    if (
+      typeof (compactionTimer as { unref?: () => void }).unref === 'function'
+    ) {
+      (compactionTimer as { unref: () => void }).unref();
+    }
+  }
+
   // 10.7 follow-up — mount auth routes on bgio's Koa app. bgio exposes
   // its app at server.app; we attach a small middleware that handles
   // /auth/register, /auth/login, /auth/verify backed by the in-memory

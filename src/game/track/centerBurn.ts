@@ -74,7 +74,12 @@ export const centerBurn = (
     return seats;
   };
 
-  let remaining = Math.floor(requested);
+  // Issue 056f — match the resource-rounding convention used in
+  // `roles/domestic/produce.ts` (Math.ceil for losses). The caller
+  // supplies an integer in practice (threat.strength) but a future
+  // damage-multiplier could pass a fraction; rounding toward the
+  // larger burn keeps the burn loud rather than silently floored.
+  let remaining = Math.ceil(requested);
   while (remaining > 0) {
     const seats = candidateSeats();
     if (seats.length === 0) break; // pool empty

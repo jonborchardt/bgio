@@ -47,7 +47,11 @@ const domesticDemandAt = (G: SettlementState): number => {
   if (domestic === undefined) return 0;
   let cheapest = Number.POSITIVE_INFINITY;
   for (const def of domestic.hand) {
-    if (def.cost < cheapest) cheapest = def.cost;
+    // Defensive: redacted views can leave null entries in hands, and
+    // a bot driven against a server-redacted snapshot shouldn't
+    // crash on a null member. Authoritative bots see the full hand;
+    // this guard is the test-harness safety net.
+    if (def && def.cost < cheapest) cheapest = def.cost;
   }
   return Number.isFinite(cheapest) ? cheapest : 0;
 };

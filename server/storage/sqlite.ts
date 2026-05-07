@@ -150,6 +150,7 @@ export class SqliteStorage {
     nextLogIdx: BetterSqliteStatement;
     selectLog: BetterSqliteStatement;
     listMatchIDs: BetterSqliteStatement;
+    selectCompletedMatches: BetterSqliteStatement;
   };
 
   constructor(opts: SqliteStorageOptions = {}) {
@@ -213,7 +214,45 @@ export class SqliteStorage {
         `SELECT entry FROM log WHERE match_id = ? ORDER BY idx ASC`,
       ),
       listMatchIDs: this.db.prepare(`SELECT id FROM matches ORDER BY updated_at DESC`),
+      // Issue 054 — log retention: select match IDs whose metadata
+      // has a non-null gameover AND haven't been touched in
+      // `olderThanMs`. The metadata is JSON-encoded; SQLite's
+      // `json_extract` reads the `gameover` field without parsing
+      // every row in app code. `<=` so a 0ms threshold wipes
+      // every completed match (the natural "compact everything
+      // that's done" semantics).
+      selectCompletedMatches: this.db.prepare(
+        `SELECT id FROM matches
+          WHERE updated_at <= ?
+            AND json_extract(metadata, '$.gameover') IS NOT NULL`,
+      ),
     };
+  }
+
+  /** Issue 054 — log compaction. For matches whose metadata.gameover
+   *  is set AND that haven't been touched in `olderThanMs`, drop
+   *  every row from the per-match `log` table. The match itself
+   *  (state + metadata) stays — the lobby still surfaces completed
+   *  matches in the history view; only the move-by-move replay log
+   *  is dropped. Returns the count of matches whose log was wiped.
+   *
+   *  Production wiring: `createServer` schedules a periodic call
+   *  (e.g. once per hour) so a long-running deploy doesn't
+   *  accumulate unbounded log rows for completed matches. */
+  async compactCompletedMatches(olderThanMs: number): Promise<number> {
+    const cutoff = Date.now() - Math.max(0, olderThanMs);
+    const ids = (
+      this.stmts.selectCompletedMatches.all(cutoff) as { id: string }[]
+    ).map((r) => r.id);
+    let wiped = 0;
+    const drop = this.db.transaction((id: string) => {
+      this.stmts.deleteLog.run(id);
+    });
+    for (const id of ids) {
+      drop(id);
+      wiped += 1;
+    }
+    return wiped;
   }
 
   /** bgio lifecycle hook. We open eagerly so this is a no-op; bgio always

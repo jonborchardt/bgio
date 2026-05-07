@@ -99,10 +99,16 @@ import type { ResolveTrace } from '../track.ts';
 // Effective stats for a unit at fire time, after folding placement
 // bonuses, taught skills, and the optional drill token. Pure data —
 // the resolver builds one of these per unit per resolve call.
+// Issue 056d — `EffectiveStats.hp` was dead: `applyPlacementEffect`
+// silently dropped placement-bonus HP bumps with a "Phase 2.5 will
+// fold this in" comment, and Phase 2.5 instead applied HP at place
+// time on `UnitInstance` directly. The field carried no information
+// at fire time, so the hp slot is gone — the placement effect-kind
+// branch keeps its no-op so future content can re-route HP through
+// the place move if the design changes.
 interface EffectiveStats {
   strength: number;
   range: number;
-  hp: number;
   firstStrike: boolean;
 }
 
@@ -160,7 +166,6 @@ const computeStats = (
   const stats: EffectiveStats = {
     strength: def.attack,
     range: def.range,
-    hp: unit.hp,
     firstStrike: def.firstStrike,
   };
 

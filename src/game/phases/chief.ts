@@ -73,8 +73,16 @@ export const chiefPhase: PhaseConfig<SettlementState> = {
         }
       }
 
+      // Issue 056c — only mark seats that own at least one role.
+      // `assignRoles` always assigns every seat at least one role
+      // today, but a future config (or a hand-built test fixture)
+      // could leave a seat with `roles.length === 0`; we don't want
+      // those seats showing up as `Stage.NULL` waiting bystanders
+      // in the activePlayers map.
       const value: Record<string, typeof Stage.NULL> = {};
       for (const seat of Object.keys(G.roleAssignments)) {
+        const roles = G.roleAssignments[seat];
+        if (!roles || roles.length === 0) continue;
         value[seat] = Stage.NULL;
       }
       events.setActivePlayers({ value });

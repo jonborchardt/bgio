@@ -40,13 +40,12 @@ const MAX_MOVES = 500;
 // stage gating still collapses to INVALID_MOVE for moves that aren't
 // legal at the current state.
 //
-// We deliberately omit the per-color `*PlayGoldEvent` / `*PlayBlueEvent`
-// / `*PlayGreenEvent` / `*PlayRedEvent` family for now: those route
-// through the 08.2 dispatcher whose `EventEffect` union doesn't yet
-// cover the `gainGold` / `gainScience` effects shipped in events.json
-// (a known content/dispatcher gap). The fuzz harness's invariants don't
-// depend on those moves resolving — bringing them back in once the gap
-// closes is a one-line change.
+// Issue 031 expanded the candidate pool to cover defense recruits +
+// red-tech plays, domestic upgrades, and the per-color event-play
+// family (the original `gainGold` / `gainScience` dispatcher gap was
+// retired by the events-loader refactor). Engine invariants
+// (no-negative-resources, conservation, turn-bounded) hold across
+// the wider move space.
 const stubEnumerate = (
   G: SettlementState,
   _ctx: Ctx,
@@ -86,9 +85,44 @@ const stubEnumerate = (
     out.push({ move: 'domesticProduce', args: [] });
   }
 
-  // Defense (1.4 stub — no recruit / battle / trade moves).
+  // Defense — recruit + place against the (0,0) center cell + a
+  // hand-arbitrary cellKey. Move bodies INVALID_MOVE on illegal
+  // placement (e.g. center cell), so the bot just bounces those.
   if (G.defense !== undefined) {
+    const firstUnit = G.defense.hand[0];
+    if (firstUnit !== undefined) {
+      out.push({ move: 'defenseBuyAndPlace', args: [firstUnit.name, '0,0'] });
+      out.push({ move: 'defenseBuyAndPlace', args: [firstUnit.name, '1,0'] });
+    }
+    // defensePlay takes a tech def name; the seat's techHand may be
+    // empty, in which case the move INVALID_MOVEs harmlessly.
+    const firstTech = G.defense.techHand?.[0];
+    if (firstTech !== undefined) {
+      out.push({ move: 'defensePlay', args: [firstTech.name] });
+    }
     out.push({ move: 'defenseSeatDone', args: [] });
+  }
+
+  // Domestic repair — INVALID_MOVE when there's nothing damaged at
+  // (0,0); we still surface it so the candidate pool covers the
+  // spend-sink that closes the loop on threat damage.
+  out.push({ move: 'domesticRepair', args: [0, 0] });
+
+  // Per-color event plays. Each move resolves the seat that holds
+  // the matching role; INVALID_MOVE for the wrong seat. The args
+  // shape is `(eventID)` — pull the first event id from the seat's
+  // hand if any, else surface the move with a sentinel id (engine
+  // rejects with INVALID_MOVE).
+  if (G.events !== undefined) {
+    const firstID = (color: 'gold' | 'blue' | 'green' | 'red'): string => {
+      const seatMap = G.events!.hands[color];
+      const handForViewer = seatMap?.[playerID];
+      const id = handForViewer?.[0]?.id;
+      return id ?? '__no-event__';
+    };
+    out.push({ move: 'chiefPlayGoldEvent', args: [firstID('gold')] });
+    out.push({ move: 'sciencePlayBlueEvent', args: [firstID('blue')] });
+    out.push({ move: 'domesticPlayGreenEvent', args: [firstID('green')] });
   }
 
   return out;

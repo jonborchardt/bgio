@@ -110,6 +110,9 @@ export const enumerateDefense = (
   const covering: MoveCandidate[] = [];
   const nonCovering: MoveCandidate[] = [];
   for (const def of defense.hand) {
+    // Defensive: redacted views can leave null entries in hands;
+    // skip them so the bot doesn't crash on a `def.range` access.
+    if (!def) continue;
     if (stash === undefined || !canAfford(stash, unitCost(def))) continue;
     for (const cellKey of placementCells) {
       const tile = parseCellKey(cellKey);

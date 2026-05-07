@@ -115,8 +115,14 @@ export interface SettlementState {
   // compatible — present iff the game has ended.
   _score?: import('./endConditions.ts').RunScore;
 
-  // Private slices populated by 02.4; refined per role later.
-  // Decks belong to whoever owns them and live under those players' hands.
+  // Per-seat private slices. Issue 056k — production no longer
+  // routes anything through `G.hands` (Domestic / Defense /
+  // Library / Events all live on their own top-level slices); the
+  // field stays for backwards-compat with hand-built test fixtures
+  // that stash placeholder shapes here. The element type is kept
+  // intentionally loose so fixtures can pin arbitrary shapes
+  // (`{ domestic: ['A','B'] }`, `{}`, etc.) without re-typing the
+  // whole field; the production setup just writes empty objects.
   hands: Record<PlayerID, unknown>;
 
   // Per-seat player mat: `in` (chief just dropped here), `out` (this seat
