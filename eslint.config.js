@@ -76,8 +76,11 @@ export default tseslint.config(
   },
   {
     // The data barrel itself must read the raw JSON in to feed the
-    // validators. Disable the loader-only rule for `src/data/**`.
-    files: ['src/data/**/*.{ts,tsx}'],
+    // validators. Disable the loader-only rule for `src/data/**` and
+    // for the test-only fixture deck under `tests/fixtures/` (which
+    // mirrors the production loader contract against a stable JSON
+    // fixture so engine tests don't drift across content edits).
+    files: ['src/data/**/*.{ts,tsx}', 'tests/fixtures/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': 'off',
     },
