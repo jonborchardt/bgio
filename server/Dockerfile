@@ -36,9 +36,14 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 # Copy what the server build needs: server source, shared src, tsconfigs.
+# card-decks/ ships the JSON content the data loaders glob over at
+# module-eval time (and deck.config.json which deckSelection.ts imports
+# directly) — without it, both the typecheck and the runtime fail to
+# resolve the deck content.
 COPY tsconfig.json tsconfig.app.json tsconfig.node.json ./
 COPY server ./server
 COPY src ./src
+COPY card-decks ./card-decks
 
 # Typecheck only — emitting is handled at runtime by `vite-node`.
 RUN npm run server:build
@@ -60,6 +65,10 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/server ./server
 COPY --from=builder /app/src ./src
+# Same content the builder stage copied: deck content + deck.config.json
+# get globbed at module load by the data loaders, so they must exist on
+# disk in the runtime container.
+COPY --from=builder /app/card-decks ./card-decks
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 # vite-node reads vite.config.ts to set up its resolver, so copy it too.
 COPY --from=builder /app/vite.config.ts ./vite.config.ts
