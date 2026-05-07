@@ -150,24 +150,27 @@ describe('occupiedPath', () => {
 });
 
 describe('tileCoversPath', () => {
-  it('range 1 covers only the unit\'s own cell', () => {
+  it("range 1 covers the unit's cell + the 8-neighbour ring", () => {
     const path = [{ x: 0, y: 0 }, { x: 0, y: 1 }];
     // Unit on a path cell — covers it.
     expect(tileCoversPath({ x: 0, y: 0 }, 1, path)).toBe(true);
-    // Unit one cell off the path — out of reach at range 1.
-    expect(tileCoversPath({ x: 1, y: 1 }, 1, path)).toBe(false);
-    expect(tileCoversPath({ x: -1, y: 2 }, 1, path)).toBe(false);
+    // Unit one cell off the path — adjacent ring covers (0,0) and (0,1).
+    expect(tileCoversPath({ x: 1, y: 1 }, 1, path)).toBe(true);
+    expect(tileCoversPath({ x: -1, y: 2 }, 1, path)).toBe(true);
+    // Unit two cells off the path — out of range.
+    expect(tileCoversPath({ x: 2, y: 0 }, 1, path)).toBe(false);
   });
 
-  it('range 2 covers the unit\'s cell + the 8-neighbour ring (radius 1)', () => {
+  it('range 2 covers the unit + a 2-cell Chebyshev ball', () => {
     const path = [{ x: 0, y: 0 }, { x: 0, y: 1 }];
-    expect(tileCoversPath({ x: 1, y: 1 }, 2, path)).toBe(true);
-    expect(tileCoversPath({ x: -1, y: 2 }, 2, path)).toBe(true);
+    expect(tileCoversPath({ x: 2, y: 0 }, 2, path)).toBe(true);
+    expect(tileCoversPath({ x: -2, y: 2 }, 2, path)).toBe(true);
+    expect(tileCoversPath({ x: 3, y: 0 }, 2, path)).toBe(false);
   });
 
   it('returns false when the unit is out of range of every cell', () => {
     const path = [{ x: 0, y: 0 }];
-    expect(tileCoversPath({ x: 3, y: 0 }, 2, path)).toBe(false);
+    expect(tileCoversPath({ x: 4, y: 0 }, 2, path)).toBe(false);
   });
 
   it('range 0 (or below) never covers anything', () => {

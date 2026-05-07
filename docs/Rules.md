@@ -294,7 +294,11 @@ content-defined bonuses to specific neighbor pairs.
 Threats from the global event track resolve at the chief→others phase
 boundary the round after they were flipped. Each threat walks a path
 toward the village center; every unit whose Chebyshev range covers any
-cell on the threat's pre-impact path gets one fire opportunity. Firing
+cell on the threat's pre-impact path gets one fire opportunity. A
+unit's printed `range` IS its Chebyshev radius: `range = 1` covers
+the unit's own tile plus the 8-neighbour ring, `range = 2` adds the
+next 16-cell ring, and so on (`range = 0` covers nothing). The
+in-engine helper `tileCoversPath(unitTile, range, path)` enforces this. Firing
 order is first-strike before non-first-strike, then placement order.
 Effective unit strength folds (in this order) the unit's printed stats,
 its `placementBonus[]` matched to the building underneath it,

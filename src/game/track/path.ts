@@ -174,10 +174,15 @@ const chebyshev = (a: Cell, b: Cell): number =>
 
 /**
  * `true` iff the unit's tile is within firing reach of any cell on the
- * path. `range` is the count of tiles the unit can reach starting from
- * its own cell — `range = 1` covers only the unit's own tile,
- * `range = 2` covers the unit's tile + the 8-neighbour ring, etc. The
- * effective Chebyshev radius is therefore `range - 1`.
+ * path. `range` is the Chebyshev radius the unit can shoot:
+ *   - `range = 1` covers the unit's own tile + the 8-neighbour ring,
+ *   - `range = 2` adds the next 16-cell ring,
+ *   - `range = 0` (or negative) covers nothing.
+ *
+ * Issue 005 — earlier this used `radius = range - 1`, which made
+ * `range = 1` Scouts useless (they only covered their own cell, never
+ * an adjacent path). The convention is now spelled out in `Rules.md`
+ * §6: range is the radius itself.
  */
 export const tileCoversPath = (
   unitTile: Cell,
@@ -185,9 +190,8 @@ export const tileCoversPath = (
   path: ReadonlyArray<Cell>,
 ): boolean => {
   if (range < 1) return false;
-  const radius = range - 1;
   for (const cell of path) {
-    if (chebyshev(unitTile, cell) <= radius) return true;
+    if (chebyshev(unitTile, cell) <= range) return true;
   }
   return false;
 };

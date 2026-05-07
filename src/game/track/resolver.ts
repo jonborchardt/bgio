@@ -374,16 +374,27 @@ export const resolveThreat = (
     G.defense.inPlay = G.defense.inPlay.filter((u) => u.hp > 0);
   }
 
-  // Now apply the leftover damage to the path's impact tiles. The
-  // resolver walks `occupied` cells in path order; at each tile the
-  // damage is consumed by the unit stack (placement order, bottom-up)
-  // before reducing the building's HP.
+  // Issue 009 — walk the path once and build BOTH the trace path and
+  // the impact-tile list in lockstep. The damage loop iterates `path`
+  // (not `occupied`) so we can record the threat's traversal cell-by-
+  // cell as it happens; we stop adding to tracePath the moment the
+  // threat is consumed mid-path. This guarantees `tracePath` is in
+  // path order with no duplicates regardless of where the threat dies.
   let damage = hp;
-  for (const cellKeyStr of occupied) {
+  let stoppedAt = -1; // index of the last `path` cell the threat reached
+  for (let i = 0; i < path.length; i++) {
     if (damage <= 0) break;
+    const cell = path[i]!;
+    tracePath.push({ x: cell.x, y: cell.y });
+    stoppedAt = i;
+    const cellKeyStr = `${cell.x},${cell.y}`;
     const building = grid[cellKeyStr];
     if (building === undefined) continue;
-    if (building.isCenter === true) continue;
+    if (building.isCenter === true) {
+      // Reached center with damage left over — terminate the walk and
+      // let the centerBurn block below drain the pool.
+      break;
+    }
 
     // Stack consumption — every (still-alive) unit on this tile in
     // placement order absorbs up to its current HP.
@@ -413,29 +424,27 @@ export const resolveThreat = (
     }
 
     if (touched) traceImpactTiles.push(cellKeyStr);
-    if (damage <= 0) break;
   }
 
-  // The path the trace covers depends on where the threat ended up:
-  //   - reached center → cover the entire computed `path`.
-  //   - died en route  → cover up to (and including) the last impact
-  //                       tile; that's the threat's furthest-traversed
-  //                       cell.
-  // Reaching this point implies `damage > 0` survived the fire volley
-  // (the kill branch returned earlier), so the impact loop must have
-  // either consumed all `damage` (=> at least one tile in
-  // `traceImpactTiles`) or left some for the center burn (`damage > 0`
-  // here). The two branches below cover both — there is no third case.
-  if (damage > 0) {
-    for (const cell of path) tracePath.push({ x: cell.x, y: cell.y });
-  } else {
-    const lastKey = traceImpactTiles[traceImpactTiles.length - 1]!;
-    for (const cell of path) {
-      tracePath.push({ x: cell.x, y: cell.y });
+  // Dev-only invariant: tracePath must be unique (no cell visited
+  // twice) and in path order. Production builds skip this check —
+  // the loop above guarantees both by construction.
+  if (process.env.NODE_ENV !== 'production') {
+    const seen = new Set<string>();
+    for (const cell of tracePath) {
       const k = `${cell.x},${cell.y}`;
-      if (k === lastKey) break;
+      if (seen.has(k)) {
+        throw new Error(
+          `[resolver] tracePath contains duplicate cell ${k} for threat ${threat.id}`,
+        );
+      }
+      seen.add(k);
     }
   }
+  // Reference `stoppedAt` for clarity in future debugging — the index
+  // marks where the threat stopped (-1 means it never entered any cell,
+  // which only happens with an empty path).
+  void stoppedAt;
 
   // If the path reached center with damage left, burn the pool. Capture
   // the burn total for the trace so the UI can render the ripple at the

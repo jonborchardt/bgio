@@ -59,12 +59,11 @@ export const computeRangeKeys = (
   if (!Number.isFinite(cx) || !Number.isFinite(cy)) return out;
   const range = def.range;
   if (range < 1) return out;
-  // `range` is the count of tiles the unit reaches starting from its
-  // own cell — range 1 = self only, range 2 = self + 8-neighbour ring.
-  // Effective Chebyshev radius is `range - 1`.
-  const radius = range - 1;
-  for (let dx = -radius; dx <= radius; dx += 1) {
-    for (let dy = -radius; dy <= radius; dy += 1) {
+  // Issue 005 — `range` is the Chebyshev radius itself: range 1 = self
+  // + 8-neighbour ring, range 2 = self + 2-cell ball. The earlier
+  // `radius = range - 1` convention made range-1 Scouts useless.
+  for (let dx = -range; dx <= range; dx += 1) {
+    for (let dy = -range; dy <= range; dy += 1) {
       out.add(`${cx + dx},${cy + dy}`);
     }
   }

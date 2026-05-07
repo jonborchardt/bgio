@@ -80,6 +80,10 @@ export const createServer = (opts: CreateServerOptions = {}): CreatedServer => {
     games: [Settlement],
     authenticateCredentials,
   };
+  // Issue 006 — default to the dev client URL when ALLOWED_ORIGINS is
+  // unset so bgio doesn't emit its "Server `origins` option is not set"
+  // warning. Production deploys must set ALLOWED_ORIGINS to the Pages
+  // URL via render.yaml.
   const allowedOriginsEnv = (
     typeof process !== 'undefined' ? process.env?.ALLOWED_ORIGINS : undefined
   );
@@ -88,6 +92,8 @@ export const createServer = (opts: CreateServerOptions = {}): CreatedServer => {
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
+  } else {
+    serverConfig.origins = ['http://localhost:5179'];
   }
   if (opts.storage !== undefined) {
     // String → run through the 10.4 factory; non-string → assume the caller

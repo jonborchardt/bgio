@@ -20,7 +20,7 @@
 
 import { Box, Tooltip, Typography } from '@mui/material';
 import { alpha } from '@mui/material/styles';
-import type { ReactNode } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import type { DomesticBuilding } from '../../game/roles/domestic/types.ts';
 import type { UnitInstance } from '../../game/roles/defense/types.ts';
 import { BUILDINGS } from '../../data/index.ts';
@@ -186,6 +186,21 @@ export function CellSlot({
           : `Cell ${x},${y} — empty`
       }
       onClick={clickable ? onClick : undefined}
+      // Issue 011 — Enter/Space activate the cell so keyboard users
+      // can place buildings + station units. We don't switch to
+      // `ButtonBase` because the cell composes a Card (`occupied`)
+      // that already owns its own elevation + ripple; a wrapping
+      // ButtonBase would double-paint.
+      onKeyDown={
+        clickable && onClick
+          ? (e: KeyboardEvent<HTMLDivElement>) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
       sx={{
         position: 'relative',
         // Every cell is hard-pinned to the `small` BuildingCard

@@ -34,12 +34,12 @@ describe('computeRangeKeys', () => {
     expect(computeRangeKeys('u1', [u])).toEqual(new Set());
   });
 
-  it('covers a (2*(range-1)+1)^2 square — range is the count of tiles, not the radius', () => {
+  it('covers a (2*range+1)^2 square — range IS the Chebyshev radius', () => {
     // Pick a real unit def to avoid coupling to test-only fixtures.
     const def = UNITS[0]!;
     const u = makeUnit('u1', def.name, '0,0');
     const keys = computeRangeKeys('u1', [u]);
-    const radius = Math.max(def.range - 1, 0);
+    const radius = def.range;
     const expected = def.range >= 1 ? (radius * 2 + 1) ** 2 : 0;
     expect(keys.size).toBe(expected);
     if (def.range >= 1) {
