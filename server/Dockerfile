@@ -1,26 +1,50 @@
 # Server image for Render.
 #
-# Multi-stage Node 20 image. The build stage runs `npm ci` and the typecheck
-# (`server:build`); the runtime stage copies the dependency tree, server source,
-# and shared `src/` tree, and starts the server through `vite-node`.
+# Multi-stage Node 20 image. The builder stage runs `npm ci` (which also
+# compiles the `better-sqlite3` native module against this image's libc)
+# and `tsc -p server` as a typecheck gate. The runtime stage copies the
+# built `node_modules` from the builder and the source directly from the
+# build context, then starts the server through `vite-node`.
 #
 # Why `vite-node` at runtime instead of compiled JS or `tsx`:
 # - Our shared `src/` tree imports `.ts` paths and JSON without import
-#   attributes (matching Vite's bundler resolution). Switching to nodenext-
-#   strict ESM emit would touch every JSON import in the codebase. A
-#   Vite-flavored runner sidesteps that by running TypeScript directly.
+#   attributes (matching Vite's bundler resolution). Switching to
+#   nodenext-strict ESM emit would touch every JSON import in the
+#   codebase. A Vite-flavored runner sidesteps that.
 # - `tsx` 4.x cannot resolve bgio's subpath imports
 #   (`boardgame.io/server`, `boardgame.io/core`, …): bgio 0.50.x ships
-#   per-subpath `package.json` files but no top-level `exports` field, and
-#   tsx's resolver appends `.jsx` to the bare specifier instead of reading
-#   the subpath's own `main`. vite-node uses the same resolver Vitest uses
-#   for the server boot smoke test, so dev/test/prod stay aligned.
-# - Render's free tier already pays a cold-start tax (15-min sleep wake-up);
-#   a few extra ms of vite-node boot is rounding error.
+#   per-subpath `package.json` files but no top-level `exports` field,
+#   and tsx's resolver appends `.jsx` to the bare specifier instead of
+#   reading the subpath's own `main`. vite-node uses the same resolver
+#   Vitest uses for the server boot smoke test, so dev/test/prod stay
+#   aligned.
+# - Render's free tier already pays a cold-start tax (15-min sleep
+#   wake-up); a few extra ms of vite-node boot is rounding error.
 #
-# The native dep `better-sqlite3` compiles in `npm ci` on the builder
-# stage and gets copied via `node_modules`. Render's build runs inside
-# this container so the native binary matches the runtime libc.
+# COPY discipline (read this before adding/removing a COPY line):
+#   The runtime stage must contain every file the server imports
+#   (transitively from `server/start.ts`). The list is:
+#     server/                — server entry + factory + storage / auth /
+#                              bots / idle / runs modules
+#     src/                   — shared game (`src/game/`), data loaders
+#                              (`src/data/`), card registry (`src/cards/`)
+#     card-decks/            — deck JSON content + deck.config.json
+#                              (data loaders glob + deckSelection.ts
+#                              imports directly)
+#     package.json /         — vite-node reads package.json as the
+#       package-lock.json      project-root marker; the lockfile keeps
+#                              `npm ci`-equivalent state on the runtime
+#                              for any dynamic dep resolution
+#     tsconfig.json /        — vite-node honours compilerOptions / paths
+#       tsconfig.app.json /    from the TS config tree (the root file
+#       tsconfig.node.json     references the others)
+#     vite.config.ts         — vite-node reads it for resolve.alias and
+#                              project root
+#   The builder stage mirrors the SAME source list (so the typecheck
+#   exercises the same files), plus build-time tools.
+#
+#   When a new directory at the repo root becomes a runtime import
+#   target, add it BOTH here and in `server/tsconfig.json`'s `include`.
 
 # ---- builder ----------------------------------------------------------------
 FROM node:20-alpine AS builder
@@ -30,17 +54,16 @@ RUN apk add --no-cache python3 make g++
 
 WORKDIR /app
 
-# Install all deps (incl. dev) so we can run `tsc -p server` for typecheck and
-# rebuild the better-sqlite3 native module against this image's libc.
+# Install all deps (incl. dev) so we can run `tsc -p server` for the
+# typecheck and rebuild the better-sqlite3 native module against this
+# image's libc.
 COPY package.json package-lock.json ./
 RUN npm ci
 
-# Copy what the server build needs: server source, shared src, tsconfigs.
-# card-decks/ ships the JSON content the data loaders glob over at
-# module-eval time (and deck.config.json which deckSelection.ts imports
-# directly) — without it, both the typecheck and the runtime fail to
-# resolve the deck content.
+# Source needed for the typecheck — keep this list in sync with the
+# runtime stage below and with `server/tsconfig.json`'s `include`.
 COPY tsconfig.json tsconfig.app.json tsconfig.node.json ./
+COPY vite.config.ts ./
 COPY server ./server
 COPY src ./src
 COPY card-decks ./card-decks
@@ -56,22 +79,30 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8000
 
-# Render's persistent disk mounts at /data; the SQLite path defaults to
-# /data/settlement.sqlite via render.yaml. Override locally with SQLITE_PATH.
+# Defaults for ad-hoc `docker run` invocations. Render injects its own
+# values per `render.yaml` (currently `STORAGE_KIND=memory` on free tier;
+# the SQLite-backed values become correct once the service upgrades to
+# Starter + persistent disk per the upgrade path in `render.yaml`'s
+# header).
 ENV STORAGE_KIND=sqlite
 ENV SQLITE_PATH=/data/settlement.sqlite
 
+# node_modules from the builder carries the alpine-built native binary
+# of better-sqlite3 — don't reinstall in this stage or the binary
+# rebuilds against the runtime image's toolchain (which lacks the build
+# tools we apt-installed in the builder).
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/server ./server
-COPY --from=builder /app/src ./src
-# Same content the builder stage copied: deck content + deck.config.json
-# get globbed at module load by the data loaders, so they must exist on
-# disk in the runtime container.
-COPY --from=builder /app/card-decks ./card-decks
-COPY --from=builder /app/tsconfig.json ./tsconfig.json
-# vite-node reads vite.config.ts to set up its resolver, so copy it too.
-COPY --from=builder /app/vite.config.ts ./vite.config.ts
+
+# Source comes from the build context, not the builder. The builder
+# isn't transforming any of these files, so chaining through it would
+# just be a wasted pass-through. Mirrors the COPY discipline list at
+# the top of this Dockerfile.
+COPY package.json package-lock.json ./
+COPY tsconfig.json tsconfig.app.json tsconfig.node.json ./
+COPY vite.config.ts ./
+COPY server ./server
+COPY src ./src
+COPY card-decks ./card-decks
 
 # Issue 045 — drop privileges. The `node` user ships in the official
 # Node image; chown the app tree + the persistent data mount so
