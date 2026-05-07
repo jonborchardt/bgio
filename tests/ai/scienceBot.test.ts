@@ -44,7 +44,7 @@ describe('scienceBot.play', () => {
     ).toBeNull();
   });
 
-  it('returns null when no library card is affordable', () => {
+  it('falls back to burn when nothing is affordable so seatDone can fire', () => {
     const G = setupG(4);
     const seat = seatOfRole(G.roleAssignments, 'science');
     // Drain the seat's stash so nothing in the row is reachable.
@@ -53,6 +53,34 @@ describe('scienceBot.play', () => {
     }
     // Drain bank too in case the science seat shares with chief.
     for (const r of RESOURCES) G.bank[r] = 0;
+    const action = scienceBot.play({
+      G,
+      ctx: ctxFor('othersPhase', { [seat]: 'scienceTurn' }, 4),
+      playerID: seat,
+    });
+    // `scienceSeatDone` rejects until the once-per-round burn latch is
+    // set, so the bot must burn before it can declare the turn done.
+    // The chosen slot is the highest-tier card in the row — burning the
+    // most expensive (least likely to be affordable later) costs the
+    // table the least.
+    expect(action).not.toBeNull();
+    expect(action?.move).toBe('scienceLibraryBurn');
+    const slotIndex = action?.args[0] as number;
+    const lib = G.library!;
+    const burned = lib.row[slotIndex];
+    expect(burned).not.toBeNull();
+    const maxTier = Math.max(...lib.row.filter((c) => c !== null).map((c) => c!.tier));
+    expect(burned!.tier).toBe(maxTier);
+  });
+
+  it('returns null after the burn latch is already set', () => {
+    const G = setupG(4);
+    const seat = seatOfRole(G.roleAssignments, 'science');
+    if (G.mats[seat]) {
+      for (const r of RESOURCES) G.mats[seat]!.stash[r] = 0;
+    }
+    for (const r of RESOURCES) G.bank[r] = 0;
+    if (G.science !== undefined) G.science.scienceBurnedThisRound = true;
     expect(
       scienceBot.play({
         G,
