@@ -4,6 +4,9 @@ import { detectMode, getServerURL } from '../src/clientMode.ts';
 describe('detectMode', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
+    if (typeof window !== 'undefined') {
+      window.location.hash = '';
+    }
   });
 
   it("defaults to 'hotseat' when VITE_CLIENT_MODE is unset", () => {
@@ -24,6 +27,21 @@ describe('detectMode', () => {
   it('returns hotseat for unknown values (defensive default)', () => {
     vi.stubEnv('VITE_CLIENT_MODE', 'banana');
     expect(detectMode()).toBe('hotseat');
+  });
+
+  it("URL fragment '#hotseat' overrides a networked build to hotseat", () => {
+    // The prod escape hatch: a Pages bundle built with
+    // VITE_CLIENT_MODE=networked still mounts the hot-seat shell when
+    // the page is loaded at /#hotseat.
+    vi.stubEnv('VITE_CLIENT_MODE', 'networked');
+    window.location.hash = '#hotseat';
+    expect(detectMode()).toBe('hotseat');
+  });
+
+  it("other URL fragments do not override the build-time mode", () => {
+    vi.stubEnv('VITE_CLIENT_MODE', 'networked');
+    window.location.hash = '#cards';
+    expect(detectMode()).toBe('networked');
   });
 });
 
