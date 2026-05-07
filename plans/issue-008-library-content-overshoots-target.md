@@ -1,6 +1,20 @@
-we are skipping 008 till later: 
-
 # Issue 008 — Library content over-shoots and is wildly skewed (282 vs 60 target)
+
+**Status**: WON'T DO — superseded by the deck-selection refactor.
+
+The active deck switched to `card-decks/06-merged-best` (199 cards,
+`-30%` from the original 282). The "60 target" came from an earlier
+`5 × 4 × 3` plan; the current design intent is documented in
+[`card-decks/06-merged-best/REPORT.md`](../card-decks/06-merged-best/REPORT.md)
+("lean enough that every card is distinct, not so small the Library
+row stops surprising you"). The mechanic-correctness concern that
+motivated this issue — the boss-debuff thresholds at 5 / 10 / 15
+being unreachable for gold and blue — is gone: the new deck's
+REPORT confirms all four colors reach tier 3.
+
+A future Set 7 may regenerate `trackCards.json` by formula (see issue
+017) and could revisit content sizes, but the absolute "60-card" goal
+is retired.
 
 **Severity**: high
 **Area**: data / content

@@ -1,6 +1,11 @@
-we are skipping 020 till later: 
-
 # Issue 020 — Only ~4 of 16 events carry library tagging
+
+**Status**: WON'T DO — resolved by the deck-selection refactor.
+
+The active deck (`card-decks/06-merged-best`) ships **24 events, all
+tagged with `{ scienceColor, tier }`** — even split 6 gold / 6 blue
+/ 6 green / 6 red. The library-row now sees the full event surface;
+no events are silently library-exempt. Closed without code work.
 
 **Severity**: medium
 **Area**: data / content
