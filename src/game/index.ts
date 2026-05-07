@@ -50,6 +50,9 @@ export type {
 } from './types.ts';
 
 export { assignRoles, rolesAtSeat, seatOfRole } from './roles.ts';
+// Issue 056i — re-export the chief-stipend tunable so lobby UIs that
+// surface it in the setup form pull the same default the engine uses.
+export { CHIEF_STIPEND_DEFAULT } from './setup.ts';
 
 // Production move set. The `__test*` moves are deliberately excluded:
 // they exist only so 02.1's phase-transition tests can flip

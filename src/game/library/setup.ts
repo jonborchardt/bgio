@@ -18,7 +18,8 @@ import type { PlayerID } from '../types.ts';
 import type { RandomAPI } from '../random.ts';
 import { BUILDINGS, UNITS, TECHNOLOGIES, EVENT_CARDS } from '../../data/index.ts';
 
-const ROW_SIZE = 6;
+// Issue 056h — exported so refill.ts and tests don't hardcode `6`.
+export const ROW_SIZE = 6;
 
 // Walk every loader, lift the tagged defs into LibraryCards, and
 // return one flat list. Untagged content (the V1 default) is skipped —

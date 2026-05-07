@@ -18,7 +18,7 @@ import { domesticBuyBuilding } from './roles/domestic/buy.ts';
 import { domesticUpgradeBuilding } from './roles/domestic/upgrade.ts';
 import { domesticProduce } from './roles/domestic/produce.ts';
 import { domesticRepair } from './roles/domestic/repair.ts';
-import { undoLast } from './undo.ts';
+import { clearUndoable, undoLast } from './undo.ts';
 import { scienceDrill } from './roles/science/drill.ts';
 import { scienceTeach } from './roles/science/teach.ts';
 import { scienceLibraryBuy } from './roles/science/libraryBuy.ts';
@@ -175,6 +175,10 @@ export const __devGrantAllRoles: Move<SettlementState> = (
   { G },
   amount: number,
 ) => {
+  // Issue 056b — dev-only mutator; wipe any pending undo so the next
+  // user-driven move can't roll BACK across the dev grant. The grant
+  // is itself non-undoable.
+  clearUndoable(G);
   const safeAmount =
     typeof amount === 'number' && Number.isFinite(amount) && amount > 0
       ? Math.floor(amount)

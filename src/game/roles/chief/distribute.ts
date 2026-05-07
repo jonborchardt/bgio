@@ -46,6 +46,10 @@ export const chiefDistribute: Move<SettlementState> = (
   if (targetMat === undefined) return INVALID_MOVE;
 
   // Validate amounts: must be a plain object of finite integers (any sign).
+  // Issue 056a — also reject absurd magnitudes: real chief distributions
+  // are tens of tokens at most. A garbage value north of 1k is almost
+  // certainly a client bug or replay-corruption artifact, and silently
+  // accepting it would corrupt `G.bank` past the point of recovery.
   if (typeof amounts !== 'object' || amounts === null) return INVALID_MOVE;
   for (const r of RESOURCES) {
     const v = amounts[r];
@@ -53,6 +57,7 @@ export const chiefDistribute: Move<SettlementState> = (
     if (typeof v !== 'number' || !Number.isFinite(v) || !Number.isInteger(v)) {
       return INVALID_MOVE;
     }
+    if (Math.abs(v) > 1000) return INVALID_MOVE;
   }
 
   // Split into push (bank → in) and pull (in → bank) bags.

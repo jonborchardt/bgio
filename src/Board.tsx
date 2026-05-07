@@ -13,7 +13,7 @@
 // players; it lives inside `<DevSidebar>` (dev-only fly-out) so the
 // player view stays focused on "your turn / not your turn".
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Box, Stack } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
@@ -176,17 +176,26 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
     return G.domestic?.hand.find((c) => c.name === selectedBuildingName);
   }, [selectedBuildingName, G.domestic]);
 
-  const handlePlaceBuilding = (x: number, y: number): void => {
-    if (selectedBuildingName === undefined) return;
-    moves.domesticBuyBuilding(selectedBuildingName, x, y);
-    setSelectedBuildingName(undefined);
-  };
+  // Issue 057g — useCallback so memoized children (BuildingGrid,
+  // CellSlot, UnitStack) don't bust their `React.memo` boundary on
+  // every Board render.
+  const handlePlaceBuilding = useCallback(
+    (x: number, y: number): void => {
+      if (selectedBuildingName === undefined) return;
+      moves.domesticBuyBuilding(selectedBuildingName, x, y);
+      setSelectedBuildingName(undefined);
+    },
+    [selectedBuildingName, moves],
+  );
 
-  const handlePickUnitCell = (cellKey: string): void => {
-    if (selectedUnitName === undefined) return;
-    moves.defenseBuyAndPlace(selectedUnitName, cellKey);
-    setSelectedUnitName(undefined);
-  };
+  const handlePickUnitCell = useCallback(
+    (cellKey: string): void => {
+      if (selectedUnitName === undefined) return;
+      moves.defenseBuyAndPlace(selectedUnitName, cellKey);
+      setSelectedUnitName(undefined);
+    },
+    [selectedUnitName, moves],
+  );
 
   // Spectator vs seated. `playerID === null` is bgio's "watching only"
   // connection (02.4's `playerView(G, ctx, null)` redacts secrets);
