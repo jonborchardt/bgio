@@ -113,6 +113,21 @@ export const createServer = (opts: CreateServerOptions = {}): CreatedServer => {
   // FlatFile / real adapters land in 10.4.
   const server = Server(serverConfig as Parameters<typeof Server>[0]);
 
+  // Issue 023 — when running behind a reverse proxy (Render's edge,
+  // nginx, etc.), Koa needs `app.proxy = true` to honour
+  // `X-Forwarded-For` for `ctx.ip`. Without it, every request looks
+  // like it came from the proxy and the auth rate-limiter collapses
+  // every attacker into a single bucket.
+  const trustProxy = (() => {
+    const raw = typeof process !== 'undefined' ? process.env?.TRUST_PROXY : undefined;
+    if (typeof raw !== 'string') return false;
+    return /^(1|true|yes|on)$/i.test(raw.trim());
+  })();
+  if (trustProxy) {
+    const koaApp = (server as unknown as { app?: { proxy?: boolean } }).app;
+    if (koaApp) koaApp.proxy = true;
+  }
+
   // 10.9 — start the idle-takeover watcher. The watcher does nothing
   // until `noteActivity()` registers a seat, and the seat-takeover
   // module itself is a stub (see `server/idle/seatTakeover.ts`), so

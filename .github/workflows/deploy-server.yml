@@ -50,3 +50,12 @@ jobs:
       # compiled bundle this step can swap to a real build.
       - name: Server typecheck
         run: npm run server:build
+
+      # Issue 024 — gate Render deploy on server-test + lint, not just
+      # typecheck. A unit-test or lint regression in `server/` should
+      # block deploy the same way a typecheck break does.
+      - name: Server unit tests
+        run: npx vitest run tests/server
+
+      - name: Lint
+        run: npm run lint

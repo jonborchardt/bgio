@@ -32,7 +32,7 @@
 // surfaces at runtime with a clear message rather than at typecheck time.
 
 import { createRequire } from 'node:module';
-import { readFileSync, readdirSync, existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { dirname, join, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -112,22 +112,20 @@ interface ListMatchesOpts {
   where?: { isGameover?: boolean; updatedBefore?: number; updatedAfter?: number };
 }
 
-/** Run all `*.sql` files in `migrationsDir` in numbered order against `db`.
- * Migrations are expected to be idempotent — we don't track applied
- * versions because every file uses `IF NOT EXISTS`. */
-const runMigrations = (db: BetterSqliteDatabase, migrationsDir: string): void => {
-  if (!existsSync(migrationsDir)) {
-    // No migrations dir — adapter is still functional (caller may have
-    // pre-populated the DB), so we don't throw.
-    return;
-  }
-  const files = readdirSync(migrationsDir)
-    .filter((f) => f.endsWith('.sql'))
-    .sort();
-  for (const file of files) {
-    const sql = readFileSync(join(migrationsDir, file), 'utf8');
-    db.exec(sql);
-  }
+// Issue 022 — migration ledger + exclusive lock live in the shared
+// helper so both this adapter and the auth/runs stores apply the
+// same files exactly once, in the same order, even when their two
+// connections race during boot.
+import { runMigrations as runMigrationsShared } from './migrate.ts';
+
+const runMigrations = (
+  db: BetterSqliteDatabase,
+  migrationsDir: string,
+): void => {
+  runMigrationsShared(
+    db as unknown as Parameters<typeof runMigrationsShared>[0],
+    migrationsDir,
+  );
 };
 
 const DEFAULT_MIGRATIONS_DIR = (() => {

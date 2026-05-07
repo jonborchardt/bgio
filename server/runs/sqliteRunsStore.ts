@@ -11,10 +11,11 @@
 // than a typecheck failure on dev machines that haven't built the dep.
 
 import { createRequire } from 'node:module';
-import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
-import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { existsSync, mkdirSync } from 'node:fs';
+import { dirname, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
+import { runMigrations } from '../storage/migrate.ts';
 import type { RunRecord } from './runs.ts';
 import type { RunsStore } from './runsStore.ts';
 
@@ -68,18 +69,6 @@ const DEFAULT_MIGRATIONS_DIR = (() => {
   return resolve(here, '..', 'storage', 'migrations');
 })();
 
-const runMigrations = (
-  db: BetterSqliteDatabase,
-  migrationsDir: string,
-): void => {
-  if (!existsSync(migrationsDir)) return;
-  const files = readdirSync(migrationsDir)
-    .filter((f) => f.endsWith('.sql'))
-    .sort();
-  for (const file of files) {
-    db.exec(readFileSync(join(migrationsDir, file), 'utf8'));
-  }
-};
 
 interface RunDbRow {
   id: string;

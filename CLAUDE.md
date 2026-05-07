@@ -385,7 +385,7 @@ installs Python 3 / make / g++ for the SQLite native compile.
   `plans/science-library-redesign.md`; orchestration log:
   `plans/sl-orchestrator.md`.
 - **Server runner is `vite-node`, not `tsx`.** 14.14 swapped it because tsx 4.x mis-resolves
-  bgio subpath imports (`boardgame.io/server`, `/core`, …). `npm run dev:server` now points at
+  bgio subpath imports (`boardgame.io/server`, `/core`, …). `npm run server:dev` now points at
   `server/start.ts`, a thin wrapper that always boots — no ambient-detection block. The
   Render Dockerfile uses the same runner.
 - **`__test*` moves** are gated behind `NODE_ENV=test` (review fix #1). Production builds

@@ -32,5 +32,6 @@
     "types": ["vitest/globals"]
   },
   "include": ["src", "tests"],
+  "//exclude_note": "Issue 055 — `server/` lives in its own tsconfig (server/tsconfig.json). Server tests under tests/server/ cross-import server source via relative paths; tsc happily compiles those imports through this project's resolver, even though server/* isn't in `include`. If you ever introduce a server-only @types package or a server-only lib option, move the server tests into the server tsconfig instead of widening `include` here.",
   "exclude": ["server"]
 }

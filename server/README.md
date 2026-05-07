@@ -8,7 +8,7 @@ the repo root can be built two ways (`npm run build:hotseat` /
 
 ```bash
 npm install
-npm run dev:server     # vite-node --watch server/start.ts on PORT=8000
+npm run server:dev     # vite-node --watch server/start.ts on PORT=8000
 npm run dev:full       # client + server in one terminal
 ```
 
@@ -22,7 +22,7 @@ By default `STORAGE_KIND` is `memory` (no on-disk persistence). For
 SQLite-backed local dev set:
 
 ```bash
-STORAGE_KIND=sqlite SQLITE_PATH=./.dev-data/settlement.sqlite npm run dev:server
+STORAGE_KIND=sqlite SQLITE_PATH=./bgio-data/settlement.sqlite npm run server:dev
 ```
 
 `better-sqlite3` is a runtime dep; the very first `npm install` after pulling
@@ -58,7 +58,9 @@ broken server because the typecheck blocks merge first.
 | -------------- | ----------------------------- | ----------------------------------------------------- |
 | `PORT`         | `8000`                        | Render injects this; do not override in the dashboard. |
 | `STORAGE_KIND` | `memory`                      | Set to `sqlite` for persistence (Render does this).   |
-| `SQLITE_PATH`  | `./.dev-data/settlement.sqlite` | On Render, `/data/settlement.sqlite`.                 |
+| `SQLITE_PATH`  | `./bgio-data/settlement.sqlite` | On Render, `/data/settlement.sqlite`.                 |
+| `ALLOWED_ORIGINS` | `http://localhost:5179`     | Comma-separated origin allow-list for SocketIO + auth routes. |
+| `TRUST_PROXY`  | `false`                       | Set to `true`/`1` when behind a proxy that forwards client IP via `X-Forwarded-For`. |
 | `NODE_ENV`     | (unset)                       | Render sets `production`.                             |
 
 ### Free-tier sleep

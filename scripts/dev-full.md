@@ -42,9 +42,10 @@ that case.
 
 ## Storage
 
-The dev SQLite file lives at `.dev-data/settlement.sqlite` (configured
-via `SQLITE_PATH` in `.env.example`). The directory is gitignored.
-Delete the file to start fresh.
+The dev SQLite file lives at `./bgio-data/settlement.sqlite` (the
+code default in both the bgio match adapter and the accounts/runs
+stores; configurable via `SQLITE_PATH` in `.env.example`). The
+directory is gitignored. Delete the file to start fresh.
 
 ## First-time login
 
@@ -59,4 +60,4 @@ Re-running is a no-op when the accounts already exist.
 
 The `concurrently -n server,client -c blue,green` flags prefix each
 line with the process name and color. If you only want one stream,
-run `npm run dev:server` or `npm run dev` directly.
+run `npm run server:dev` or `npm run dev` directly.

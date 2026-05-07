@@ -63,6 +63,11 @@ const MAX_BODY_BYTES = 64 * 1024;
  * client's session lifecycle. */
 const BUCKET_CAPACITY = 10;
 const BUCKET_REFILL_PER_SEC = 1 / 6; // 10 attempts per minute, sustained.
+/** Issue 023 — cap to keep memory bounded under attack. We don't
+ * need exact LRU; "evict the oldest insertion" via Map iteration
+ * order is good enough and constant-time. Tune higher if real
+ * legitimate traffic ever crosses this cap. */
+const BUCKET_MAX_ENTRIES = 10_000;
 
 interface BucketRow {
   /** Tokens remaining. Decrements on each request. */
@@ -80,6 +85,13 @@ const consumeToken = (ip: string): boolean => {
   const now = Date.now();
   let row = buckets.get(ip);
   if (!row) {
+    if (buckets.size >= BUCKET_MAX_ENTRIES) {
+      // Drop the oldest insertion so the table stays bounded under
+      // attack. Map preserves insertion order so the first key is
+      // the oldest.
+      const oldest = buckets.keys().next().value;
+      if (oldest !== undefined) buckets.delete(oldest);
+    }
     row = { tokens: BUCKET_CAPACITY, lastRefill: now };
     buckets.set(ip, row);
   } else {
