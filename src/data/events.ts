@@ -1,116 +1,24 @@
-// Typed loader for src/data/events.json — lives in its own file because
-// EventCardDef is specific to the cross-cutting events system (08.x) and
-// the `effects` schema will be filled in by 08.2 once the dispatch types
-// are nailed down.
-//
-// As with the other loaders, validation runs at module load — if the JSON
-// drifts out of shape, importing this file throws synchronously.
-//
-// Schema note: `effects` is intentionally accepted as `unknown[]` here. 08.2
-// will define the typed `EventEffect` union and tighten this up; right now we
-// only assert "must be an array" so 08.1 can ship the deck shape + cycle
-// bookkeeping without coupling to the (still-evolving) dispatcher contract.
+// Typed loader for the active deck's events.json. Validation runs at
+// module load — if the JSON drifts out of shape, importing this file
+// throws synchronously. The validator + types live in
+// `./eventsValidator.ts` so the test fixture's events shim can reach
+// the validator without bouncing through the test alias on this file.
 
-import eventsRaw from './events.json';
-import type { LibraryTier, LibraryColor } from './schema.ts';
+import { pickFromGlob } from './deckSelection.ts';
+import {
+  validateEvents,
+  type EventCardDef,
+  type EventColor,
+} from './eventsValidator.ts';
 
-export type EventColor = 'gold' | 'blue' | 'green' | 'red';
+export { validateEvents };
+export type { EventCardDef, EventColor };
 
-export interface EventCardDef {
-  id: string;
-  color: EventColor;
-  name: string;
-  // Loose at this stage. 08.2 will replace `unknown[]` with a typed union of
-  // effect entries (e.g. `{ kind: 'gainGold'; amount: number } | ...`).
-  effects: unknown[];
-  // Science Library SL 1.1 — optional library tagging. Back-filled by
-  // sub-plan 6.
-  tier?: LibraryTier;
-  scienceColor?: LibraryColor;
-}
-
-const COLORS: ReadonlySet<EventColor> = new Set([
-  'gold',
-  'blue',
-  'green',
-  'red',
-]);
-
-const isPlainObject = (v: unknown): v is Record<string, unknown> =>
-  typeof v === 'object' && v !== null && !Array.isArray(v);
-
-const validateEvents = (raw: unknown): EventCardDef[] => {
-  if (!Array.isArray(raw)) {
-    throw new Error(`EventCardDef: expected an array, got ${typeof raw}`);
-  }
-  return raw.map((entry, i) => {
-    if (!isPlainObject(entry)) {
-      throw new Error(
-        `EventCardDef[${i}]: expected an object, got ${typeof entry}`,
-      );
-    }
-    const id = entry.id;
-    if (typeof id !== 'string' || id.length === 0) {
-      throw new Error(
-        `EventCardDef[${i}]: field "id" must be a non-empty string`,
-      );
-    }
-    const color = entry.color;
-    if (typeof color !== 'string' || !COLORS.has(color as EventColor)) {
-      throw new Error(
-        `EventCardDef[${i}]: field "color" must be one of gold|blue|green|red, got ${String(color)}`,
-      );
-    }
-    const name = entry.name;
-    if (typeof name !== 'string' || name.length === 0) {
-      throw new Error(
-        `EventCardDef[${i}]: field "name" must be a non-empty string`,
-      );
-    }
-    const effects = entry.effects;
-    if (!Array.isArray(effects)) {
-      throw new Error(
-        `EventCardDef[${i}]: field "effects" must be an array`,
-      );
-    }
-    const out: EventCardDef = {
-      id,
-      color: color as EventColor,
-      name,
-      // Copy so a downstream mutation can't reach back into the JSON module.
-      // Frozen below alongside the wrapping array.
-      effects: [...effects],
-    };
-    const tierRaw = entry.tier;
-    if (tierRaw !== undefined) {
-      if (
-        typeof tierRaw !== 'number' ||
-        (tierRaw !== 1 && tierRaw !== 2 && tierRaw !== 3)
-      ) {
-        throw new Error(
-          `EventCardDef[${i}]: field "tier" must be 1|2|3 when present, got ${String(tierRaw)}`,
-        );
-      }
-      out.tier = tierRaw as LibraryTier;
-    }
-    const colorRaw = entry.scienceColor;
-    if (colorRaw !== undefined) {
-      if (
-        typeof colorRaw !== 'string' ||
-        (colorRaw !== 'gold' &&
-          colorRaw !== 'blue' &&
-          colorRaw !== 'green' &&
-          colorRaw !== 'red')
-      ) {
-        throw new Error(
-          `EventCardDef[${i}]: field "scienceColor" must be one of gold|blue|green|red when present, got ${String(colorRaw)}`,
-        );
-      }
-      out.scienceColor = colorRaw as LibraryColor;
-    }
-    return out;
-  });
-};
+const EVENTS_BY_DECK = import.meta.glob<unknown>(
+  '/card-decks/*/events.json',
+  { eager: true, import: 'default' },
+);
+const eventsRaw = pickFromGlob(EVENTS_BY_DECK, 'events.json');
 
 const deepFreezeArray = <T extends object>(arr: T[]): ReadonlyArray<T> => {
   for (const entry of arr) {

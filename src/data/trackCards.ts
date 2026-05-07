@@ -10,9 +10,15 @@
 //   - exactly one card has `kind: 'boss'`, in phase 10 (D21);
 //   - card `id`s are unique.
 
-import trackCardsRaw from './trackCards.json';
+import { pickFromGlob } from './deckSelection.ts';
 import { validateTrackCards } from './schema.ts';
 import type { TrackCardDef } from './schema.ts';
+
+const TRACK_CARDS_BY_DECK = import.meta.glob<unknown>(
+  '/card-decks/*/trackCards.json',
+  { eager: true, import: 'default' },
+);
+const trackCardsRaw = pickFromGlob(TRACK_CARDS_BY_DECK, 'trackCards.json');
 
 const REQUIRED_PHASES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 

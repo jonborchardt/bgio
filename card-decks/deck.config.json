@@ -1,0 +1,42 @@
+{
+  "$schema": "./deck.config.schema.json",
+  "active": "00-initial",
+  "default": "00-initial",
+  "decks": [
+    {
+      "id": "00-initial",
+      "label": "Current live deck (baseline)",
+      "path": "00-initial"
+    },
+    {
+      "id": "01-lean-and-mean",
+      "label": "Set 1: Lean & Mean",
+      "path": "01-lean-and-mean"
+    },
+    {
+      "id": "02-iron-frontier",
+      "label": "Set 2: Iron Frontier",
+      "path": "02-iron-frontier"
+    },
+    {
+      "id": "03-synergy-engine",
+      "label": "Set 3: Synergy Engine",
+      "path": "03-synergy-engine"
+    },
+    {
+      "id": "04-color-balanced",
+      "label": "Set 4: Color-Balanced Library",
+      "path": "04-color-balanced"
+    },
+    {
+      "id": "05-tier-curve-calibrated",
+      "label": "Set 5: Tier-Curve Calibrated",
+      "path": "05-tier-curve-calibrated"
+    },
+    {
+      "id": "06-merged-best",
+      "label": "Set 6: Merged Best (recommended)",
+      "path": "06-merged-best"
+    }
+  ]
+}

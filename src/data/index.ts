@@ -1,16 +1,38 @@
-// Typed barrel for src/data/*.json. Validators run at module load — if any
-// JSON file goes out of shape, importing this file throws synchronously
-// (intentional crash-early). Logic everywhere else imports from here, never
-// from the raw JSON files directly.
+// Typed barrel for the active card deck. Validators run at module load —
+// if the configured deck's JSON goes out of shape, importing this file
+// throws synchronously (intentional crash-early). Logic everywhere else
+// imports from here, never from the raw JSON files directly.
+//
+// The deck source is selected by `./deckSelection.ts` (config-driven; see
+// `card-decks/deck.config.json` and the `VITE_DECK` env var).
 
-import buildingsRaw from './buildings.json';
-import unitsRaw from './units.json';
-import technologiesRaw from './technologies.json';
+import { pickFromGlob } from './deckSelection.ts';
 import {
   validateBuildings,
   validateUnits,
   validateTechnologies,
 } from './schema.ts';
+
+// Eagerly load every deck's JSON so the bundle ships them all and the
+// resolver picks one at module load. Vite resolves these globs at build
+// time — adding a new deck folder under `card-decks/` is enough to make
+// it pickable; no loader change required.
+const BUILDINGS_BY_DECK = import.meta.glob<unknown>(
+  '/card-decks/*/buildings.json',
+  { eager: true, import: 'default' },
+);
+const UNITS_BY_DECK = import.meta.glob<unknown>(
+  '/card-decks/*/units.json',
+  { eager: true, import: 'default' },
+);
+const TECHNOLOGIES_BY_DECK = import.meta.glob<unknown>(
+  '/card-decks/*/technologies.json',
+  { eager: true, import: 'default' },
+);
+
+const buildingsRaw = pickFromGlob(BUILDINGS_BY_DECK, 'buildings.json');
+const unitsRaw = pickFromGlob(UNITS_BY_DECK, 'units.json');
+const technologiesRaw = pickFromGlob(TECHNOLOGIES_BY_DECK, 'technologies.json');
 import type { BuildingDef, UnitDef, TechnologyDef } from './schema.ts';
 
 export type {

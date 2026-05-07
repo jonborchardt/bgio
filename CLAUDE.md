@@ -156,10 +156,20 @@ Tests under `tests/` mirror the `src/` shape, with shared factories in `tests/he
   defense-redesign 2.8 — the track now plays the wander deck's role.
 - `src/cards/` — small registry + relationship index used by the card-preview /
   relationships UI tooling under `src/ui/cardPreview/` and `src/ui/relationships/`.
-- `src/data/` — JSON content (`buildings.json`, `units.json`, `technologies.json`) plus
-  the typed loaders in `src/data/schema.ts` and `src/data/index.ts`. Imports always go
-  through the loaders (`BUILDINGS`, `UNITS`, `TECHNOLOGIES`, `BENEFIT_TOKENS`) — never
-  the raw JSON.
+- `src/data/` — typed loaders only. JSON content lives under `card-decks/<id>/`
+  (one folder per deck variant: `00-initial` is the live baseline,
+  `01..06` are rewrite proposals). The active deck is selected by
+  `card-decks/deck.config.json#active`, which `src/data/deckSelection.ts`
+  reads at module load. Override at build time with `VITE_DECK=<id>`
+  (useful for A/B builds and CI matrices). Loaders go through Vite's
+  `import.meta.glob('/card-decks/*/...json', { eager: true })` and pick
+  the configured deck; adding a new `card-decks/<id>/` folder makes it
+  pickable with no loader change. Imports always go through the loaders
+  (`BUILDINGS`, `UNITS`, `TECHNOLOGIES`, `EVENT_CARDS`, `TRACK_CARDS`,
+  `ADJACENCY_RULES`, `BENEFIT_TOKENS`) — never the raw JSON.
+  Pure validators + types live in their own files
+  (`schema.ts`, `eventsValidator.ts`, `adjacencyValidator.ts`) so the
+  test fixture can reach them without bouncing through the test alias.
 - `src/ui/` — React components, MUI primitives only. Per-role panels live under
   `src/ui/{chief,science,domestic,defense}/`; the live Defense panel ships the unit
   hand, the in-play list, and the red-tech row. Shared chrome sits in

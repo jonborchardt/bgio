@@ -1,0 +1,19 @@
+[
+  { "name": "Granary", "cost": 8, "costBag": { "gold": 8 }, "benefit": "2 food", "note": "Fixture starter food building.", "maxHp": 1, "tier": 1, "scienceColor": "green" },
+  { "name": "Cellar", "cost": 5, "costBag": { "gold": 5 }, "benefit": "1 food", "note": "Fixture starter cheap food building (cheapest in deck).", "maxHp": 1, "tier": 1, "scienceColor": "green" },
+  { "name": "Trading Post", "cost": 6, "costBag": { "gold": 6 }, "benefit": "1 gold", "note": "Fixture starter gold building.", "maxHp": 1, "tier": 1, "scienceColor": "green" },
+  { "name": "Smokehouse", "cost": 10, "costBag": { "gold": 5, "wood": 3 }, "benefit": "1 food and +1 happiness", "note": "Fixture starter food+happy building.", "maxHp": 2, "tier": 1, "scienceColor": "green" },
+  { "name": "Mill", "cost": 13, "benefit": "2 food and 1 production", "note": "Fixture T2 multi-output building (adjacency anchor).", "maxHp": 2, "tier": 2, "scienceColor": "green" },
+  { "name": "Tavern", "cost": 14, "benefit": "+2 happiness", "note": "Fixture T2 happiness building.", "maxHp": 2, "tier": 2, "scienceColor": "green" },
+  { "name": "Library", "cost": 13, "benefit": "2 science", "note": "Fixture T2 science building (adjacency anchor with School).", "maxHp": 2, "tier": 2, "scienceColor": "green" },
+  { "name": "Walls", "cost": 13, "benefit": "+1 defense", "note": "Fixture T2 defense building, maxHp 4.", "maxHp": 4, "tier": 2, "scienceColor": "green" },
+  { "name": "Watchtower", "cost": 13, "costBag": { "gold": 6, "wood": 2, "stone": 3 }, "benefit": "+1 defense and +1 happiness", "note": "Fixture T2 lookout building (costBag-bearing).", "maxHp": 3, "tier": 2, "scienceColor": "green" },
+  { "name": "Forge", "cost": 20, "benefit": "+1 attack", "note": "Fixture T2 attack building (Sapper placement anchor).", "maxHp": 3, "tier": 2, "scienceColor": "green" },
+  { "name": "Smithy", "cost": 18, "costBag": { "gold": 10, "wood": 2, "steel": 3 }, "benefit": "+1 attack and +1 defense", "note": "Fixture T2 smith building.", "maxHp": 3, "tier": 2, "scienceColor": "green" },
+  { "name": "Workshop", "cost": 20, "costBag": { "gold": 12, "wood": 5, "stone": 2 }, "benefit": "2 production", "note": "Fixture T2 production building.", "maxHp": 3, "tier": 2, "scienceColor": "green" },
+  { "name": "Market", "cost": 20, "benefit": "2 gold", "note": "Fixture T2 gold building.", "maxHp": 3, "tier": 2, "scienceColor": "green" },
+  { "name": "Fight Circle", "cost": 17, "benefit": "+2 happiness", "note": "Fixture T2 building (wildcard adjacency rule anchor).", "maxHp": 2, "tier": 2, "scienceColor": "green" },
+  { "name": "School", "cost": 50, "costBag": { "gold": 30, "wood": 6, "stone": 4, "science": 3 }, "benefit": "3 science", "note": "Fixture T3 science building (adjacency anchor with Library).", "maxHp": 3, "tier": 3, "scienceColor": "green" },
+  { "name": "Tower", "cost": 33, "costBag": { "gold": 18, "stone": 8, "production": 2 }, "benefit": "+2 defense", "note": "Fixture T3 defense building (Watchman placement anchor).", "maxHp": 4, "tier": 3, "scienceColor": "green" },
+  { "name": "Factory", "cost": 60, "benefit": "4 production", "note": "Requires Factory working. Fixture T3 expensive building (cost-pinned by buy tests).", "maxHp": 3, "tier": 3, "scienceColor": "green" }
+]

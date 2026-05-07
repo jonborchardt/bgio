@@ -1,6 +1,13 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+
+const PROJECT_ROOT = fileURLToPath(new URL('.', import.meta.url));
+// Vite alias replacements must use forward slashes (posix-style) even on
+// Windows, so the path resolver reads them consistently.
+const fromRoot = (rel: string) =>
+  path.resolve(PROJECT_ROOT, rel).replace(/\\/g, '/');
 
 export default defineConfig({
   base: './',
@@ -24,6 +31,37 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
+    setupFiles: ['./tests/setup.ts'],
+    // Replace the production data loaders with the fixture deck during
+    // tests. Aliases run before module resolution, so any test that
+    // imports `src/data/index.ts` (etc.) transparently gets the fixture
+    // — no per-test `vi.mock` boilerplate. The live-deck linter test
+    // (`tests/data/liveDeck.test.ts`) bypasses these aliases via direct
+    // dynamic-import paths to validate the actually-shipped deck.
+    alias: [
+      // Patterns are anchored (`^...$`) so vite's `String.replace`
+      // substitutes the entire import specifier with the fixture path
+      // — not just the matched suffix. They allow either forward or
+      // back slashes so the rule fires identically on Windows and
+      // POSIX. Both `../../src/data/index.ts` (test files) and
+      // `../data/index.ts` (src files) match.
+      {
+        find: /^.*[\\/]data[\\/]index\.ts$/,
+        replacement: fromRoot('./tests/fixtures/deck.ts'),
+      },
+      {
+        find: /^.*[\\/]data[\\/]events\.ts$/,
+        replacement: fromRoot('./tests/fixtures/fixtureEvents.ts'),
+      },
+      {
+        find: /^.*[\\/]data[\\/]trackCards\.ts$/,
+        replacement: fromRoot('./tests/fixtures/fixtureTrackCards.ts'),
+      },
+      {
+        find: /^.*[\\/]data[\\/]adjacency\.ts$/,
+        replacement: fromRoot('./tests/fixtures/fixtureAdjacency.ts'),
+      },
+    ],
     include: [
       'tests/**/*.test.{ts,tsx}',
       'tests/**/*.spec.{ts,tsx}',
