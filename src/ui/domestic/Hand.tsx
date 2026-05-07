@@ -146,7 +146,11 @@ export function Hand({
           const cost = buildingCost(card);
           const entries = costEntries(cost);
           const affordable = stash ? canAfford(stash, cost) : false;
-          const enabled = affordable;
+          // Issue 027 — gate on canAct so out-of-turn seats can't arm
+          // placement state via the Place button. The buy move would
+          // INVALID_MOVE anyway; this stops the UI from entering a
+          // half-armed state in the first place.
+          const enabled = canAct && affordable;
           const tooltipNodes: ReactNode[] = [];
           if (card.note) tooltipNodes.push(<span key="note">{card.note}</span>);
           if (!affordable) {
