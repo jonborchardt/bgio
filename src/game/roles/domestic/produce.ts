@@ -30,6 +30,8 @@ import { registerRoundEndHook } from '../../hooks.ts';
 import { placeIntoOut } from '../../resources/playerMat.ts';
 import { parseBenefit, type BenefitYield } from './parseBenefit.ts';
 import { adjacencyRules, yieldAdjacencyBonus } from './adjacency.ts';
+import { techPassives } from '../../tech/effects.ts';
+import type { EventEffect } from '../../events/effects.ts';
 
 /**
  * Defense redesign D16 — prorates a parsed building's yield bag by its
@@ -118,6 +120,35 @@ export const runProduceForSeat = (
   }
 
   runningYield = add(runningYield, yieldAdjacencyBonus(domestic.grid, adjacencyRules));
+
+  // Issue 019 — `producePerRound` tech-passive bonuses. Each tech in
+  // the seat's domestic-tech hand may contribute a flat bag that's
+  // summed into produce. Read via `techPassives`, which scans every
+  // tech-card hand the seat owns; we filter here to the producePerRound
+  // kind. The bump applies once per produce call; tests pinning produce
+  // bags can preset the techHand to assert the layered total.
+  for (const eff of techPassives(G, playerID)) {
+    if (eff.kind === 'producePerRound') {
+      const e = eff as Extract<EventEffect, { kind: 'producePerRound' }>;
+      runningYield = add(runningYield, e.bag);
+    }
+  }
+
+  // Issue 017 — `doubleProduceThisRound` modifier doubles whatever the
+  // seat's produce bag totals up to (after building yields, adjacency,
+  // and tech passives). Not consumed: the modifier persists across
+  // every domestic seat's produce in the same round; round-end clears
+  // it. Multiple stacks compound (×2 → ×4 → …); we count and apply
+  // `add(running, running)` once per stack rather than calling
+  // `consumeModifier` so the same modifier benefits every domestic
+  // seat in a multi-domestic game.
+  let doubleStack = 0;
+  for (const m of G._modifiers ?? []) {
+    if (m.kind === 'doubleProduceThisRound') doubleStack += 1;
+  }
+  for (let i = 0; i < doubleStack; i++) {
+    runningYield = add(runningYield, runningYield);
+  }
 
   placeIntoOut(seatMat, runningYield);
   domestic.producedThisRound = true;

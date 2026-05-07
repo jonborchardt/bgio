@@ -30,7 +30,7 @@ import { INVALID_MOVE } from 'boardgame.io/core';
 import type { SettlementState, Role } from '../types.ts';
 import { rolesAtSeat } from '../roles.ts';
 import { cycleAdvance, type EventColor } from './state.ts';
-import { dispatch } from './dispatcher.ts';
+import { dispatch, hasModifierActive } from './dispatcher.ts';
 import { fromBgio, type BgioRandomLike } from '../random.ts';
 import type { StageEvents, StageName } from '../phases/stages.ts';
 import { markUndoable } from '../undo.ts';
@@ -72,6 +72,11 @@ export const playEventStub = (
 
     // One event of this color per round.
     if (G._eventPlayedThisRound?.[flagKey] === true) return INVALID_MOVE;
+
+    // Issue 017 — `suppressEventsThisRound` modifier blocks every
+    // play-event move while active. Not consumed here: the round-end
+    // hook clears it, so the suppression covers the whole round.
+    if (hasModifierActive(G, 'suppressEventsThisRound')) return INVALID_MOVE;
 
     // Resolve the played card so we can hand it to the dispatcher.
     const card = hand.find((c) => c.id === cardID)!;

@@ -106,6 +106,15 @@
     "description": "Sharpening day in the village; insights flow into the bank's science pool.",
     "effect": { "kind": "gainResource", "bag": { "science": 2 }, "target": "bank" }
   },
+  {
+    "id": "trk-p3-mod-bountiful-harvest",
+    "kind": "modifier",
+    "name": "Bountiful Harvest",
+    "phase": 3,
+    "durationRounds": 1,
+    "description": "A windfall season — every domestic seat's produce yield doubles this round.",
+    "effect": { "kind": "doubleProduceThisRound" }
+  },
 
   {
     "id": "trk-p4-001",
@@ -149,6 +158,15 @@
     "description": "A trader's barge unloads gold to the bank.",
     "effect": { "kind": "gainResource", "bag": { "gold": 3 }, "target": "bank" }
   },
+  {
+    "id": "trk-p4-mod-storm-warning",
+    "kind": "modifier",
+    "name": "Storm Warning",
+    "phase": 4,
+    "durationRounds": 1,
+    "description": "Black clouds on the horizon — the next threat strikes harder. +1 strength to the next resolved threat this round.",
+    "effect": { "kind": "threatStrengthBump", "amount": 1 }
+  },
 
   {
     "id": "trk-p5-001",
@@ -180,6 +198,15 @@
     "phase": 5,
     "description": "A bustling market fills the bank with food and gold from passing merchants.",
     "effect": { "kind": "gainResource", "bag": { "gold": 2, "food": 1 }, "target": "bank" }
+  },
+  {
+    "id": "trk-p5-mod-quiet-council",
+    "kind": "modifier",
+    "name": "Quiet Council",
+    "phase": 5,
+    "durationRounds": 1,
+    "description": "Heads bowed in deliberation — no event cards may be played this round.",
+    "effect": { "kind": "suppressEventsThisRound" }
   },
 
   {

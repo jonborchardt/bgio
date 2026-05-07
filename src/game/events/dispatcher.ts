@@ -162,6 +162,42 @@ export const dispatch = (
         break;
       }
 
+      // Issue 017 — track-card modifier kinds. The track resolver's
+      // `pushModifier` puts these on `G._modifiers` directly, so the
+      // dispatcher path is only reachable when content authors a
+      // modifier-shaped effect on a non-modifier card (e.g. an event
+      // card or a boon). That case is intentional: a boon could
+      // legitimately drop a `doubleProduceThisRound` on the queue. We
+      // mirror `pushModifier`'s queue-write here so the effect lands
+      // wherever it's authored.
+      case 'threatStrengthBump':
+      case 'suppressEventsThisRound':
+      case 'doubleProduceThisRound': {
+        if (G._modifiers === undefined) G._modifiers = [];
+        G._modifiers.push(effect);
+        break;
+      }
+
+      // Issue 019 — tech-passive kinds and `unlockCard`. These are
+      // never applied by the dispatcher itself:
+      //   - `unitStatBump` / `producePerRound` are queried at fire /
+      //     produce time via `techPassives(G, holder)`; their value
+      //     lives in the tech's `passiveEffects` array (not in any
+      //     global queue). When authored under `onPlayEffects` they
+      //     fall through as no-ops here.
+      //   - `unlockCard` is consumed by `applyTechOnPlay` directly
+      //     (see tech/effects.ts), which walks the effect list and
+      //     routes each entry through the unlock-grant helper before
+      //     calling dispatch. Reaching this case from a non-tech card
+      //     (e.g. an event card with an `unlockCard` effect) is a
+      //     content authoring error, but we keep it as a no-op rather
+      //     than throw — the worst case is a silent miss, not a crash.
+      case 'unitStatBump':
+      case 'producePerRound':
+      case 'unlockCard': {
+        break;
+      }
+
       default: {
         // Exhaustiveness: TypeScript should already complain if a new
         // kind is added to `EventEffect` without a case here, but a

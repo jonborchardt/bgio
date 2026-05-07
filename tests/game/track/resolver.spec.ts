@@ -111,16 +111,23 @@ describe('resolveTrackCard — boon / modifier dispatch', () => {
     expect(G.bank.wood).toBe(before + 2);
   });
 
-  it('modifier card pushes onto G.track.activeModifiers (no live effect kinds populate _modifiers)', () => {
+  it('modifier card pushes onto G.track.activeModifiers AND mirrors the effect onto _modifiers', () => {
+    // Issue 017 — the resolver populates both queues. The
+    // dispatcher-side `_modifiers` queue is what `hasModifierActive` /
+    // `consumeModifier` consult; the round-end `defense:clear-modifiers`
+    // hook walks `activeModifiers` and splices the matching kind out
+    // of `_modifiers`. Earlier behaviour left `_modifiers` empty
+    // because no live `EventEffect` kinds were modifier-shaped; that
+    // gap is closed.
     const G = seedFreshGame(2);
     const mod: ModifierCard = {
       kind: 'modifier',
       id: 'mod-1',
-      name: 'Calm Winds',
-      phase: 1,
+      name: 'Storm Warning',
+      phase: 4,
       description: 'a placeholder modifier',
       durationRounds: 1,
-      effect: { kind: 'awaitInput', prompt: 'noop', payloadKind: 'noop' },
+      effect: { kind: 'threatStrengthBump', amount: 1 },
     };
     expect(G.track?.activeModifiers ?? []).toEqual([]);
     expect(G._modifiers ?? []).toEqual([]);
@@ -128,7 +135,7 @@ describe('resolveTrackCard — boon / modifier dispatch', () => {
     expect(G.track?.activeModifiers).toBeDefined();
     expect(G.track!.activeModifiers!.length).toBe(1);
     expect(G.track!.activeModifiers![0]!.id).toBe('mod-1');
-    expect(G._modifiers ?? []).toEqual([]);
+    expect(G._modifiers).toEqual([{ kind: 'threatStrengthBump', amount: 1 }]);
   });
 
   it('boss card dispatches through resolveBoss (does not throw, flips bossResolved)', () => {

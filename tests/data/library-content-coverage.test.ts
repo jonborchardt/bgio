@@ -143,3 +143,30 @@ describe('Science Library content coverage (SL 6)', () => {
     }
   });
 });
+
+// Issue 019 — every tech in the active deck must either author at least
+// one engine-level effect (onAcquire / onPlay / passive) or opt out of
+// the library via `libraryExempt: true`. Techs that fall in neither
+// camp are mechanically inert at play time, which makes the library buy
+// flow a noisier (and less satisfying) decision than it should be —
+// the V1 "playing a tech does buildings/units unlocks plus nothing
+// else" pattern. Use libraryExempt as a stop-gap for techs awaiting
+// designer review; populate the effect arrays for techs whose impact
+// is settled.
+describe('issue 019 — tech effects coverage', () => {
+  it('every tech in the active deck either authors an effect or sets libraryExempt', () => {
+    const offenders: string[] = [];
+    for (const tech of TECHNOLOGIES) {
+      const hasEffects =
+        (tech.onAcquireEffects !== undefined && tech.onAcquireEffects.length > 0) ||
+        (tech.onPlayEffects !== undefined && tech.onPlayEffects.length > 0) ||
+        (tech.passiveEffects !== undefined && tech.passiveEffects.length > 0);
+      const exempt = tech.libraryExempt === true;
+      if (!hasEffects && !exempt) offenders.push(tech.name);
+    }
+    expect(
+      offenders,
+      `tech(s) missing both effects and libraryExempt: ${offenders.join(', ')}`,
+    ).toEqual([]);
+  });
+});

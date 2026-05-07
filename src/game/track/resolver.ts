@@ -83,7 +83,11 @@ import { SKILLS, type SkillID } from '../roles/science/skills.ts';
 import { RESOURCES, type Resource, type ResourceBag } from '../resources/types.ts';
 import { appendBankLog } from '../resources/bankLog.ts';
 import { dispatch } from '../events/dispatcher.ts';
+import type { EventEffect } from '../events/effects.ts';
+import { hasModifierActive, consumeModifier } from '../events/dispatcher.ts';
 import type { EventCardDef } from '../events/state.ts';
+import { seatOfRole } from '../roles.ts';
+import { techPassives } from '../tech/effects.ts';
 import {
   computeGridBounds,
   computePath,
@@ -162,6 +166,7 @@ const computeStats = (
   def: UnitDef,
   building: DomesticBuilding | undefined,
   threat: ThreatCard,
+  unitStatBumps: ReadonlyArray<Extract<EventEffect, { kind: 'unitStatBump' }>> = [],
 ): EffectiveStats => {
   const stats: EffectiveStats = {
     strength: def.attack,
@@ -210,10 +215,27 @@ const computeStats = (
     }
   }
 
+  // Issue 019 — tech-passive `unitStatBump` effects. Layered before the
+  // drill token so drill stays the last-additive bump (per D27). Each
+  // passive entry may target a specific unit by `defID` (`matchUnit`)
+  // or apply to every unit (absent `matchUnit`). Stat kinds: strength,
+  // range, hp, regen — `hp` and `regen` are accepted here but only
+  // `strength` and `range` actually fold into fire-time stats; the
+  // hp/regen entries are read at place / round-end time elsewhere.
+  for (const bump of unitStatBumps) {
+    if (bump.matchUnit !== undefined && bump.matchUnit !== unit.defID) continue;
+    if (bump.stat === 'strength') stats.strength += bump.amount;
+    else if (bump.stat === 'range') stats.range += bump.amount;
+    // hp / regen passives don't affect fire-time stats; the
+    // place-move and round-end regen hook read those at their own
+    // sites (see Issue 019 plan).
+  }
+
   // Drill token — +1 strength on this fire. Per spec D27, drill is
   // *always* additive after every other modifier (placement bonus,
-  // taught skills, matchup keywords) so its effect is unconditional —
-  // no other source can mask or cap the bump. Apply it last.
+  // taught skills, matchup keywords, tech passives) so its effect is
+  // unconditional — no other source can mask or cap the bump. Apply it
+  // last.
   if (unit.drillToken === true) {
     stats.strength += 1;
   }
@@ -265,8 +287,29 @@ const publishTrace = (G: SettlementState, trace: ResolveTrace): void => {
 export const resolveThreat = (
   G: SettlementState,
   random: RandomAPI,
-  threat: ThreatCard,
+  inputThreat: ThreatCard,
 ): void => {
+  // Issue 017 — `threatStrengthBump` modifier. A track-flipped
+  // "Storm Warning"-style card adds +N to the next-resolved threat's
+  // effective strength for the upcoming fire / impact pipeline. We
+  // build a `threat` local that may be a clone of the input with bumped
+  // strength; the original card (held on `G.track.deck` / log entries)
+  // keeps its printed value. The modifier is one-shot per card:
+  // consume on resolve. Multiple stacked bumps sum.
+  let bump = 0;
+  while (hasModifierActive(G, 'threatStrengthBump')) {
+    const stack = G._modifiers ?? [];
+    const idx = stack.findIndex((m) => m.kind === 'threatStrengthBump');
+    if (idx < 0) break;
+    const found = stack[idx] as Extract<EventEffect, { kind: 'threatStrengthBump' }>;
+    bump += found.amount;
+    consumeModifier(G, 'threatStrengthBump');
+  }
+  const threat: ThreatCard =
+    bump !== 0
+      ? { ...inputThreat, strength: Math.max(1, inputThreat.strength + bump) }
+      : inputThreat;
+
   // Resolver consults the domestic grid + defense instances. If either
   // is missing we degenerate cleanly — no fires, threat heads straight
   // to center.
@@ -298,6 +341,22 @@ export const resolveThreat = (
     return cut;
   })();
 
+  // Issue 019 — gather the defense seat's tech passives once per
+  // resolve. `unitStatBump` entries fold into every candidate unit's
+  // stat computation below. We resolve `seatOfRole(..., 'defense')`
+  // defensively because some test fixtures don't seat a defense role
+  // (degenerate G); in that case we just skip passives.
+  let unitStatBumps: ReadonlyArray<Extract<EventEffect, { kind: 'unitStatBump' }>> = [];
+  try {
+    const defenseSeat = seatOfRole(G.roleAssignments, 'defense');
+    unitStatBumps = techPassives(G, defenseSeat).filter(
+      (e): e is Extract<EventEffect, { kind: 'unitStatBump' }> =>
+        e.kind === 'unitStatBump',
+    );
+  } catch {
+    // No defense seat — leave bumps empty.
+  }
+
   // Build the firing-unit list.
   const candidates: Array<{ unit: UnitInstance; stats: EffectiveStats }> = [];
   for (const unit of inPlay) {
@@ -306,7 +365,7 @@ export const resolveThreat = (
     const tile = parseCellKey(unit.cellKey);
     if (tile === null) continue;
     const building = grid[unit.cellKey];
-    const stats = computeStats(unit, def, building, threat);
+    const stats = computeStats(unit, def, building, threat, unitStatBumps);
     if (!tileCoversPath(tile, stats.range, fireSlice)) continue;
     candidates.push({ unit, stats });
   }
@@ -508,16 +567,25 @@ export const resolveThreat = (
 };
 
 /**
- * Record a `modifier` track card on `G.track.activeModifiers` so the
- * round-end hook can expire it. The dispatcher-side modifier queue
- * (`G._modifiers`) is not populated here because no live `EventEffect`
- * kinds are modifier-shaped today; reintroducing a modifier kind in
- * `EventEffect` is the integration point for that path to fire.
+ * Record a `modifier` track card on `G.track.activeModifiers` (so the
+ * round-end hook can expire it) AND push the card's effect onto
+ * `G._modifiers` (so `hasModifierActive` / `consumeModifier` see it).
+ * Both queues are kept in lockstep: `defense:clear-modifiers` walks
+ * `activeModifiers` and splices the matching kind out of `_modifiers`,
+ * which only works when this push wrote to both. Issue 017 closed the
+ * earlier gap where `_modifiers` was left empty.
  */
 const pushModifier = (G: SettlementState, card: ModifierCard): void => {
   if (G.track === undefined) return;
   if (G.track.activeModifiers === undefined) G.track.activeModifiers = [];
   G.track.activeModifiers.push(card);
+  // The card's `effect` is loaded as `unknown` by the schema; the
+  // tightened `validateTrackCards` (issue 017) guarantees it's an
+  // `EventEffect`-shaped object whose `kind` is one of the modifier
+  // variants, so the cast here is safe at runtime.
+  const effect = card.effect as EventEffect;
+  if (G._modifiers === undefined) G._modifiers = [];
+  G._modifiers.push(effect);
 };
 
 /** Defense redesign 3.3 — emit a degenerate trace for non-threat flips

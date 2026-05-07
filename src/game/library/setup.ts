@@ -36,6 +36,14 @@ const collectTaggedCards = (): LibraryCard[] => {
     if (card !== null) out.push(card);
   }
   for (const def of TECHNOLOGIES) {
+    // Issue 019 — `libraryExempt` techs ship in TECHNOLOGIES (so the
+    // unlock-text path still works when a downstream tech names them),
+    // but they don't appear in the library deck and so can't be bought
+    // or burned. Skipping here is the only call site that needs to
+    // honor the flag; the rest of the engine reads techs through other
+    // surfaces (relationships graph, role hands, …) where the flag is
+    // intentionally ignored.
+    if (def.libraryExempt === true) continue;
     const card = techToLibraryCard(def);
     if (card !== null) out.push(card);
   }

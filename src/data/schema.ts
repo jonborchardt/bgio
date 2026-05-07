@@ -271,6 +271,13 @@ export interface TechnologyDef {
   // sub-plan 6.
   tier?: LibraryTier;
   scienceColor?: LibraryColor;
+  // Issue 019 — opt-out flag for techs that ship in the deck for
+  // unlock-text content but have no engine-level effect of their own.
+  // When `true`, the tech is skipped at library-deck construction time
+  // (`buildLibrary` filters it out), so it can't be bought or burned.
+  // Optional and defaults to false; the existing 100+ techs land in
+  // the library as before unless the JSON sets this flag.
+  libraryExempt?: boolean;
 }
 
 // --- library tag helpers (SL 1.1) ------------------------------------------
@@ -683,6 +690,19 @@ export const validateTechnologies = (raw: unknown): TechnologyDef[] => {
     const scienceColor = optionalLibraryColor(obj, i, 'TechnologyDef');
     if (scienceColor !== undefined) tech.scienceColor = scienceColor;
 
+    // Issue 019 — `libraryExempt` is optional and only meaningful when
+    // true. We attach it conditionally so a JSON entry without the
+    // field round-trips with no spurious key.
+    const libraryExemptRaw = obj.libraryExempt;
+    if (libraryExemptRaw !== undefined) {
+      if (typeof libraryExemptRaw !== 'boolean') {
+        throw new Error(
+          `TechnologyDef[${i}]: libraryExempt must be a boolean when present, got ${typeof libraryExemptRaw}`,
+        );
+      }
+      if (libraryExemptRaw) tech.libraryExempt = true;
+    }
+
     return tech;
   });
 };
@@ -814,6 +834,15 @@ const validateAttackPattern = (
   });
 };
 
+// Issue 017 — modifier-effect kinds the resolver knows how to apply.
+// Kept in sync with the modifier branch of `EventEffect`. Authoring a
+// modifier card with any other kind is rejected at load time.
+const MODIFIER_EFFECT_KINDS: ReadonlySet<string> = new Set([
+  'threatStrengthBump',
+  'suppressEventsThisRound',
+  'doubleProduceThisRound',
+]);
+
 // Validates the track-card list. Per-card checks live here; cross-card
 // invariants (one boss in phase 10, all phases 1..10 covered, unique IDs)
 // are enforced by the loader (`src/data/trackCards.ts`) so the tests can
@@ -890,6 +919,27 @@ export const validateTrackCards = (raw: unknown): TrackCardDef[] => {
       if (effect === undefined) {
         throw new Error(
           `TrackCardDef[${i}]: modifier card requires an "effect" field`,
+        );
+      }
+      // Issue 017 — tighten modifier `effect.kind` validation. Only the
+      // three modifier-shaped EventEffect variants are currently
+      // supported by the runtime hooks (resolver, playEvent moves,
+      // runProduceForSeat); rejecting unknown kinds at load time stops
+      // a content typo from sitting silently on `_modifiers` without
+      // any conditioned move ever reading it.
+      if (!isPlainObject(effect)) {
+        throw new Error(
+          `TrackCardDef[${i}]: modifier "effect" must be an object, got ${typeof effect}`,
+        );
+      }
+      const effectKind = effect.kind;
+      if (
+        typeof effectKind !== 'string' ||
+        !MODIFIER_EFFECT_KINDS.has(effectKind)
+      ) {
+        throw new Error(
+          `TrackCardDef[${i}]: modifier effect.kind must be one of ` +
+            `${[...MODIFIER_EFFECT_KINDS].join('|')}, got ${String(effectKind)}`,
         );
       }
       return {

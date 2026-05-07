@@ -52,6 +52,33 @@ export const techHasUnlocks = (tech: TechnologyDef): boolean =>
   splitNames(tech.buildings).length > 0 || splitNames(tech.units).length > 0;
 
 /**
+ * Push a single building / unit unlock into the matching role's hand.
+ * Issue 019 extracted this so `unlockCard`-shaped EventEffect entries
+ * can route through the same dedupe-and-push behavior `grantTechUnlocks`
+ * uses for its text-field walk. Returns true iff a new card landed.
+ */
+export const applyUnlockCard = (
+  G: SettlementState,
+  ref: string,
+  refKind: 'building' | 'unit',
+): boolean => {
+  if (refKind === 'building') {
+    const def = buildingByName.get(ref.toLowerCase());
+    if (def === undefined) return false;
+    if (G.domestic === undefined) return false;
+    if (G.domestic.hand.some((b) => b.name === def.name)) return false;
+    G.domestic.hand.push(def);
+    return true;
+  }
+  const def = unitByName.get(ref.toLowerCase());
+  if (def === undefined) return false;
+  if (G.defense === undefined) return false;
+  if (G.defense.hand.some((u) => u.name === def.name)) return false;
+  G.defense.hand.push(def);
+  return true;
+};
+
+/**
  * Grant the tech's `buildings` and `units` unlocks into the appropriate
  * role hands: BuildingDefs → `G.domestic.hand`, UnitDefs → `G.defense.hand`.
  * Skips entries that don't resolve to a known def (so a typo in the JSON
@@ -66,20 +93,10 @@ export const grantTechUnlocks = (
 ): boolean => {
   let granted = 0;
   for (const name of splitNames(tech.buildings)) {
-    const def = buildingByName.get(name.toLowerCase());
-    if (def === undefined) continue;
-    if (G.domestic === undefined) continue;
-    if (G.domestic.hand.some((b) => b.name === def.name)) continue;
-    G.domestic.hand.push(def);
-    granted += 1;
+    if (applyUnlockCard(G, name, 'building')) granted += 1;
   }
   for (const name of splitNames(tech.units)) {
-    const def = unitByName.get(name.toLowerCase());
-    if (def === undefined) continue;
-    if (G.defense === undefined) continue;
-    if (G.defense.hand.some((u) => u.name === def.name)) continue;
-    G.defense.hand.push(def);
-    granted += 1;
+    if (applyUnlockCard(G, name, 'unit')) granted += 1;
   }
   return granted > 0;
 };
@@ -170,6 +187,18 @@ export const applyTechOnPlay = (
   let did = false;
   const effects = tech.onPlayEffects;
   if (effects !== undefined && effects.length > 0) {
+    // Issue 019 — `unlockCard` effects route through the unlock helper
+    // so the resulting hand-push is identical to the `tech.buildings`
+    // / `tech.units` text-field path. The dispatcher sees the same
+    // entries as no-ops; we apply the unlocks here so a tech can carry
+    // an explicit `unlockCard` effect for content the loose text
+    // fields don't capture.
+    for (const eff of effects) {
+      const e = eff as EventEffect;
+      if (e.kind === 'unlockCard') {
+        if (applyUnlockCard(G, e.ref, e.refKind)) did = true;
+      }
+    }
     const card = techAsEventCard(tech, effects);
     dispatch(G, ctx, random, card, undefined, {
       playerID: holder,
