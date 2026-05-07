@@ -34,6 +34,7 @@ import type {
 } from '../../../src/game/random.ts';
 import type { SettlementState } from '../../../src/game/types.ts';
 import type { DomesticBuilding } from '../../../src/game/roles/domestic/types.ts';
+import type { UnitInstance } from '../../../src/game/roles/defense/types.ts';
 import { CENTER_CELL_KEY, cellKey } from '../../../src/game/roles/domestic/grid.ts';
 import { seedFreshGame } from '../../helpers/factories.ts';
 import { sciencePlayBlueEvent } from '../../../src/game/roles/science/playBlueEvent.ts';
