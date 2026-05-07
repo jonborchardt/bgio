@@ -16,6 +16,11 @@ import {
   type SessionCreds,
 } from './lobby/credentials.ts';
 import { SeatPickerContext } from './ui/layout/SeatPickerContext.ts';
+import { CardInfoProvider } from './ui/cards/CardInfoContext.tsx';
+import { CardPreviewPage } from './ui/cardPreview/CardPreviewPage.tsx';
+import { MatPreviewPage } from './ui/matPreview/MatPreviewPage.tsx';
+import { BoardPreviewPage } from './ui/boardPreview/BoardPreviewPage.tsx';
+import { FuzzPage } from './fuzz/FuzzPage.tsx';
 import type { PlayerID } from './game/index.ts';
 
 /** Whether to show bgio's built-in Debug panel (12.2).
@@ -204,14 +209,59 @@ const HotSeatShell: ComponentType = () => {
 
 /** Top-level App: pick networked vs hot-seat once at mount. The mode is
  * a build-time setting (`VITE_CLIENT_MODE`), so a re-evaluation on every
- * render would only burn CPU. */
-const App: ComponentType = () => {
+ * render would only burn CPU.
+ *
+ * Wraps both modes in `CardInfoProvider` + `DevTabContext.Provider` so
+ * any card's `?` button and the dev-tab "Card relationships" entry both
+ * open the same `RelationshipsModalHost`. The modal is a Dialog over
+ * the running game — no navigation, the underlying boardgame.io Client
+ * keeps ticking. */
+const AppShell: ComponentType = () => {
   const mode = detectMode();
-  if (mode === 'networked') {
-    return <Networked />;
+  // The relationships modal host now lives inside Board.tsx so it can
+  // forward the live `G` to `buildCardGraph`. The DevSidebar also mounts
+  // inside Board now so it has `props.moves` access for testing
+  // shortcuts; it self-gates on `import.meta.env.DEV` and disappears in
+  // production builds.
+  //
+  // Hash override: `#cards` opens the card-design preview page,
+  // `#mats` opens the player-mat design preview page. Both are
+  // reachable in any build. Read at first render only — each preview
+  // page exposes a "Back to game" button that resets the hash + reloads.
+  // Defense redesign 3.9 — `#fuzz` opens the headless 4-player
+  // RandomBot driver used by the e2e smoke spec. Dev-only (the build
+  // dead-code-eliminates the page outside `import.meta.env.DEV`).
+  if (typeof window !== 'undefined') {
+    if (window.location.hash === '#cards') {
+      return <CardPreviewPage />;
+    }
+    if (window.location.hash === '#mats') {
+      return <MatPreviewPage />;
+    }
+    if (window.location.hash === '#boards') {
+      return <BoardPreviewPage />;
+    }
+    const isDev =
+      (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true;
+    // Accept `#fuzz` exact-match or `#fuzz?…` so callers (e.g. the
+    // e2e smoke spec) can pass a seed via the hash query without
+    // tripping the strict equality check.
+    if (
+      isDev &&
+      (window.location.hash === '#fuzz' ||
+        window.location.hash.startsWith('#fuzz?'))
+    ) {
+      return <FuzzPage />;
+    }
   }
-  return <HotSeatShell />;
+  return (
+    <CardInfoProvider>
+      {mode === 'networked' ? <Networked /> : <HotSeatShell />}
+    </CardInfoProvider>
+  );
 };
+
+const App: ComponentType = AppShell;
 
 export default App;
 

@@ -28,6 +28,7 @@ import type { Move } from 'boardgame.io';
 import { INVALID_MOVE } from 'boardgame.io/core';
 import type { SettlementState } from '../../types.ts';
 import { rolesAtSeat } from '../../roles.ts';
+import { clearUndoable } from '../../undo.ts';
 
 export const chiefPlaceWorker: Move<SettlementState> = (
   { G, ctx, playerID },
@@ -61,11 +62,16 @@ export const chiefPlaceWorker: Move<SettlementState> = (
   const cell = G.domestic.grid[key];
   if (cell === undefined) return INVALID_MOVE;
 
+  // Defense redesign D2 — the synthetic center tile at (0, 0) is a
+  // coordinate anchor, not a building. Workers cannot be assigned there.
+  if (cell.isCenter === true) return INVALID_MOVE;
+
   // Cell must be empty — no double-stacking workers in this stub. 06.x may
   // refine this with capacity / migration rules.
   if (cell.worker !== null) return INVALID_MOVE;
 
   // All checks passed — decrement the reserve and stamp the cell.
+  clearUndoable(G);
   G.chief.workers -= 1;
   cell.worker = { ownerSeat: playerID };
 };

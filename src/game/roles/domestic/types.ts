@@ -15,7 +15,7 @@
 //
 // 2. The hand splits into two named slots — `hand: BuildingDef[]` for the
 //    buy-and-place pile, and `techHand?: TechnologyDef[]` for green-color
-//    tech cards distributed by `scienceComplete`. They started life as a
+//    tech cards distributed by `scienceLibraryBuy`. They started life as a
 //    single `hand` slot before tech-card distribution landed; keeping them
 //    separate now keeps each move's domain narrow.
 
@@ -34,6 +34,26 @@ export interface DomesticBuilding {
   // `ownerSeat` is the seat that placed the worker (always the chief seat
   // today, but kept explicit so multi-chief variants stay representable).
   worker: { ownerSeat: PlayerID } | null;
+  // Defense redesign D15 — current HP. Initialized to `maxHp` at placement
+  // time. Phase 2's combat resolver chips this down when threats break
+  // through; `domesticRepair` (1.3) restores it. Buildings cannot be
+  // destroyed; the resolver clamps `hp` at a floor of 1. The center tile
+  // (D2) carries `hp = maxHp = 99` purely for shape uniformity — produce /
+  // repair / combat all skip it via `isCenter`.
+  hp: number;
+  // Defense redesign D15 — maximum HP, fixed at placement time from the
+  // matching `BuildingDef.maxHp`. Stored on the placed cell rather than
+  // re-derived from `BUILDINGS` on every read so future upgrades that
+  // might raise `maxHp` don't have to refactor every consumer.
+  maxHp: number;
+  // Defense redesign D2 — the seeded `(0, 0)` village-vault tile is flagged
+  // here. Set on exactly one cell, and only on that cell — every other
+  // grid entry omits the field. Code paths that care (production / repair
+  // / upgrade / worker placement / future combat resolver) check this
+  // flag rather than the `defID` so the synthetic tile stays out of the
+  // BUILDINGS data path. The center tile is **not** repairable,
+  // producible, upgradeable, or worker-targetable.
+  isCenter?: true;
 }
 
 /** Aggregated Domestic role state. Lives at `G.domestic`. */
@@ -41,9 +61,10 @@ export interface DomesticState {
   // Pile of building cards the Domestic seat may buy & place. Pre-shuffled
   // at setup; 06.2 will own the buy/upgrade move.
   hand: BuildingDef[];
-  // Optional tech-card hand populated by 05.3's `scienceComplete` whenever
-  // a green-color science card resolves. Distinct from `hand` (which is
-  // BuildingDef[]); see the file-level note for the rename rationale.
+  // Optional tech-card hand populated by `scienceLibraryBuy` whenever
+  // a green-color tech-flavored Library card is bought. Distinct from
+  // `hand` (which is BuildingDef[]); see the file-level note for the
+  // rename rationale.
   techHand?: TechnologyDef[];
   // Placed-buildings map, keyed by `cellKey(x, y) === \`${x},${y}\``.
   grid: Record<string, DomesticBuilding>;

@@ -22,9 +22,14 @@ The game's rules and design notes live under `docs/`, **not** under `src/data/`:
 
 - **`docs/Rules.md`** — the canonical end-user rules. Roles, seats, the round structure
   (chief / others-in-parallel / end-of-round), resource flow (bank + per-seat
-  `in`/`out`/`stash`), per-role actions, the deterministic battle resolver, events,
-  trade requests, the win condition (`settlementsJoined >= 10`, no fail mode). When
-  you change a rule, update this file.
+  `in`/`out`/`stash`), per-role actions, events, the win condition. The fourth role
+  was renamed from *Foreign* to **Defense** by the defense redesign (all 22 sub-phases
+  under `plans/defense-redesign-*.md` landed by commit `5ddb643`). The old battle deck,
+  trade-request loop, and `settlementsJoined` win check are gone; in their place are
+  the **Global Event Track** (10 phases of threats / boons / modifiers + a terminal
+  boss card), per-tile **defense units** that fire along threat paths, and a
+  **boss-resolves-to-win** condition. No fail mode, ever — `endIf` only encodes wins
+  and the outer time-up cap. When you change a rule, update this file.
 - **`docs/game-design.md`** — designer-facing companion: the design premise, alternative
   options that were considered for each role, balance levers + tunables (with code
   locations and defaults), content size targets, open design questions, and known V1
@@ -51,12 +56,22 @@ implementing.
 - **"Settlement" is a codename.** A real name is deferred until the user picks one. Until
   then, `Settlement` is the symbol exported from `src/game/`, but don't sprinkle the name
   through unrelated copy — a future rename pass will be easier with fewer references.
+- **Tabletop-playable.** Every choice the game offers must be possible to perform with
+  real cards and tokens at a real table — physical decks, face-down piles, public mats,
+  per-seat hands, resource cubes, etc. Don't introduce a move or UI affordance that has
+  no physical analogue (e.g. an action that depends on hidden simultaneous arithmetic
+  the engine alone can do, or that reveals other seats' private hands "just for the UI").
+  When a feature requires the engine to reach across what would be private at the table,
+  treat that as a red flag and redesign rather than ship.
 
 ## Layout you should know
 
-The game logic lives under `src/game/`, the React UI lives under `src/ui/`, JSON content
-plus typed loaders live under `src/data/`, and the bgio Koa server lives under `server/`.
-Tests under `tests/` mirror the `src/` shape, with shared factories in `tests/helpers/`.
+The game logic lives under `src/game/`, the React UI lives under `src/ui/`, content
+JSON lives under `card-decks/<id>/` (with typed loaders in `src/data/`), and the bgio
+Koa server lives under `server/`. Tests under `tests/` mirror the `src/` shape, with
+shared factories in `tests/helpers/`. The active deck is selected by
+`card-decks/deck.config.json#active` (default `06-merged-best`); override at build time
+with `VITE_DECK=<id>`.
 
 - `src/game/` — barrel; `src/game/index.ts` exports the `Settlement` game object plus the
   public types. This is the only entry point UI / tests / server should import the game
@@ -82,34 +97,99 @@ Tests under `tests/` mirror the `src/` shape, with shared factories in `tests/he
   drains every `mats[seat].in` into `mats[seat].stash` and auto-fires `runProduceForSeat`
   for every domestic seat — produce is engine plumbing, not a player-driven button);
   `endOfRound` runs hooks + advances the round; `stages.ts` centralizes stage names.
-- `src/game/roles/{chief,science,domestic,foreign}/` — each role owns its move
-  implementations and any role-local helpers. Cross-role coordination goes through
-  `hooks.ts`, not direct imports. Notable shared moves: `chief/distribute.ts` accepts
+- `src/game/roles/{chief,science,domestic,defense}/` — each role owns its move
+  implementations and any role-local helpers. Cross-role coordination at
+  *runtime* goes through `hooks.ts` (round-end callbacks), not direct
+  imports. **Engine-static lookups** (issue 041) — pure data tables that
+  don't carry mutable state — are exempt: `track/boss.ts` reads
+  `library/debuff.ts`, and both `track/resolver.ts` and
+  `roles/defense/hooks.ts` read `roles/science/skills.ts`. These imports
+  are stable, side-effect-free, and lifting them through hooks would
+  add ceremony without changing the dependency graph. Notable shared moves: `chief/distribute.ts` accepts
   signed amounts (push bank→`mats[target].in` and pull-back `in`→bank during the chief
-  phase); `foreign/tradeFulfill.ts` is open to **any** active seat with the goods (any
-  seat can fulfill the public trade slot and tick `settlementsJoined`); `foreign/
-  undoRelease.ts` reverses the most recent `foreignReleaseUnit` (a real move because
-  bgio's UNDO action is blocked under `setActivePlayers`).
-- `src/game/resources/{types,bag,bank,centerMat,playerMat,bankLog,moves}.ts` — resource
+  phase); `chief/flipTrack.ts` flips the next track card at the chief→others phase
+  boundary and runs the resolver; `domestic/repair.ts` is the spend sink that closes
+  the loop on stash burn from threat damage; `science/{drill,teach}.ts` are the
+  Phase 2.6 moves that grant Defense +1-strength drill tokens and one-shot taught
+  skills. The `defense/` folder ships the live role: `buyAndPlace` (recruit a unit
+  onto a non-center building tile and pay from stash), `play` (play a red tech), plus
+  the `seatDone`, AI enumerator, and the placement-order ticker.
+- `src/game/track/` — the Global Event Track engine: `path.ts` (threat paths into the
+  village), `resolver.ts` (boon / modifier / threat dispatch + per-tile combat),
+  `boss.ts` (terminal-card thresholds + attack budget; flips `G.bossResolved` on
+  survival), and `centerBurn.ts` (the special "threat reaches the village vault" beat).
+  Track *runtime* state lives on `G.track` — built once at setup from `TRACK_CARDS`
+  via `src/game/track.ts` and consumed by `chiefFlipTrack` at the phase boundary.
+- `src/game/library/` — the Science Library engine that replaces the retired 3×4
+  grid: `types.ts` (the `LibraryCard` union over tagged buildings / units / techs /
+  events), `state.ts` (`LibraryState` shape — row of 6 slots, tier-stacked deck,
+  lost-ideas pile, per-seat discount tableaus), `setup.ts` (`buildLibrary` — runs
+  once during `setup`, builds the deck from the data loaders, deals the row off
+  the top), `refill.ts` (`refillLibraryRow` — fired by `scienceSeatDone` so the
+  row only depletes during the science seat's turn), `costs.ts` (`researchCost`,
+  `discountResource`, `effectiveResearchCost` with Splendor floor-1 — paper-play
+  tunables live here as named constants), and `debuff.ts` (boss-debuff thresholds
+  at 5 / 10 / 15 cards per color, summed into a flat strength reduction read by
+  `track/boss.ts`). The `src/ui/library/` directory pairs the engine with
+  table-shared UI: `LibraryRow` / `LibraryCardTile` (the 6-slot strip on the
+  central board, with Buy / Burn buttons gated to the science seat),
+  `DiscountTableau` (the science seat's per-seat snowball view), and
+  `LostIdeasPile` (the public burn-pile read-out with a click-through dialog).
+- `src/game/requests/` — cross-seat help-request loop. The `requestHelp`
+  move (re-exported from `src/game/index.ts`) lets a non-chief seat ask
+  the chief for a specific resource bundle; `blockers.ts` decides which
+  moves are blocked while a request is open, `clear.ts` resolves them.
+  Live but lightly exercised in the V1 single-tab flow; the full loop
+  becomes important once the networked playtest puts four humans in
+  parallel stages.
+- `src/game/resources/{types,bag,bank,playerMat,bankLog,moves}.ts` — resource
   primitives. `playerMat.ts` defines the per-non-chief-seat `{ in, out, stash }` shape
   populated by `setup` (chief acts on `G.bank` directly and owns no mat). `bankLog.ts`
-  is the audit trail: every mutation that touches `G.bank` calls `appendBankLog` so the
-  ChiefPanel tooltip can answer "where did the bank's current balance come from?".
-  `centerMat.ts` is now reduced to the single `tradeRequest` slot — the per-seat
-  resource circles it used to own were folded into `mats[seat].in` / `out`. `moves.ts`
+  is the audit trail: every mutation that touches `G.bank` calls `appendBankLog`, which
+  also refreshes `G.economyHigh` (running max of bank gold) so the boss's economy
+  threshold reads against the high-water mark — a chief who briefly stockpiles can't
+  lose the threshold by spending afterwards. `centerMat.ts` is intentionally an empty
+  shape; the table-shared "current / next track card" surface lives on `G.track` and
+  is rendered by the central-board track strip, not the center mat. `moves.ts`
   exports `payFromStash`, the canonical spend helper used by every non-chief role's
   purchase moves.
-- `src/game/events/`, `src/game/opponent/`, `src/game/ai/`, `src/game/plugins/` — event
-  cards, opponent / threat tracker, bgio `ai.enumerate` definitions, and any custom
-  bgio `Plugin`s the game needs.
-- `src/data/` — JSON content (`buildings.json`, `units.json`, `technologies.json`) plus
-  the typed loaders in `src/data/schema.ts` and `src/data/index.ts`. Imports always go
-  through the loaders (`BUILDINGS`, `UNITS`, `TECHNOLOGIES`, `BENEFIT_TOKENS`) — never
-  the raw JSON.
-- `src/ui/{layout,cards,resources,mat,deck,hand,chief,science,domestic,foreign,chat}/` —
-  React components, MUI primitives only. Per-role panels live under
-  `src/ui/<role>/`; shared chrome (board layout, card primitives, resource chips,
-  center mat, decks, hand) sits alongside.
+- `src/game/events/`, `src/game/ai/` — per-color event cards (chief→gold,
+  science→blue, domestic→green, defense→red) and bgio `ai.enumerate` definitions.
+  The retired `src/game/opponent/` / `src/game/wander/` directories were removed in
+  defense-redesign 2.8 — the track now plays the wander deck's role.
+- `src/cards/` — small registry + relationship index used by the card-preview /
+  relationships UI tooling under `src/ui/cardPreview/` and `src/ui/relationships/`.
+- `src/data/` — typed loaders only. JSON content lives under `card-decks/<id>/`
+  (one folder per deck variant: `00-initial` is the live baseline,
+  `01..06` are rewrite proposals). The active deck is selected by
+  `card-decks/deck.config.json#active`, which `src/data/deckSelection.ts`
+  reads at module load. Override at build time with `VITE_DECK=<id>`
+  (useful for A/B builds and CI matrices). Loaders go through Vite's
+  `import.meta.glob('/card-decks/*/...json', { eager: true })` and pick
+  the configured deck; adding a new `card-decks/<id>/` folder makes it
+  pickable with no loader change. Imports always go through the loaders
+  (`BUILDINGS`, `UNITS`, `TECHNOLOGIES`, `EVENT_CARDS`, `TRACK_CARDS`,
+  `ADJACENCY_RULES`, `BENEFIT_TOKENS`) — never the raw JSON.
+  Pure validators + types live in their own files
+  (`schema.ts`, `eventsValidator.ts`, `adjacencyValidator.ts`) so the
+  test fixture can reach them without bouncing through the test alias.
+- `src/ui/` — React components, MUI primitives only. Per-role panels live under
+  `src/ui/{chief,science,domestic,defense}/`; the live Defense panel ships the unit
+  hand, the in-play list, and the red-tech row. Shared chrome sits in
+  `src/ui/{layout,cards,resources,mat}/` (the older `deck/`, `hand/`, and
+  `chat/` directories were retired in the issue 021 dead-code sweep —
+  `chat/` was never wired, the others were superseded by domestic-side
+  hand/grid components). Two table-shared frames
+  matter: `src/ui/centralBoard/CentralBoard.tsx` is the unified Paper that wraps the
+  global event track strip on top and the village (domestic grid) below — it owns the
+  outer frame, an optional `header` slot the parent fills with progress widgets
+  (`src/ui/centralBoard/ProgressBoxes.tsx` for the boss's Science / Economy
+  thresholds), and a `position: relative` content well so floating overlays
+  (`ResolveStepBanner`, future tooltips) anchor to the central board itself; and
+  `src/ui/track/` ships the strip, path overlay, range-highlight context, boss
+  readout, and the resolve-animation playback. `src/ui/center/CenterBurnBanner.tsx`
+  surfaces the "threat reached the village vault" beat. `src/ui/log/` is the event
+  log drawer; `src/ui/relationships/` is the card-relationship explorer.
 - `src/App.tsx` — wires `Settlement` + the active board into a `Client({ ... })`
   instance. The only place `boardgame.io/react` is imported.
 - `src/main.tsx` — React root; mounts `<App />` into `#root` and wraps it in MUI's
@@ -218,7 +298,7 @@ peer deps). Do not introduce a parallel styling system.
   type-safe via the module augmentation in `theme.ts`. Don't reach into `colors` or `ramps`
   directly from components when the value is already exposed on the palette.
 - **Per-role accents come from `palette.role.<role>`** (`palette.role.chief`,
-  `palette.role.science`, `palette.role.domestic`, `palette.role.foreign`). Role panels
+  `palette.role.science`, `palette.role.domestic`, `palette.role.defense`). Role panels
   under `src/ui/<role>/` should pull their primary accent from there rather than picking
   a ramp slot inline, so the palette stays the one place a designer changes a role's color.
 - MUI's defaults handle spacing (`sx={{ p: 1.5 }}`), typography variants
@@ -247,7 +327,7 @@ npm run lint
 Game changes are role-scoped. The workflow is:
 
 1. **Pick the role's folder** under `src/game/roles/<role>/` (chief / science / domestic /
-   foreign). If the change is genuinely cross-role, it belongs in `src/game/hooks.ts` (for
+   defense). If the change is genuinely cross-role, it belongs in `src/game/hooks.ts` (for
    end-of-round coordination), `src/game/phases/`, or `src/game/endConditions.ts` — not in
    another role's folder.
 2. **Update types + moves.** Extend `SettlementState` (or a role-local slice of it) in
@@ -262,9 +342,15 @@ Game changes are role-scoped. The workflow is:
 4. **Update the matching panel** under `src/ui/<role>/` so the role's UI surfaces the new
    state and dispatches the new moves. Shared chrome (cards, resource chips, center mat)
    lives outside the role folders — touch those only when the change is genuinely shared.
-5. If you add a card / unit / building / tech, edit the JSON under `src/data/` and let the
-   loader in `src/data/index.ts` re-export it. Don't import the JSON directly from game or
-   UI code — go through the typed loader.
+5. If you add a card / unit / building / tech, edit the JSON under `card-decks/<id>/` (the
+   active deck per `card-decks/deck.config.json#active`, default `06-merged-best`) and let
+   the loader in `src/data/index.ts` re-export it. Don't import the JSON directly from
+   game or UI code — go through the typed loader. To A/B a different deck, set
+   `VITE_DECK=<id>` at build time. Tests run against the fixture under
+   `tests/fixtures/deck/` (wired via vite alias) and don't notice content edits unless
+   they're in the live-deck linter — see `tests/data/liveDeck.test.ts` and
+   `tests/data/library-content-coverage.test.ts`, which use a `?live` query suffix to
+   bypass the alias.
 
 A future rename pass will move the codename "Settlement" to a real name; until then, leave
 the symbol alone and don't propagate the codename into copy.
@@ -289,13 +375,42 @@ installs Python 3 / make / g++ for the SQLite native compile.
 
 - **Hot-seat is single-tab playable end-to-end.** The seat picker tab strip lets the
   local viewer drive any seat, the role panels ship real "End my turn" moves, and the
-  header reflects the active seat (not just `ctx.currentPlayer`). `Board.tsx` is now a
-  linear stack: status bar → seat picker → CenterMat (every seat's `mats[seat]` summary
-  + the trade slot, always rendered) → the local seat's role panel(s) → chat. The
-  CenterMat is the player-mat dashboard, not a chief-only widget — gated only by
-  player presence, not phase.
+  header reflects the active seat (not just `ctx.currentPlayer`). `Board.tsx` is a
+  linear stack: status bar → seat picker → CenterMat (per-seat `mats[seat]` summary)
+  → CentralBoard (track strip on top, village grid below; floats the resolve-step
+  HUD over the grid well) → the local seat's role panel(s) → chat. CentralBoard is
+  the table-shared "game board" view, not a chief-only widget — every seat sees it.
+- **Defense redesign — fully landed.** All 22 sub-phases (1.1 → 3.9) under
+  `plans/defense-redesign-*.md` are complete (commit `5ddb643` flipped the
+  orchestrator's final status). The role ships `defenseBuyAndPlace` / `defensePlay` /
+  `defenseSeatDone`; the chief drives `chiefFlipTrack` between chief and others
+  phases; the boss card flips `G.bossResolved` on survival, which `endIf` returns as
+  `{ kind: 'win' }`. Boss thresholds are **two**, not three: `science` (now reads
+  the count of Library cards bought across every seat's discount tableau via
+  `countLibraryCardsBought` in `src/game/track/boss.ts`) and `economy` (running max
+  bank gold via `G.economyHigh`). An older note about a third `military` threshold
+  is removed — the current `BossThresholds` schema in `src/data/schema.ts` has only
+  `science` + `economy`.
+- **Science Library redesign — fully landed.** The retired 3×4 grid /
+  `scienceContribute` / `scienceComplete` / 1-completion-per-round pipeline is
+  gone. Shipped behaviour: a 6-slot face-up Library row fed from a tier-stacked
+  deck (T1 → T2 → T3); per-card cost = color × tier (`src/game/library/costs.ts`)
+  with Splendor floor-1 discounts off the science seat's tableau;
+  `scienceLibraryBuy` routes the bought card to the recipient role's hand by
+  color (gold→chief.hand, blue→science.hand, green→domestic.hand|techHand,
+  red→defense.hand|techHand) and adds a discount marker; `scienceLibraryBurn`
+  pushes to a public, permanent lost-ideas pile; the row refills at
+  `scienceSeatDone`. The boss-debuff thresholds (5 / 10 / 15 per color) are
+  applied as a flat strength reduction across all four colors (see
+  `src/game/library/debuff.ts`). Deferred items still on the table: per-color →
+  boss-flavor mapping (blocked on `ThreatPattern.flavor`); content-tagging
+  rebalance toward 5×4×3 = 60 cards (current tagging over-shoots in some
+  buckets); RandomBot smoke-round-progress assertion was deferred as a bot-policy
+  issue (see `plans/sl-fix-5-test-coverage.md`). Master plan:
+  `plans/science-library-redesign.md`; orchestration log:
+  `plans/sl-orchestrator.md`.
 - **Server runner is `vite-node`, not `tsx`.** 14.14 swapped it because tsx 4.x mis-resolves
-  bgio subpath imports (`boardgame.io/server`, `/core`, …). `npm run dev:server` now points at
+  bgio subpath imports (`boardgame.io/server`, `/core`, …). `npm run server:dev` now points at
   `server/start.ts`, a thin wrapper that always boots — no ambient-detection block. The
   Render Dockerfile uses the same runner.
 - **`__test*` moves** are gated behind `NODE_ENV=test` (review fix #1). Production builds
@@ -309,9 +424,12 @@ installs Python 3 / make / g++ for the SQLite native compile.
   default at boot stays in-memory — `setAccountsStore(...)` is the one-line swap. The
   `runs` history table from migration `002_users_and_runs.sql` is the remaining 10.7
   follow-up; everything else under that plan has landed.
-- **In-flight content gaps:** events.json migrated to typed `gainResource` shape (review
-  fix ride-along). Tech / wander / event content is a starter set; balancing comes after
-  Stage 14.
+- **In-flight content gaps:** events migrated to typed `gainResource` shape (review fix
+  ride-along). Tech / track / event content shipped via the deck-config rewrite —
+  `06-merged-best` is the active default (synergy + color-balanced library +
+  formula-derived costs). Other decks under `card-decks/<id>/` are alternative
+  rewrites (`00-initial` is the baseline; `01..05` are single-goal proposals); each
+  ships a `REPORT.md` with its design rationale.
 - **Networked playtest is still unverified end-to-end** in production-like conditions.
   Resume steps for a human run: `npm install`, `npm run dev:full`, build the client with
   `VITE_CLIENT_MODE=networked` (or visit the dev URL), register two accounts via

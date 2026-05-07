@@ -8,6 +8,7 @@ import type { Move } from 'boardgame.io';
 import { INVALID_MOVE } from 'boardgame.io/core';
 import type { SettlementState } from '../../types.ts';
 import { rolesAtSeat } from '../../roles.ts';
+import { clearUndoable } from '../../undo.ts';
 
 export const domesticSeatDone: Move<SettlementState> = ({
   G,
@@ -20,6 +21,7 @@ export const domesticSeatDone: Move<SettlementState> = ({
   }
   if (ctx.activePlayers?.[playerID] !== 'domesticTurn') return INVALID_MOVE;
 
+  clearUndoable(G);
   if (!G.othersDone) G.othersDone = {};
   G.othersDone[playerID] = true;
 };

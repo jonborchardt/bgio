@@ -68,10 +68,9 @@ const build2pState = (
 
   return {
     bank: bagOf({}),
-    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 1,
-    settlementsJoined: 0,
+    bossResolved: false,
     hands,
     mats: initialMats(roleAssignments),
     ...partial,
@@ -105,7 +104,7 @@ describe('domesticPlayGreenEvent (06.6 stub)', () => {
   });
 
   it('happy path: with stubbed events + domestic seat, marks domestic flag and advances cycle', () => {
-    // In 2-player, seat '1' holds both domestic and foreign.
+    // In 2-player, seat '1' holds both domestic and defense.
     const domesticSeat = '1';
     const G = build2pState({ events: stubEvents(domesticSeat) });
 

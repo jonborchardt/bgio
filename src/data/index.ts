@@ -1,19 +1,68 @@
-// Typed barrel for src/data/*.json. Validators run at module load — if any
-// JSON file goes out of shape, importing this file throws synchronously
-// (intentional crash-early). Logic everywhere else imports from here, never
-// from the raw JSON files directly.
+// Typed barrel for the active card deck. Validators run at module load —
+// if the configured deck's JSON goes out of shape, importing this file
+// throws synchronously (intentional crash-early). Logic everywhere else
+// imports from here, never from the raw JSON files directly.
+//
+// The deck source is selected by `./deckSelection.ts` (config-driven; see
+// `card-decks/deck.config.json` and the `VITE_DECK` env var).
 
-import buildingsRaw from './buildings.json';
-import unitsRaw from './units.json';
-import technologiesRaw from './technologies.json';
+import { pickFromGlob } from './deckSelection.ts';
 import {
   validateBuildings,
   validateUnits,
   validateTechnologies,
 } from './schema.ts';
+
+// Eagerly load every deck's JSON so the bundle ships them all and the
+// resolver picks one at module load. Vite resolves these globs at build
+// time — adding a new deck folder under `card-decks/` is enough to make
+// it pickable; no loader change required.
+const BUILDINGS_BY_DECK = import.meta.glob<unknown>(
+  '/card-decks/*/buildings.json',
+  { eager: true, import: 'default' },
+);
+const UNITS_BY_DECK = import.meta.glob<unknown>(
+  '/card-decks/*/units.json',
+  { eager: true, import: 'default' },
+);
+const TECHNOLOGIES_BY_DECK = import.meta.glob<unknown>(
+  '/card-decks/*/technologies.json',
+  { eager: true, import: 'default' },
+);
+
+const buildingsRaw = pickFromGlob(BUILDINGS_BY_DECK, 'buildings.json');
+const unitsRaw = pickFromGlob(UNITS_BY_DECK, 'units.json');
+const technologiesRaw = pickFromGlob(TECHNOLOGIES_BY_DECK, 'technologies.json');
 import type { BuildingDef, UnitDef, TechnologyDef } from './schema.ts';
 
-export type { BuildingDef, UnitDef, TechnologyDef } from './schema.ts';
+export type {
+  BuildingDef,
+  UnitDef,
+  TechnologyDef,
+  PlacementBonus,
+  PlacementEffect,
+  TrackCardDef,
+  ThreatCard,
+  BoonCard,
+  ModifierCard,
+  BossCard,
+  ThreatPattern,
+  BossThresholds,
+  Direction,
+  LibraryTier,
+  LibraryColor,
+} from './schema.ts';
+
+export { TRACK_CARDS } from './trackCards.ts';
+// Issue 015 — these were referenced from `events.ts` / `adjacency.ts`
+// directly by their three consumers (cards/registry.ts,
+// roles/domestic/adjacency.ts, cards/relationships.ts). Re-exporting
+// here lets every call site go through the data barrel, matching
+// CLAUDE.md's "imports always go through the loaders" rule.
+export { EVENT_CARDS } from './events.ts';
+export type { EventCardDef, EventColor } from './events.ts';
+export { ADJACENCY_RULES } from './adjacency.ts';
+export type { AdjacencyRuleDef } from './adjacency.ts';
 
 import type { BuildingDef as _BuildingDef, UnitDef as _UnitDef } from './schema.ts';
 import type { ResourceBag } from '../game/resources/types.ts';
@@ -30,11 +79,11 @@ export const buildingCost = (
 ): Partial<ResourceBag> => def.costBag ?? { gold: def.cost };
 
 /**
- * Single source of truth for "what does recruiting one of this unit cost?"
+ * Single source of truth for "what does buying one of this unit cost?"
  * Mirrors `buildingCost`: returns `def.costBag` when present, else
- * `{ gold: def.cost }`. Domestic-side recruit-cost modifiers (Forge: -1
- * gold) are layered on top in [src/game/roles/foreign/recruit.ts] — this
- * helper is the **base** cost, before any in-play discount.
+ * `{ gold: def.cost }`. Domestic-side recruit-cost modifiers were retired
+ * in 1.4 (D14 / D18); per-unit placement bonuses live on the unit card
+ * itself in Phase 2.
  */
 export const unitCost = (
   def: _UnitDef,
@@ -62,15 +111,18 @@ export const TECHNOLOGIES: ReadonlyArray<TechnologyDef> = deepFreezeArray(
 // Verbs we know how to parse out of building `benefit` strings (and similar
 // tokens elsewhere). Referenced by 06.3 — keep this list in sync with the
 // parser there.
+//
+// Issue 013 — defense redesign 1.4 retired the `'unit maintenance'` and
+// `'defense'` verbs (D14 / D18). The list now reflects only the verbs the
+// parser still resolves; reintroducing either token requires re-wiring
+// the resolver first, so failing fast at the type level is the win here.
 export const BENEFIT_TOKENS = [
   'food',
   'production',
   'science',
   'gold',
   'attack',
-  'defense',
   'happiness',
-  'unit maintenance',
 ] as const;
 
 export type BenefitToken = (typeof BENEFIT_TOKENS)[number];

@@ -5,13 +5,17 @@
 // V1 ships the middleware shape ahead of the wiring so the auth module
 // is exercisable in tests and the future glue is a one-line `app.use`.
 //
-// Reads the auth token from either:
-//   - `Authorization: Bearer <token>` header
-//   - `bgio_token` cookie
+// Reads the auth token from `Authorization: Bearer <token>`. On
+// success, attaches `ctx.state.user` (and the possibly-rotated token
+// in `ctx.state.authToken`) and calls `next()`. On failure, sets
+// `401` and short-circuits.
 //
-// On success, attaches `ctx.state.user` (and the possibly-rotated token
-// in `ctx.state.authToken`) and calls `next()`. On failure, sets `401`
-// and short-circuits.
+// Issue 052 — the older `bgio_token` cookie fallback was removed. No
+// route has ever set the cookie (login / verify return the token in
+// the JSON body and the SPA stores it in localStorage), so the read
+// branch was dead and a footgun for future contributors. If the SPA
+// switches to HTTP-only cookies down the line, that change adds
+// both the Set-Cookie on login AND the cookie read here.
 
 import { verify } from './accounts.ts';
 import type { User } from './accounts.ts';
@@ -25,9 +29,6 @@ export interface AuthCtx {
    * for environments (e.g. Node http.IncomingMessage) that only set it
    * on the bare object. */
   headers?: Record<string, string | string[] | undefined>;
-  cookies?: {
-    get: (name: string) => string | undefined;
-  };
   status?: number;
   body?: unknown;
   state: {
@@ -47,19 +48,13 @@ const readBearer = (
   return m ? (m[1]?.trim() ?? null) : null;
 };
 
-const readCookie = (ctx: AuthCtx): string | null => {
-  if (!ctx.cookies || typeof ctx.cookies.get !== 'function') return null;
-  const raw = ctx.cookies.get('bgio_token');
-  return raw ? raw : null;
-};
-
 /** Koa middleware: requires a valid auth token. */
 export const requireAuth = async (
   ctx: AuthCtx,
   next: () => Promise<void>,
 ): Promise<void> => {
   const headerSource = ctx.request?.header ?? ctx.headers;
-  const token = readBearer(headerSource) ?? readCookie(ctx);
+  const token = readBearer(headerSource);
   if (!token) {
     ctx.status = 401;
     ctx.body = { error: 'authentication required' };

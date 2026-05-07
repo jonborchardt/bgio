@@ -22,6 +22,37 @@
 
 import { register, login, verify } from './accounts.ts';
 
+/** Issue 006 — read the same ALLOWED_ORIGINS env the bgio Server reads.
+ * `*` is reserved for the dev case (no env set) so cross-origin auth
+ * calls during local development still work; production deploys MUST
+ * set ALLOWED_ORIGINS to a real allow-list.
+ *
+ * We resolve once per request rather than at module load so tests can
+ * mutate `process.env.ALLOWED_ORIGINS` between cases. */
+const resolveAllowedOrigins = (): string[] | '*' => {
+  const raw = typeof process !== 'undefined' ? process.env?.ALLOWED_ORIGINS : undefined;
+  if (typeof raw !== 'string' || raw.length === 0) return '*';
+  const list = raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return list.length === 0 ? '*' : list;
+};
+
+/** Choose the value to send in `Access-Control-Allow-Origin`. When the
+ * allow-list is `*` we mirror it. When it's a list, we echo the request
+ * Origin only if it's listed; otherwise we send the first allowed
+ * origin (browsers will then refuse the cross-origin response, which
+ * is the correct behaviour for an unlisted origin). */
+const chooseAllowOrigin = (
+  reqOrigin: string | undefined,
+  allowed: string[] | '*',
+): string => {
+  if (allowed === '*') return '*';
+  if (reqOrigin && allowed.includes(reqOrigin)) return reqOrigin;
+  return allowed[0] ?? '*';
+};
+
 /** Hard cap on auth-endpoint POST body size. 64 KiB is generous for
  * a {username, password} pair (max realistic ~100 bytes) while still
  * catching multi-MB DOS payloads. */
@@ -32,6 +63,11 @@ const MAX_BODY_BYTES = 64 * 1024;
  * client's session lifecycle. */
 const BUCKET_CAPACITY = 10;
 const BUCKET_REFILL_PER_SEC = 1 / 6; // 10 attempts per minute, sustained.
+/** Issue 023 — cap to keep memory bounded under attack. We don't
+ * need exact LRU; "evict the oldest insertion" via Map iteration
+ * order is good enough and constant-time. Tune higher if real
+ * legitimate traffic ever crosses this cap. */
+const BUCKET_MAX_ENTRIES = 10_000;
 
 interface BucketRow {
   /** Tokens remaining. Decrements on each request. */
@@ -49,6 +85,13 @@ const consumeToken = (ip: string): boolean => {
   const now = Date.now();
   let row = buckets.get(ip);
   if (!row) {
+    if (buckets.size >= BUCKET_MAX_ENTRIES) {
+      // Drop the oldest insertion so the table stays bounded under
+      // attack. Map preserves insertion order so the first key is
+      // the oldest.
+      const oldest = buckets.keys().next().value;
+      if (oldest !== undefined) buckets.delete(oldest);
+    }
     row = { tokens: BUCKET_CAPACITY, lastRefill: now };
     buckets.set(ip, row);
   } else {
@@ -160,18 +203,21 @@ export const mountAuthRoutes = (app: KoaApp): void => {
       await next();
       return;
     }
+    const allowed = resolveAllowedOrigins();
+    const reqOrigin = headerString(ctx.headers, 'origin');
+    const originHeader = chooseAllowOrigin(reqOrigin, allowed);
     if (ctx.method === 'OPTIONS') {
-      // Permissive CORS preflight so the browser-side authClient (running on
-      // a different origin during dev) can hit these endpoints. Production
-      // sets the same origin via the lobby UI being served from the same
-      // host as the server, so this is harmless either way.
-      ctx.set('access-control-allow-origin', '*');
+      // Issue 006 — CORS preflight echoes the negotiated allow-origin
+      // (`*` only when `ALLOWED_ORIGINS` is unset). The browser will
+      // refuse to read the cross-origin response when the origin
+      // header doesn't match the request.
+      ctx.set('access-control-allow-origin', originHeader);
       ctx.set('access-control-allow-headers', 'authorization, content-type');
       ctx.set('access-control-allow-methods', 'GET, POST, OPTIONS');
       send(ctx, 204, '');
       return;
     }
-    ctx.set('access-control-allow-origin', '*');
+    ctx.set('access-control-allow-origin', originHeader);
 
     try {
       // Per-IP rate limit applied to POST endpoints (writes).

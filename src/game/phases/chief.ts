@@ -1,19 +1,19 @@
 // chiefPhase — the start phase of every round.
 //
-// Only the seat holding the `chief` role is active; they perform the
-// chief-only actions (distributions, etc.) and then call the move that
-// flips `G.phaseDone = true` to advance into `othersPhase`. The real
-// chief-only move that flips that flag lands in 04.2.
+// The seat holding the `chief` role drives the phase's gameplay
+// (distributions, end-phase). Every other seat is also marked active
+// in `Stage.NULL` so they can call the stage-agnostic `requestHelp`
+// move while they wait — each "real" move self-gates by role, so
+// non-chief seats can't actually drive chief actions.
 //
-// `turn.onBegin` runs the **out-sweep**: every non-chief seat's `out`
-// bag (where their production from last round was deposited) is drained
-// into `G.bank` so the chief sees the freshly-produced resources before
-// they decide on distribution.
+// `turn.onBegin` also runs the **out-sweep**: every non-chief seat's
+// `out` bag (where their production from last round was deposited) is
+// drained into `G.bank` so the chief sees the freshly-produced
+// resources before they decide on distribution.
 
 import type { PhaseConfig } from 'boardgame.io';
 import { Stage } from 'boardgame.io/core';
 import type { SettlementState } from '../types.ts';
-import { seatOfRole } from '../roles.ts';
 import { drainBag } from '../resources/playerMat.ts';
 import { appendBankLog } from '../resources/bankLog.ts';
 import { RESOURCES } from '../resources/types.ts';
@@ -28,6 +28,14 @@ export const chiefPhase: PhaseConfig<SettlementState> = {
   // out the real per-phase stage map.
   turn: {
     onBegin: ({ G, events }) => {
+      // Defense redesign 2.3 — reset the per-round track-flip latch so
+      // the chief can flip the next round's card. The latch is set by
+      // `chiefFlipTrack` and consulted by `chiefEndPhase` to enforce
+      // "flip before end-phase" (D22).
+      if (G.track !== undefined) {
+        G.track.flippedThisRound = false;
+      }
+
       // Per-round chief stipend: a small fixed gold income to the bank so
       // the chief always has *something* to distribute, independent of
       // production/battle outcomes. Default = 2 (see setup.ts
@@ -65,8 +73,19 @@ export const chiefPhase: PhaseConfig<SettlementState> = {
         }
       }
 
-      const chiefSeat = seatOfRole(G.roleAssignments, 'chief');
-      events.setActivePlayers({ value: { [chiefSeat]: Stage.NULL } });
+      // Issue 056c — only mark seats that own at least one role.
+      // `assignRoles` always assigns every seat at least one role
+      // today, but a future config (or a hand-built test fixture)
+      // could leave a seat with `roles.length === 0`; we don't want
+      // those seats showing up as `Stage.NULL` waiting bystanders
+      // in the activePlayers map.
+      const value: Record<string, typeof Stage.NULL> = {};
+      for (const seat of Object.keys(G.roleAssignments)) {
+        const roles = G.roleAssignments[seat];
+        if (!roles || roles.length === 0) continue;
+        value[seat] = Stage.NULL;
+      }
+      events.setActivePlayers({ value });
     },
   },
 

@@ -40,13 +40,12 @@ const MAX_MOVES = 500;
 // stage gating still collapses to INVALID_MOVE for moves that aren't
 // legal at the current state.
 //
-// We deliberately omit the per-color `*PlayGoldEvent` / `*PlayBlueEvent`
-// / `*PlayGreenEvent` / `*PlayRedEvent` family for now: those route
-// through the 08.2 dispatcher whose `EventEffect` union doesn't yet
-// cover the `gainGold` / `gainScience` effects shipped in events.json
-// (a known content/dispatcher gap). The fuzz harness's invariants don't
-// depend on those moves resolving — bringing them back in once the gap
-// closes is a one-line change.
+// Issue 031 expanded the candidate pool to cover defense recruits +
+// red-tech plays, domestic upgrades, and the per-color event-play
+// family (the original `gainGold` / `gainScience` dispatcher gap was
+// retired by the events-loader refactor). Engine invariants
+// (no-negative-resources, conservation, turn-bounded) hold across
+// the wider move space.
 const stubEnumerate = (
   G: SettlementState,
   _ctx: Ctx,
@@ -62,19 +61,15 @@ const stubEnumerate = (
     out.push({ move: 'chiefDistribute', args: [target, { gold: 1 }] });
   }
   out.push({ move: 'chiefEndPhase', args: [] });
+  out.push({ move: 'chiefFlipTrack', args: [] });
   out.push({ move: 'chiefPlaceWorker', args: [{ x: 0, y: 0 }] });
 
-  // Science: contribute 1 gold to a card we can name; the move resolves
-  // the id and rejects gracefully when the id doesn't match.
-  if (G.science !== undefined) {
-    const firstCard = G.science.grid.flat()[0];
-    if (firstCard !== undefined) {
-      out.push({
-        move: 'scienceContribute',
-        args: [firstCard.id, { gold: 1 }],
-      });
-      out.push({ move: 'scienceComplete', args: [firstCard.id] });
-    }
+  // Science: try a Library buy / burn against slot 0 — the move
+  // resolves slot legality and rejects gracefully on null slots.
+  if (G.library !== undefined) {
+    out.push({ move: 'scienceLibraryBuy', args: [0] });
+    out.push({ move: 'scienceLibraryBurn', args: [0] });
+    out.push({ move: 'scienceSeatDone', args: [] });
   }
 
   // Domestic: try buying / upgrading from grid origin. Buy uses the first
@@ -90,23 +85,45 @@ const stubEnumerate = (
     out.push({ move: 'domesticProduce', args: [] });
   }
 
-  // Foreign.
-  if (G.foreign !== undefined) {
-    const firstUnit = G.foreign.hand[0];
+  // Defense — recruit + place against the (0,0) center cell + a
+  // hand-arbitrary cellKey. Move bodies INVALID_MOVE on illegal
+  // placement (e.g. center cell), so the bot just bounces those.
+  if (G.defense !== undefined) {
+    const firstUnit = G.defense.hand[0];
     if (firstUnit !== undefined) {
-      out.push({ move: 'foreignRecruit', args: [firstUnit.name] });
-      out.push({ move: 'foreignReleaseUnit', args: [firstUnit.name] });
+      out.push({ move: 'defenseBuyAndPlace', args: [firstUnit.name, '0,0'] });
+      out.push({ move: 'defenseBuyAndPlace', args: [firstUnit.name, '1,0'] });
     }
-    out.push({ move: 'foreignUpkeep', args: [] });
-    out.push({ move: 'foreignFlipBattle', args: [] });
-    out.push({ move: 'foreignFlipTrade', args: [] });
-    // foreignAssignDamage with an empty allocation list is INVALID_MOVE
-    // (resolver returns 'mid'); harmless to try.
-    out.push({ move: 'foreignAssignDamage', args: [[]] });
+    // defensePlay takes a tech def name; the seat's techHand may be
+    // empty, in which case the move INVALID_MOVEs harmlessly.
+    const firstTech = G.defense.techHand?.[0];
+    if (firstTech !== undefined) {
+      out.push({ move: 'defensePlay', args: [firstTech.name] });
+    }
+    out.push({ move: 'defenseSeatDone', args: [] });
   }
 
-  // Trade discard (no-op when not awaiting).
-  out.push({ move: 'chiefDecideTradeDiscard', args: ['existing'] });
+  // Domestic repair — INVALID_MOVE when there's nothing damaged at
+  // (0,0); we still surface it so the candidate pool covers the
+  // spend-sink that closes the loop on threat damage.
+  out.push({ move: 'domesticRepair', args: [0, 0] });
+
+  // Per-color event plays. Each move resolves the seat that holds
+  // the matching role; INVALID_MOVE for the wrong seat. The args
+  // shape is `(eventID)` — pull the first event id from the seat's
+  // hand if any, else surface the move with a sentinel id (engine
+  // rejects with INVALID_MOVE).
+  if (G.events !== undefined) {
+    const firstID = (color: 'gold' | 'blue' | 'green' | 'red'): string => {
+      const seatMap = G.events!.hands[color];
+      const handForViewer = seatMap?.[playerID];
+      const id = handForViewer?.[0]?.id;
+      return id ?? '__no-event__';
+    };
+    out.push({ move: 'chiefPlayGoldEvent', args: [firstID('gold')] });
+    out.push({ move: 'sciencePlayBlueEvent', args: [firstID('blue')] });
+    out.push({ move: 'domesticPlayGreenEvent', args: [firstID('green')] });
+  }
 
   return out;
 };

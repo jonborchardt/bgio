@@ -23,10 +23,9 @@ const baseState = (): SettlementState => {
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
   return {
     bank: bagOf({}),
-    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 1,
-    settlementsJoined: 0,
+    bossResolved: false,
     hands,
     mats: initialMats(roleAssignments),
   };
@@ -52,7 +51,10 @@ describe('domesticSeatDone (14.2)', () => {
     const chiefSeat = seatOfRole(assignments, 'chief');
     const domesticSeat = seatOfRole(assignments, 'domestic');
 
-    runMoves(client, [{ player: chiefSeat, move: 'chiefEndPhase' }]);
+    runMoves(client, [
+      { player: chiefSeat, move: 'chiefFlipTrack' },
+      { player: chiefSeat, move: 'chiefEndPhase' },
+    ]);
     runMoves(client, [{ player: domesticSeat, move: 'domesticSeatDone' }]);
     expect(client.getState()!.G.othersDone?.[domesticSeat]).toBe(true);
   });

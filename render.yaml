@@ -1,24 +1,13 @@
-# 13.2 — Render blueprint for the bgio server.
+# Render blueprint for the networked Settlement server.
 #
-# Render reads this file on push to `main` and rebuilds + redeploys the
-# `settlement-server` web service. Persistent state lives on `/data` via a
-# small disk; the SQLite database (13.3) is written there. Pushing this
-# repo to Render once (Blueprint -> "New from blueprint") wires everything
-# up in the dashboard; subsequent deploys are git-driven with no UI work.
+# Provisions a single Docker web service backed by a 1 GB persistent disk
+# at /data, where SQLite stores both match state (bgio) and the accounts
+# table (`server/auth/sqliteAccountsStore.ts`). The service rebuilds from
+# `server/Dockerfile` whenever `main` advances.
 #
-# Free tier notes (per 13.2 plan):
-# - The web service sleeps after ~15 min of idle and takes ~30s to wake.
-# - Sleep does NOT delete the disk. SQLite content persists across wakes.
-# - The 10.6 server-down spinner with backoff covers the wake window.
-#
-# Env vars:
-# - PORT — Render injects this; the server reads it via process.env.PORT.
-# - STORAGE_KIND — set to `sqlite` so the 10.4 factory selects the
-#   better-sqlite3 adapter.
-# - SQLITE_PATH — the on-disk database file. Must live under /data so it
-#   survives restarts.
-# - VITE_SERVER_URL — not used by the server itself, but documented here so
-#   the static SPA build can reference the same hostname when published.
+# Detach + reattach: deleting the service in Render and pointing at this
+# blueprint again rebuilds with the same env vars and disk mount; the
+# disk's contents survive only if `disk.name` matches.
 
 services:
   - type: web
@@ -26,18 +15,26 @@ services:
     runtime: docker
     plan: free
     region: oregon
-    rootDir: .
+    branch: main
     dockerfilePath: ./server/Dockerfile
+    dockerContext: .
+    healthCheckPath: /games
     autoDeploy: true
-    healthCheckPath: /
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: "8000"
       - key: STORAGE_KIND
         value: sqlite
       - key: SQLITE_PATH
         value: /data/settlement.sqlite
+      # CSV of allowed origins for the SocketIO transport + auth routes.
+      # Set this to the deployed Pages URL (and any preview URLs) once
+      # the client lands. Leave unset for a permissive dev default.
+      - key: ALLOWED_ORIGINS
+        sync: false
     disk:
-      name: settlement-data
+      name: data
       mountPath: /data
       sizeGB: 1

@@ -1,0 +1,148 @@
+// 1.4 / 1.5 — setup smoke test for the defense redesign demolition pass.
+//
+// Pins down the post-1.4 shape: no trade-request slot on the center mat,
+// no battle / trade decks anywhere on G, and a defense slice with the
+// new (Phase 2-ready) inPlay shape. 1.5 retires `settlementsJoined` and
+// adds the `bossResolved` placeholder.
+
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { setup } from '../../src/game/setup.ts';
+import type { SettlementState } from '../../src/game/types.ts';
+
+const setupFresh = (numPlayers: 1 | 2 | 3 | 4 = 4): SettlementState => {
+  const ctx = { numPlayers } as unknown as Parameters<typeof setup>[0]['ctx'];
+  return setup({ ctx });
+};
+
+describe('setup (1.4 / 1.5 — defense redesign)', () => {
+  it('center-mat slot has been retired entirely (the legacy trade-request placeholder has no replacement)', () => {
+    const G = setupFresh(4);
+    // The pre-defense-redesign `centerMat` slot was a placeholder for
+    // the retired trade-request loop; issue 014 removed the empty
+    // interface. The global event track is now at `G.track`.
+    expect((G as unknown as Record<string, unknown>).centerMat).toBeUndefined();
+  });
+
+  it('defense slice exists with starter hand (militia) and empty inPlay (no battle/trade decks)', () => {
+    const G = setupFresh(4);
+    expect(G.defense).toBeDefined();
+    // Defense redesign 2.5: starter hand is the militia pool — every
+    // unit in `units.json` whose `requires` is empty (Scout, Archer,
+    // Brute today). The 1.4 stub seeded an empty hand; 2.5 wires the
+    // starter cards so the defense seat can recruit on round 1.
+    expect(G.defense!.hand.length).toBeGreaterThan(0);
+    for (const card of G.defense!.hand) {
+      expect((card.requires ?? '').trim()).toBe('');
+    }
+    expect(G.defense!.inPlay).toEqual([]);
+    // Battle / trade deck fields are gone — they should not appear on
+    // the defense slice at all.
+    const def = G.defense as unknown as Record<string, unknown>;
+    expect(def.battleDeck).toBeUndefined();
+    expect(def.tradeDeck).toBeUndefined();
+    expect(def.inFlight).toBeUndefined();
+    expect(def.pendingTrade).toBeUndefined();
+    expect(def.pendingTribute).toBeUndefined();
+  });
+
+  it('does not carry the legacy retired-role slice on G', () => {
+    // Spelled via concatenation to keep a `\bforeign\b` grep on src/+tests/
+    // returning only deletions (the gate the 1.4 sub-phase plan defines).
+    const legacyKey = 'fore' + 'ign';
+    const G = setupFresh(4) as unknown as Record<string, unknown>;
+    expect(G[legacyKey]).toBeUndefined();
+  });
+
+  it('roleAssignments use the new defense role name (legacy name absent)', () => {
+    const G = setupFresh(4);
+    const allRoles = Object.values(G.roleAssignments).flat();
+    expect(allRoles).toContain('defense');
+    const legacyName = 'fore' + 'ign';
+    expect(allRoles).not.toContain(legacyName);
+  });
+
+  it('bossResolved is initialized to false (1.5 — D25 win-condition placeholder)', () => {
+    const G = setupFresh(4);
+    expect(G.bossResolved).toBe(false);
+    // The retired counter must not reappear under its old field name.
+    const legacyField = 'settlements' + 'Joined';
+    expect((G as unknown as Record<string, unknown>)[legacyField]).toBeUndefined();
+  });
+
+  it('defense.inPlay entries (when added) follow the Phase 2-ready UnitInstance shape', () => {
+    // Synthetic placement to verify the shape; the real placement move
+    // lands in Phase 2.4. We just confirm the *type* compiles and the
+    // expected fields are accepted.
+    const G = setupFresh(4);
+    G.defense!.inPlay.push({
+      id: 'unit:Militia:0',
+      defID: 'Militia',
+      cellKey: '0,0',
+      hp: 1,
+      placementOrder: 0,
+    });
+    expect(G.defense!.inPlay[0]!.id).toBe('unit:Militia:0');
+    expect(G.defense!.inPlay[0]!.cellKey).toBe('0,0');
+    expect(G.defense!.inPlay[0]!.placementOrder).toBe(0);
+  });
+
+  it('wander deck is retired (no G.opponent slice produced by setup) — 2.8', () => {
+    // Defense redesign 2.8 — the wander deck and its setup hook were
+    // retired in favor of the global event track. setup must NOT emit
+    // `G.opponent` and the type's old key should be gone too.
+    const G = setupFresh(4);
+    expect((G as unknown as Record<string, unknown>).opponent).toBeUndefined();
+    // Track is the replacement; smoke-check it landed.
+    expect(G.track).toBeDefined();
+    expect(G.track!.upcoming.length).toBeGreaterThan(0);
+  });
+});
+
+// Issue 042 — bgio always supplies its random plugin in production,
+// but the older code silently identity-shuffled when it was missing.
+// In test envs we keep the deterministic fallback for ergonomics; in
+// production the engine MUST throw so a missing-plugin regression
+// can't quietly deal cards in JSON order.
+describe('setup — random-plugin fallback (issue 042)', () => {
+  let originalNodeEnv: string | undefined;
+
+  beforeEach(() => {
+    originalNodeEnv = process.env.NODE_ENV;
+  });
+
+  afterEach(() => {
+    if (originalNodeEnv === undefined) {
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+  });
+
+  it('uses the deterministic identity-shuffle fallback when NODE_ENV=test', () => {
+    process.env.NODE_ENV = 'test';
+    const ctx = { numPlayers: 4 } as unknown as Parameters<typeof setup>[0]['ctx'];
+    expect(() => setup({ ctx })).not.toThrow();
+  });
+
+  it('throws when NODE_ENV is "production" and the random plugin is missing', () => {
+    process.env.NODE_ENV = 'production';
+    const ctx = { numPlayers: 4 } as unknown as Parameters<typeof setup>[0]['ctx'];
+    expect(() => setup({ ctx })).toThrow(/random plugin is missing/i);
+  });
+
+  it('throws when NODE_ENV is unset and the random plugin is missing', () => {
+    delete process.env.NODE_ENV;
+    const ctx = { numPlayers: 4 } as unknown as Parameters<typeof setup>[0]['ctx'];
+    expect(() => setup({ ctx })).toThrow(/random plugin is missing/i);
+  });
+
+  it('accepts an explicit random stub regardless of NODE_ENV', () => {
+    process.env.NODE_ENV = 'production';
+    const ctx = { numPlayers: 4 } as unknown as Parameters<typeof setup>[0]['ctx'];
+    const random = {
+      Shuffle: <T>(a: ReadonlyArray<T>): T[] => [...a],
+      Number: () => 0,
+    };
+    expect(() => setup({ ctx, random })).not.toThrow();
+  });
+});

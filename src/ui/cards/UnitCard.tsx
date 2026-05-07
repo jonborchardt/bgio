@@ -1,76 +1,28 @@
-// UnitCard (09.2) — presentational view of a UnitDef.
-//
-// Renders the unit's name, gold cost, attack / defense / initiative stats.
-// When `count > 1` adds a "×N" badge — used by the Foreign army row to
-// count-collapse identical units.
+// UnitCard — presentational view of a UnitDef. Delegates to the V9
+// shell; visual changes belong in `V9CardShell.tsx`.
 
-import { Box, Stack, Typography } from '@mui/material';
 import type { UnitDef } from '../../data/schema.ts';
-import { CardFrame } from './CardFrame.tsx';
+import type { CardSize } from './sizes.ts';
+import { idForUnit } from '../../cards/registry.ts';
+import { unitDisplay } from './cardDisplay.ts';
+import { V9CardShell } from './V9CardShell.tsx';
 
 export interface UnitCardProps {
   def: UnitDef;
   count?: number;
+  size?: CardSize;
+  cardId?: string;
 }
 
-export function UnitCard({ def, count }: UnitCardProps) {
+export function UnitCard({
+  def,
+  count,
+  size = 'detailed',
+  cardId,
+}: UnitCardProps) {
+  const id = cardId === undefined ? idForUnit(def) : cardId || undefined;
   return (
-    <CardFrame>
-      <Stack spacing={0.5}>
-        <Stack
-          direction="row"
-          spacing={1}
-          sx={{ alignItems: 'center', justifyContent: 'space-between' }}
-        >
-          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-            {def.name}
-          </Typography>
-          {count !== undefined && count > 1 ? (
-            <Box
-              aria-label={`Count ${count}`}
-              sx={{
-                px: 0.75,
-                borderRadius: 0.5,
-                bgcolor: (t) => t.palette.role.foreign.main,
-                color: (t) => t.palette.role.foreign.contrastText,
-                fontSize: '0.75rem',
-                fontWeight: 700,
-              }}
-            >
-              ×{count}
-            </Box>
-          ) : null}
-        </Stack>
-        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-          <Box
-            aria-hidden
-            sx={{
-              width: '0.625rem',
-              height: '0.625rem',
-              borderRadius: '50%',
-              bgcolor: (t) => t.palette.resource.gold.main,
-            }}
-          />
-          <Typography
-            variant="caption"
-            sx={{ color: (t) => t.palette.resource.gold.main, fontWeight: 600 }}
-          >
-            {def.cost}g
-          </Typography>
-        </Stack>
-        <Stack direction="row" spacing={1.25}>
-          <Typography variant="caption" sx={{ fontWeight: 600 }}>
-            ATK {def.attack}
-          </Typography>
-          <Typography variant="caption" sx={{ fontWeight: 600 }}>
-            DEF {def.defense}
-          </Typography>
-          <Typography variant="caption" sx={{ fontWeight: 600 }}>
-            INI {def.initiative}
-          </Typography>
-        </Stack>
-      </Stack>
-    </CardFrame>
+    <V9CardShell display={unitDisplay(def, count)} size={size} cardId={id} />
   );
 }
 

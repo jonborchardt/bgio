@@ -23,7 +23,32 @@ export type BankLogSource =
   | 'scienceSweep'
   | 'stashPayment'
   | 'distribute'
-  | 'release';
+  | 'release'
+  // Defense redesign 2.3 — center-tile pool burn. Posted by `centerBurn`
+  // (./centerMat.ts… actually, ../track/centerBurn.ts) when a threat
+  // reaches the village vault and resources are taken from non-chief
+  // seat stashes. The delta is informational (the burn is on per-seat
+  // stash mats, not `G.bank`) — the entry is appended so the chief
+  // tooltip's audit trail can narrate the loss alongside other bank
+  // events. `appendBankLog` skips empty deltas, so a burn that ate
+  // exactly zero tokens (no stash to burn) emits no entry.
+  | 'centerBurn'
+  // Defense redesign 2.3 — threat reward, paid to the bank when units
+  // chip a threat down to S=0 before it reaches center. Distinct from
+  // `battleReward` (which was the retired foreign battle resolver) so
+  // the audit trail can tell new-system rewards from legacy entries
+  // that may live in saved-game DBs.
+  | 'threatReward'
+  // Chief Tax super-power. Posted by `chiefTax` when the chief taxes
+  // every non-chief stash. Half of what's taken (rounded up) reaches
+  // the bank as a positive delta; the other half evaporates (the cost
+  // of using the power) and is not logged separately because it isn't
+  // a bank mutation.
+  | 'tax'
+  // Dev-only: top-up via DevSidebar's "Bank: +N of each" button. Tagged
+  // distinctly so the chief tooltip's income/stash split (computeBankView)
+  // doesn't lump the injection in with real round-zero setup amounts.
+  | 'dev';
 
 export interface BankLogEntry {
   /** `G.round` at the time the mutation happened. */
@@ -34,12 +59,32 @@ export interface BankLogEntry {
   delta: Partial<ResourceBag>;
   /** Optional human-readable note (building name, target seat, card id, …). */
   detail?: string;
+  /** Issue 039 — entries from sources that don't actually move
+   *  resources through `G.bank` (notably `centerBurn`, which drains
+   *  per-seat stashes rather than the bank) carry this flag. The
+   *  audit-trail UI still surfaces them; `computeBankView`'s
+   *  round-split aggregation skips them so the chief's stash view
+   *  stays correct. */
+  nonBankFlow?: boolean;
 }
+
+/** Sources whose `appendBankLog` entries are informational only — the
+ *  tokens never passed through `G.bank`, so `computeBankView` must
+ *  skip them when splitting the round into income / stash. */
+const NON_BANK_FLOW_SOURCES: ReadonlySet<BankLogSource> = new Set<
+  BankLogSource
+>(['centerBurn']);
 
 /**
  * Push a signed bank delta onto `G.bankLog`, lazily initializing the slot.
  * No-op when `delta` is empty (no resource entry is non-zero) so callers
  * don't need to gate the call.
+ *
+ * Side effect: refresh `G.economyHigh` (the running maximum of
+ * `G.bank.gold` over the match). Hooked here because `appendBankLog`
+ * is the canonical post-mutation site every bank-touching move calls;
+ * the call sites pass the delta *after* applying it to `G.bank`, so
+ * the current value is authoritative when this helper runs.
  */
 export const appendBankLog = (
   G: SettlementState,
@@ -47,6 +92,14 @@ export const appendBankLog = (
   delta: Partial<ResourceBag>,
   detail?: string,
 ): void => {
+  // Always refresh the economy high-water mark — even when the delta
+  // is empty, the caller may be syncing log state right after a
+  // non-bank mutation. Cheap pure read.
+  const gold = G.bank.gold ?? 0;
+  if (G.economyHigh === undefined || gold > G.economyHigh) {
+    G.economyHigh = gold;
+  }
+
   let nonZero = false;
   const trimmed: Partial<ResourceBag> = {};
   for (const r of RESOURCES as ReadonlyArray<Resource>) {
@@ -63,6 +116,7 @@ export const appendBankLog = (
     source,
     delta: trimmed,
     ...(detail !== undefined ? { detail } : {}),
+    ...(NON_BANK_FLOW_SOURCES.has(source) ? { nonBankFlow: true } : {}),
   });
 };
 
@@ -93,6 +147,10 @@ export const computeBankView = (
   const netPartial: Partial<ResourceBag> = {};
   for (const e of log) {
     if (e.round !== round) continue;
+    // Issue 039 — skip audit-only entries (centerBurn, etc.) so the
+    // chief's stash view doesn't get charged for tokens that never
+    // passed through `G.bank`.
+    if (e.nonBankFlow === true) continue;
     for (const r of RESOURCES as ReadonlyArray<Resource>) {
       const v = e.delta[r];
       if (v === undefined || v === 0) continue;

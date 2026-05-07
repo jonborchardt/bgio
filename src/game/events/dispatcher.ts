@@ -6,11 +6,8 @@
 // content surfaces immediately as a thrown "unknown effect kind: ..."
 // error rather than a silent no-op.
 //
-// Effects fall into three buckets, mirrored in the switch below:
+// Effects fall into two buckets, mirrored in the switch below:
 //   - Immediate / deterministic: mutate G in place.
-//   - Modifier: push onto `G._modifiers`. The move that's conditioned by
-//     the modifier is responsible for `hasModifierActive` /
-//     `consumeModifier` at its own call site.
 //   - Awaiting-input: stash on `G._awaitingInput[playerID]` and enter the
 //     `playingEvent` stage. The follow-up `eventResolve(payload)` move
 //     (08.3 / `resolveMove.ts`) feeds the payload back to apply the
@@ -24,7 +21,7 @@ import type { SettlementState, PlayerID } from '../types.ts';
 import type { RandomAPI } from '../random.ts';
 import type { EventCardDef, EventColor } from './state.ts';
 import type { EventEffect } from './effects.ts';
-import { EVENT_CARDS } from '../../data/events.ts';
+import { EVENT_CARDS } from '../../data/index.ts';
 import { RESOURCES, type ResourceBag } from '../resources/types.ts';
 import { appendBankLog } from '../resources/bankLog.ts';
 import { seatOfRole } from '../roles.ts';
@@ -43,7 +40,7 @@ const COLOR_TO_ROLE = {
   gold: 'chief',
   blue: 'science',
   green: 'domestic',
-  red: 'foreign',
+  red: 'defense',
 } as const;
 
 const addToBag = (
@@ -132,34 +129,6 @@ export const dispatch = (
         break;
       }
 
-      case 'redrawBattleTop': {
-        // Move the top of the battle deck to the bottom — "redraw" by
-        // forcing the next flip to draw the next card under it. No-op
-        // if there's nothing in the deck or the foreign slice is absent.
-        const foreign = G.foreign;
-        if (foreign === undefined || foreign.battleDeck.length === 0) break;
-        const top = foreign.battleDeck.shift()!;
-        foreign.battleDeck.push(top);
-        break;
-      }
-
-      case 'tributeWaiver': {
-        if (G.foreign !== undefined) {
-          G.foreign.pendingTribute = undefined;
-        }
-        break;
-      }
-
-      case 'doubleScience':
-      case 'forbidBuy':
-      case 'forceCheapestScience': {
-        // Modifier: queue for the next conditioned move to consume.
-        if (G._modifiers === undefined) G._modifiers = [];
-        G._modifiers.push(effect);
-        break;
-      }
-
-      case 'swapTwoScienceCards':
       case 'awaitInput': {
         const seat = context?.playerID;
         if (seat === undefined) {
@@ -193,6 +162,42 @@ export const dispatch = (
         break;
       }
 
+      // Issue 017 — track-card modifier kinds. The track resolver's
+      // `pushModifier` puts these on `G._modifiers` directly, so the
+      // dispatcher path is only reachable when content authors a
+      // modifier-shaped effect on a non-modifier card (e.g. an event
+      // card or a boon). That case is intentional: a boon could
+      // legitimately drop a `doubleProduceThisRound` on the queue. We
+      // mirror `pushModifier`'s queue-write here so the effect lands
+      // wherever it's authored.
+      case 'threatStrengthBump':
+      case 'suppressEventsThisRound':
+      case 'doubleProduceThisRound': {
+        if (G._modifiers === undefined) G._modifiers = [];
+        G._modifiers.push(effect);
+        break;
+      }
+
+      // Issue 019 — tech-passive kinds and `unlockCard`. These are
+      // never applied by the dispatcher itself:
+      //   - `unitStatBump` / `producePerRound` are queried at fire /
+      //     produce time via `techPassives(G, holder)`; their value
+      //     lives in the tech's `passiveEffects` array (not in any
+      //     global queue). When authored under `onPlayEffects` they
+      //     fall through as no-ops here.
+      //   - `unlockCard` is consumed by `applyTechOnPlay` directly
+      //     (see tech/effects.ts), which walks the effect list and
+      //     routes each entry through the unlock-grant helper before
+      //     calling dispatch. Reaching this case from a non-tech card
+      //     (e.g. an event card with an `unlockCard` effect) is a
+      //     content authoring error, but we keep it as a no-op rather
+      //     than throw — the worst case is a silent miss, not a crash.
+      case 'unitStatBump':
+      case 'producePerRound':
+      case 'unlockCard': {
+        break;
+      }
+
       default: {
         // Exhaustiveness: TypeScript should already complain if a new
         // kind is added to `EventEffect` without a case here, but a
@@ -209,9 +214,9 @@ export const dispatch = (
   // Hand over the optional `payload` for the awaiting-input flow's
   // *follow-up* dispatch — `eventResolve` synthesizes a card whose
   // single effect carries the kind to apply, and threads `payload`
-  // through here. Right now the only payload-aware kind is the swap;
-  // the application itself lives in `resolveMove.ts` so this dispatcher
-  // stays agnostic to higher-level move shape.
+  // through here. Concrete payload application lives in
+  // `resolveMove.ts` so this dispatcher stays agnostic to higher-level
+  // move shape.
   void payload;
 };
 

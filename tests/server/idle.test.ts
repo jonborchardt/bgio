@@ -122,15 +122,10 @@ describe('idleWatcher (10.9) — sweep', () => {
   });
 });
 
-describe('idleWatcher — integration with createServer (10.9)', () => {
-  it.todo(
-    'createServer wires idleWatcher.start() and exposes it on the handle',
-  );
-  it.todo(
-    'a 2p match: human in seat 1 stops acting; bot takes over after the timeout',
-  );
-  it.todo('reconnect: bot stops, human resumes from current state');
-  it.todo(
-    "active connection on a stage other than its own does NOT trigger takeover",
-  );
-});
+// Issue 003 / 10.9 — the four integration tests under
+// "idleWatcher — integration with createServer" moved to
+// `tests/server/botTakeover.test.ts`. They drive a real bgio Server
+// + bot driver end-to-end (real match metadata, real Master dispatch),
+// which needs the @vitest-environment node directive at the file
+// level — keeping them in this file would force every other case
+// here to switch envs too.

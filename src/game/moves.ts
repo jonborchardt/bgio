@@ -8,35 +8,37 @@ import type { Move } from 'boardgame.io';
 import type { PlayerID, SettlementState } from './types.ts';
 import { chiefDistribute } from './roles/chief/distribute.ts';
 import { chiefEndPhase } from './roles/chief/endPhase.ts';
+import { chiefFlipTrack } from './roles/chief/flipTrack.ts';
 import { chiefPlaceWorker } from './roles/chief/workerPlacement.ts';
 import { chiefPlayGoldEvent } from './roles/chief/playGoldEvent.ts';
+import { chiefTax } from './roles/chief/tax.ts';
 import { sciencePlayBlueEvent } from './roles/science/playBlueEvent.ts';
 import { domesticPlayGreenEvent } from './roles/domestic/playGreenEvent.ts';
 import { domesticBuyBuilding } from './roles/domestic/buy.ts';
 import { domesticUpgradeBuilding } from './roles/domestic/upgrade.ts';
 import { domesticProduce } from './roles/domestic/produce.ts';
-import { foreignPlayRedEvent } from './roles/foreign/playRedEvent.ts';
-import { foreignRecruit } from './roles/foreign/recruit.ts';
-import { foreignUpkeep } from './roles/foreign/upkeep.ts';
-import { foreignReleaseUnit } from './roles/foreign/release.ts';
-import { foreignUndoRelease } from './roles/foreign/undoRelease.ts';
-import {
-  foreignFlipBattle,
-  foreignFlipTrade,
-} from './roles/foreign/flip.ts';
-import { foreignAssignDamage } from './roles/foreign/assignDamage.ts';
-import { foreignTradeFulfill } from './roles/foreign/tradeFulfill.ts';
-import { chiefDecideTradeDiscard } from './roles/chief/decideTradeDiscard.ts';
-import { scienceContribute } from './roles/science/contribute.ts';
-import { scienceComplete } from './roles/science/complete.ts';
+import { domesticRepair } from './roles/domestic/repair.ts';
+import { clearUndoable, undoLast } from './undo.ts';
+import { scienceDrill } from './roles/science/drill.ts';
+import { scienceTeach } from './roles/science/teach.ts';
+import { scienceLibraryBuy } from './roles/science/libraryBuy.ts';
+import { scienceLibraryBurn } from './roles/science/libraryBurn.ts';
 import { eventResolve } from './events/resolveMove.ts';
 import { chiefPlayTech } from './roles/chief/playTech.ts';
 import { sciencePlayTech } from './roles/science/playTech.ts';
 import { domesticPlayTech } from './roles/domestic/playTech.ts';
-import { foreignPlayTech } from './roles/foreign/playTech.ts';
 import { scienceSeatDone } from './roles/science/seatDone.ts';
 import { domesticSeatDone } from './roles/domestic/seatDone.ts';
-import { foreignSeatDone } from './roles/foreign/seatDone.ts';
+import { defenseSeatDone } from './roles/defense/seatDone.ts';
+import { defenseBuyAndPlace } from './roles/defense/buyAndPlace.ts';
+import { defensePlay } from './roles/defense/play.ts';
+// Defense redesign 2.8 — module-load side effect: registers the
+// `defense:regen-units` and `defense:clear-modifiers` round-end hooks
+// against the shared 02.5 hook registry. The import has no exports we
+// need; it exists purely to pull the module into the dependency graph
+// so its registration runs alongside the other role hooks.
+import './roles/defense/hooks.ts';
+import { requestHelp } from './requests/move.ts';
 
 export const pass: Move<SettlementState> = () => {
   // intentional no-op — bgio advances the turn after the move resolves.
@@ -51,79 +53,92 @@ export const pass: Move<SettlementState> = () => {
 export {
   chiefDistribute,
   chiefEndPhase,
+  chiefFlipTrack,
   chiefPlaceWorker,
   chiefPlayGoldEvent,
-  chiefDecideTradeDiscard,
+  chiefTax,
 };
 
-// Science role moves (05.2 contribute, 05.3 complete). The Science seat
-// drives both inside the `scienceTurn` stage of `othersPhase`; gating is
-// enforced inside each move against `ctx.activePlayers?.[playerID]` so the
-// bgio-level stage config only has to authorize the science seat in that
-// stage.
-export { scienceContribute, scienceComplete };
+// Science role moves. The Science seat drives them all inside the
+// `scienceTurn` stage of `othersPhase`; gating is enforced inside each
+// move against `ctx.activePlayers?.[playerID]` so the bgio-level stage
+// config only has to authorize the science seat in that stage.
+// `scienceDrill` / `scienceTeach` apply the defense-redesign D27 unit
+// upgrades; both are once-per-round and gated on the science seat's
+// own stash. `scienceLibraryBuy(slotIndex)` / `scienceLibraryBurn(slotIndex)`
+// drive the Library market: buy pays from stash, hands the card to the
+// recipient role, and grows the per-seat discount tableau; burn pushes
+// the slot's card to the public lost-ideas pile.
+export { scienceDrill, scienceTeach, scienceLibraryBuy, scienceLibraryBurn };
 
-// Per-color event-card moves (05.4 / 06.6 / 07.6). Near-clones of 04.4
-// chiefPlayGoldEvent — they share the `playEventStub` factory in
-// `src/game/events/playEventStub.ts`. Each owns role-gating, per-round
-// bookkeeping, and (08.3) effect dispatch via the typed dispatcher.
-export { sciencePlayBlueEvent, domesticPlayGreenEvent, foreignPlayRedEvent };
+// Per-color event-card moves (05.4 / 06.6). Defense's red event move is
+// retired in 1.4 (D14) — the trade / battle effects it dispatched are gone.
+// Phase 2 will reintroduce a defense event-card play move atop the new
+// track / unit economy.
+export { sciencePlayBlueEvent, domesticPlayGreenEvent };
 
 // 08.3 — `eventResolve` is the follow-up move for play*Event-dispatched
-// `awaitInput` effects (e.g. `swapTwoScienceCards`). It reads the parked
-// effect from `G._awaitingInput[playerID]`, applies it with the supplied
-// payload, and pops the seat back to the prior stage. Stage gating is
-// enforced inside the move (must be in `playingEvent`).
+// `awaitInput` effects. It reads the parked effect from
+// `G._awaitingInput[playerID]`, applies it with the supplied payload,
+// and pops the seat back to the prior stage. Stage gating is enforced
+// inside the move (must be in `playingEvent`).
 export { eventResolve };
 
 // 08.6 — Per-role tech-play moves. Each gates on the caller holding the
 // matching role and on the named card existing in that role's tech-card
-// hand with non-empty `onPlayEffects`. All four share the
-// `playTechStub` factory under `tech/playTechStub.ts`.
+// hand with non-empty `onPlayEffects`. All three share the
+// `playTechStub` factory under `tech/playTechStub.ts`. Defense's tech-play
+// move is retired in 1.4 (the red tech onPlayEffects today are battle-
+// resolver hooks that no longer exist); Phase 2.5 reintroduces it once
+// the new defense card economy lands.
 export {
   chiefPlayTech,
   sciencePlayTech,
   domesticPlayTech,
-  foreignPlayTech,
 };
 
-// Foreign role unit moves (07.2): recruit / upkeep / release. Stage gating
-// is enforced inside each move against `ctx.activePlayers?.[playerID] ===
-// 'foreignTurn'`, so the bgio-level stage config only has to authorize the
-// foreign seat in that stage.
-export { foreignRecruit, foreignUpkeep, foreignReleaseUnit, foreignUndoRelease };
+// Generic single-slot undo for the seat's most recent card-play / recruit
+// action. See `./undo.ts` for the contract; the move is stage-agnostic and
+// gates internally on `_lastAction.seat === playerID`.
+export { undoLast };
 
-// Foreign flip-flow moves (07.4) and trade-request placement (07.5).
-// `foreignFlipBattle` puts the seat into `foreignAwaitingDamage`, which
-// `foreignAssignDamage` resolves; `foreignFlipTrade` either drops the
-// drawn card straight into the mat slot or stashes it for the chief to
-// resolve via `chiefDecideTradeDiscard` (registered above with the other
-// chief moves). `foreignTradeFulfill` completes the active trade
-// request — public to all seats: any active seat with enough in their
-// own stash can pay `required` → bank, gain `reward`, +1
-// settlementsJoined.
-export {
-  foreignFlipBattle,
-  foreignAssignDamage,
-  foreignFlipTrade,
-  foreignTradeFulfill,
-};
-
-// Domestic role moves (06.2 buy / upgrade, 06.4 produce). Stage gating is
-// enforced inside each move against `ctx.activePlayers?.[playerID] ===
-// 'domesticTurn'`, so the bgio-level stage config only has to authorize the
-// domestic seat in that stage. `domesticProduce` is once-per-round and
-// idempotent via `G.domestic.producedThisRound`, cleared by the
+// Domestic role moves (06.2 buy / upgrade, 06.4 produce, 1.3 repair).
+// Stage gating is enforced inside each move against
+// `ctx.activePlayers?.[playerID] === 'domesticTurn'`, so the bgio-level
+// stage config only has to authorize the domestic seat in that stage.
+// `domesticProduce` is once-per-round and idempotent via
+// `G.domestic.producedThisRound`, cleared by the
 // `domestic:reset-produced` round-end hook registered in `produce.ts`.
-export { domesticBuyBuilding, domesticUpgradeBuilding, domesticProduce };
+// `domesticRepair` is the new spend sink for the building-HP loop
+// (defense redesign D17): pay gold from stash, restore up to `amount`
+// HP capped at `maxHp - hp`.
+export {
+  domesticBuyBuilding,
+  domesticUpgradeBuilding,
+  domesticProduce,
+  domesticRepair,
+};
 
 // 14.2 — per-role "I'm done" moves. Each flips `G.othersDone[seat]`
 // after the seat finishes its work in `othersPhase`; bgio re-evaluates
 // `othersPhase.endIf` after the move and transitions to `endOfRound`
 // once every non-chief seat has flipped. The chief uses `chiefEndPhase`
-// for the analogous transition out of `chiefPhase`. Replaces the
-// review-fix-#1-gated `__testSetOthersDone` for production play.
-export { scienceSeatDone, domesticSeatDone, foreignSeatDone };
+// for the analogous transition out of `chiefPhase`.
+export { scienceSeatDone, domesticSeatDone, defenseSeatDone };
+
+// Defense redesign 2.5 — Defense seat moves over the new card economy.
+// `defenseBuyAndPlace` pays from stash and pushes a UnitInstance onto
+// `G.defense.inPlay` at the target building tile (D11). `defensePlay`
+// applies a red-tech card from `defense.techHand` — unit upgrades or
+// track-modifier effects (D24) — and consumes the card. Stage gating
+// is enforced inside each move against `defenseTurn`.
+export { defenseBuyAndPlace, defensePlay };
+
+// Help-request toggle. Stage-agnostic — any seat can ask another for
+// help with a currently-disabled action at any time. The recipient
+// auto-loses the row when the requester completes the action (see
+// `clearRequestsForTarget` calls in the completion sites).
+export { requestHelp };
 
 // ---------------------------------------------------------------------------
 // Test-only scaffolding.
@@ -148,4 +163,45 @@ export const __testSetOthersDone: Move<SettlementState> = (
 ) => {
   if (!G.othersDone) G.othersDone = {};
   G.othersDone[seat] = true;
+};
+
+// Dev-only: grant `amount` of every resource to every role. The chief
+// receives via `G.bank` (their working pool); every non-chief seat
+// receives directly into `mats[seat].stash` so their spend moves can
+// draw from it without a chief-distribute round-trip. The bank top-up
+// is logged through the audit trail so the chief tooltip still narrates
+// what happened; per-seat stash bumps don't have a comparable log.
+export const __devGrantAllRoles: Move<SettlementState> = (
+  { G },
+  amount: number,
+) => {
+  // Issue 056b — dev-only mutator; wipe any pending undo so the next
+  // user-driven move can't roll BACK across the dev grant. The grant
+  // is itself non-undoable.
+  clearUndoable(G);
+  const safeAmount =
+    typeof amount === 'number' && Number.isFinite(amount) && amount > 0
+      ? Math.floor(amount)
+      : 10;
+  const RESOURCE_KEYS = [
+    'gold', 'wood', 'stone', 'steel', 'horse',
+    'food', 'production', 'science', 'happiness', 'worker',
+  ] as const;
+  const delta: Record<string, number> = {};
+  for (const r of RESOURCE_KEYS) {
+    G.bank[r] = (G.bank[r] ?? 0) + safeAmount;
+    delta[r] = safeAmount;
+  }
+  if (G.bankLog === undefined) G.bankLog = [];
+  G.bankLog.push({
+    round: G.round,
+    source: 'dev',
+    delta,
+    detail: `Dev: +${safeAmount} of each (all roles)`,
+  });
+  for (const mat of Object.values(G.mats)) {
+    for (const r of RESOURCE_KEYS) {
+      mat.stash[r] = (mat.stash[r] ?? 0) + safeAmount;
+    }
+  }
 };

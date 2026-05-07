@@ -16,10 +16,9 @@ const cleanState = (
   partial: Partial<SettlementState> = {},
 ): SettlementState => ({
   bank: { ...EMPTY_BAG },
-  centerMat: { tradeRequest: null },
   roleAssignments: { '0': ['chief'], '1': ['science'] },
   round: 0,
-  settlementsJoined: 0,
+  bossResolved: false,
   hands: {},
   mats: {},
   ...partial,

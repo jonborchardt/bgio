@@ -1,7 +1,7 @@
 // domesticPlayTech (08.6) — Domestic seat plays a green-color tech card.
 //
-// Tech cards distributed by 05.3's `scienceComplete` for a green-color
-// science card land in `G.domestic.techHand` (kept distinct from
+// Tech cards distributed by `scienceLibraryBuy` for a green-color
+// Library card land in `G.domestic.techHand` (kept distinct from
 // `G.domestic.hand`, which is the building-card pile per 06.1). This
 // move lets the Domestic seat play any tech in that hand whose
 // `onPlayEffects` is non-empty.

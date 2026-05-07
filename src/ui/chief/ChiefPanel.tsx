@@ -10,23 +10,44 @@
 // "End my turn" button (`chiefEndPhase`). Outside `chiefPhase` the panel
 // stays mounted but only renders the resource bar (income for the round)
 // so the chief can watch their take accumulate; distribution UI is hidden.
+//
+// The panel surfaces a single chief action via <ChiefActionButton>,
+// which morphs between "Flip Track" (when the round's track card is
+// still face-down) and "End my turn" (after the flip lands or when
+// the engine has no track). The handler dispatches `chiefFlipTrack`
+// or `chiefEndPhase` accordingly. Resolve animation is driven by the
+// resolve-animation provider — this panel only dispatches moves.
 
-import { useContext } from 'react';
-import { Button, Stack, Typography } from '@mui/material';
+import { useCallback, useContext } from 'react';
+import { Stack, Typography } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
 import type { PlayerID, SettlementState } from '../../game/types.ts';
 import type { Resource, ResourceBag } from '../../game/resources/types.ts';
-import { computeBankView } from '../../game/resources/bankLog.ts';
 import { rolesAtSeat } from '../../game/roles.ts';
 import { CircleEditor } from './CircleEditor.tsx';
+import { ChiefActionButton } from './ChiefActionButton.tsx';
+import { TaxButton } from './TaxButton.tsx';
 import { RolePanel } from '../layout/RolePanel.tsx';
-import { StashBar } from '../resources/StashBar.tsx';
+import { SectionHeading } from '../layout/SectionHeading.tsx';
+import { PlayableHand } from '../cards/PlayableHand.tsx';
+import { GraveyardButton } from '../layout/GraveyardButton.tsx';
+import { UndoButton } from '../layout/UndoButton.tsx';
 import { SeatPickerContext } from '../layout/SeatPickerContext.ts';
 import { firstNonChiefSeat } from '../layout/nextSeat.ts';
+import { RequestsRow } from '../requests/RequestsRow.tsx';
 
 export function ChiefPanel(props: BoardProps<SettlementState>) {
   const { G, ctx, moves, playerID } = props;
   const seatCtx = useContext(SeatPickerContext);
+
+  // Stable across renders so the `F` keyboard shortcut listener inside
+  // <ChiefActionButton> doesn't unbind/rebind on every render — `moves`
+  // is a fresh object each render, so without this wrap the effect's
+  // deps would churn. Declared before the early returns so the hook
+  // order is identical on every render (Rules of Hooks).
+  const handleFlipTrack = useCallback((): void => {
+    moves.chiefFlipTrack();
+  }, [moves]);
 
   if (playerID === undefined || playerID === null) return null;
 
@@ -36,11 +57,14 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
 
   const isChiefPhase = ctx.phase === 'chiefPhase';
   const canPush = isChiefPhase;
-  // Off-turn: show what the chief is collecting this round (income).
-  // On-turn: show the full bank — everything available to distribute,
-  // which is income + carryover combined.
-  const barBag = isChiefPhase ? G.bank : computeBankView(G).income;
-  const barLabel = isChiefPhase ? 'Stash' : 'Income';
+
+  // Track slot may be absent (older fixtures); a missing track is
+  // treated as "no flip required," matching `chiefEndPhase`'s own
+  // behavior. The unified action button below switches its label /
+  // handler off these flags.
+  const hasTrack = G.track !== undefined;
+  const flipped = G.track?.flippedThisRound === true;
+  const upcomingCount = G.track?.upcoming.length ?? 0;
 
   // Sort seats deterministically; render every non-chief seat (the chief's
   // own seat owns no circle on the mat, so there's nothing to distribute to).
@@ -62,37 +86,82 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
     if (seatCtx) seatCtx.setSeat(firstNonChiefSeat(G));
   };
 
+  const handleTax = (): void => {
+    moves.chiefTax();
+  };
+
   return (
     <RolePanel
       role="chief"
+      connectedAbove
       actions={
-        isChiefPhase ? (
-          <Button
-            variant="contained"
-            disabled={!isChiefPhase}
-            onClick={handleEndTurn}
-            sx={{
-              bgcolor: (t) => t.palette.role.chief.main,
-              color: (t) => t.palette.role.chief.contrastText,
-              '&:hover': {
-                bgcolor: (t) => t.palette.role.chief.dark,
-              },
-            }}
-          >
-            End my turn
-          </Button>
-        ) : null
+        <>
+          <GraveyardButton
+            role="chief"
+            entries={G.graveyards?.[playerID] ?? []}
+          />
+          <UndoButton
+            G={G}
+            playerID={playerID}
+            canAct={isChiefPhase}
+            onUndo={() => moves.undoLast()}
+          />
+          {/* Single chief action: morphs from "Flip Track" to "End my
+              turn" once the round's track card has been flipped. The
+              button gates on the same `flippedThisRound` latch the move
+              checks, so its mode mirrors what the engine will accept. */}
+          {isChiefPhase ? (
+            <ChiefActionButton
+              canAct={isChiefPhase}
+              hasTrack={hasTrack}
+              flipped={flipped}
+              upcomingCount={upcomingCount}
+              onFlip={handleFlipTrack}
+              onEnd={handleEndTurn}
+            />
+          ) : null}
+        </>
       }
     >
       <Stack spacing={1.5}>
-        <StashBar
-          stash={barBag}
-          label={barLabel}
-          ariaLabel={`Chief ${barLabel.toLowerCase()}`}
+        <RequestsRow G={G} playerID={playerID} panelRole="chief" />
+
+        {/* Tax — chief super-power, once per round. Mirrors the
+            "Science moves" section the Science panel uses for its
+            Drill / Teach buttons: a labeled row right under the
+            requests strip so the move is visible as part of the
+            chief's repertoire, not buried in the action bar. The
+            button itself previews the take and gates on the
+            `taxedThisRound` latch. */}
+        {isChiefPhase ? (
+          <Stack
+            spacing={0.75}
+            aria-label="Chief moves"
+            data-chief-tax-section="true"
+          >
+            <SectionHeading role="chief">Chief moves</SectionHeading>
+            <Stack
+              direction="row"
+              spacing={2}
+              sx={{ flexWrap: 'wrap', rowGap: 1 }}
+            >
+              <TaxButton G={G} canAct={isChiefPhase} onTax={handleTax} />
+            </Stack>
+          </Stack>
+        ) : null}
+
+        <PlayableHand
+          techs={G.chief?.hand ?? []}
+          holderRole="chief"
+          funds={G.bank}
+          canAct={isChiefPhase}
+          onPlay={(name) => moves.chiefPlayTech(name)}
+          emptyHint="No gold tech cards yet — complete a gold science card to add one."
         />
 
         {isChiefPhase ? (
-          <Stack spacing={1} aria-label="Non-chief seats">
+          <Stack spacing={1} aria-label="Send resources">
+            <SectionHeading role="chief">Send Resources</SectionHeading>
             {nonChiefSeats.length === 0 ? (
               <Typography
                 variant="body2"
@@ -121,6 +190,7 @@ export function ChiefPanel(props: BoardProps<SettlementState>) {
             )}
           </Stack>
         ) : null}
+
       </Stack>
     </RolePanel>
   );

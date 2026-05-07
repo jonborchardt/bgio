@@ -43,10 +43,9 @@ const build4pState = (
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
   return {
     bank: bagOf({}),
-    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 1,
-    settlementsJoined: 0,
+    bossResolved: false,
     hands,
     mats: initialMats(roleAssignments),
     ...partial,
@@ -93,47 +92,36 @@ describe('dispatch — gainResource (08.2)', () => {
   });
 });
 
-describe('dispatch — modifier effects (08.2)', () => {
-  it('doubleScience pushes a modifier onto G._modifiers', () => {
-    const G = build4pState();
-    const card = cardWith([{ kind: 'doubleScience' }]);
+describe('dispatch — modifier helpers (08.2)', () => {
+  it('hasModifierActive / consumeModifier round-trip a manually pushed entry', () => {
+    const G = build4pState({
+      _modifiers: [{ kind: 'gainResource', bag: { gold: 1 }, target: 'bank' }],
+    });
 
-    dispatch(G, stubCtx(), fromBgio(identityRandom), card);
-
-    expect(hasModifierActive(G, 'doubleScience')).toBe(true);
-    expect(G._modifiers).toHaveLength(1);
-    expect(G._modifiers![0]!.kind).toBe('doubleScience');
-
-    // consumeModifier removes the entry.
-    consumeModifier(G, 'doubleScience');
-    expect(hasModifierActive(G, 'doubleScience')).toBe(false);
-  });
-
-  it('forbidBuy pushes a modifier onto G._modifiers', () => {
-    const G = build4pState();
-    const card = cardWith([{ kind: 'forbidBuy' }]);
-
-    dispatch(G, stubCtx(), fromBgio(identityRandom), card);
-
-    expect(hasModifierActive(G, 'forbidBuy')).toBe(true);
-    expect(G._modifiers).toHaveLength(1);
+    expect(hasModifierActive(G, 'gainResource')).toBe(true);
+    consumeModifier(G, 'gainResource');
+    expect(hasModifierActive(G, 'gainResource')).toBe(false);
+    expect(G._modifiers).toHaveLength(0);
   });
 });
 
 describe('dispatch — awaiting-input effects (08.2)', () => {
-  it('swapTwoScienceCards parks the effect on G._awaitingInput', () => {
+  it('awaitInput parks the effect on G._awaitingInput', () => {
     const G = build4pState();
-    const card = cardWith([{ kind: 'swapTwoScienceCards' }]);
+    const card = cardWith([
+      { kind: 'awaitInput', prompt: 'pick something', payloadKind: 'pickN' },
+    ]);
 
-    // No `events` helper supplied — the dispatcher should still record
-    // the awaiting-input slot. (Stage transition is then a no-op; the
-    // play*Event move drives that path through bgio's events plugin.)
     dispatch(G, stubCtx(), fromBgio(identityRandom), card, undefined, {
       playerID: '1',
     });
 
     expect(G._awaitingInput).toBeDefined();
-    expect(G._awaitingInput!['1']).toEqual({ kind: 'swapTwoScienceCards' });
+    expect(G._awaitingInput!['1']).toEqual({
+      kind: 'awaitInput',
+      prompt: 'pick something',
+      payloadKind: 'pickN',
+    });
   });
 });
 

@@ -22,11 +22,10 @@ const build4pState = (
 
   return {
     bank: bagOf(bank),
-    centerMat: { tradeRequest: null },
     mats: initialMats(roleAssignments),
     roleAssignments,
     round: 1,
-    settlementsJoined: 0,
+    bossResolved: false,
     hands,
   };
 };

@@ -68,6 +68,13 @@ export interface IdleWatcher {
  * index signature). seatTakeover narrows safely at runtime. */
 export type BgioServer = unknown;
 
+/** Issue 053 — cap the in-process tables so a long-running server
+ *  doesn't accumulate one entry per ever-played match. The Map's
+ *  insertion order is FIFO, so when we cross the cap we drop the
+ *  oldest entry. Tune higher if real-world match counts exceed this
+ *  before completed-match pruning lands. */
+export const IDLE_MAX_MATCHES = 10_000;
+
 export const makeIdleWatcher = (server: BgioServer): IdleWatcher => {
   // matchID -> playerID -> last activity epoch ms.
   const lastActivity = new Map<string, Map<PlayerID, number>>();
@@ -77,12 +84,31 @@ export const makeIdleWatcher = (server: BgioServer): IdleWatcher => {
   const granted = new Set<string>();
   let timer: ReturnType<typeof setInterval> | null = null;
 
+  /** Drop the oldest match entry (FIFO Map order) when the table
+   * crosses IDLE_MAX_MATCHES. Also discards the corresponding
+   * `granted` entries so the cleared keys can re-fire if the seat
+   * comes back. */
+  const evictOldestIfNeeded = (): void => {
+    while (lastActivity.size >= IDLE_MAX_MATCHES) {
+      const oldestMatch = lastActivity.keys().next().value;
+      if (oldestMatch === undefined) break;
+      const perMatch = lastActivity.get(oldestMatch);
+      lastActivity.delete(oldestMatch);
+      if (perMatch) {
+        for (const playerID of perMatch.keys()) {
+          granted.delete(`${oldestMatch} ${playerID}`);
+        }
+      }
+    }
+  };
+
   const pairKey = (matchID: string, playerID: PlayerID): string =>
     `${matchID} ${playerID}`;
 
   const noteActivity = (matchID: string, playerID: PlayerID): void => {
     let perMatch = lastActivity.get(matchID);
     if (!perMatch) {
+      evictOldestIfNeeded();
       perMatch = new Map<PlayerID, number>();
       lastActivity.set(matchID, perMatch);
     }

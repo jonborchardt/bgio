@@ -1,0 +1,7 @@
+[
+  { "defID": "Mill", "whenAdjacentTo": "Granary", "bonus": { "food": 1 }, "flavor": "A mill grinds finer when its grain pile is next door." },
+  { "defID": "Library", "whenAdjacentTo": "School", "bonus": { "science": 1 }, "flavor": "Students cycling through the stacks copy faster." },
+  { "defID": "School", "whenAdjacentTo": "Library", "bonus": { "science": 1 }, "flavor": "Reference shelves a door away cut research time." },
+  { "defID": "Fight Circle", "whenAdjacentTo": "*", "bonus": { "happiness": 1 }, "flavor": "Any neighborhood with a fight circle has something to cheer for." },
+  { "defID": "Forge", "whenAdjacentTo": "Workshop", "bonus": { "production": 1 }, "flavor": "Workshop tools sharpen the forge's output." }
+]

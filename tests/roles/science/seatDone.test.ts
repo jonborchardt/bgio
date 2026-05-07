@@ -32,10 +32,9 @@ const baseState = (): SettlementState => {
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
   return {
     bank: bagOf({}),
-    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 1,
-    settlementsJoined: 0,
+    bossResolved: false,
     hands,
     mats: initialMats(roleAssignments),
   };
@@ -61,21 +60,28 @@ describe('scienceSeatDone (14.2)', () => {
     const chiefSeat = seatOfRole(assignments, 'chief');
     const scienceSeat = seatOfRole(assignments, 'science');
     const domesticSeat = seatOfRole(assignments, 'domestic');
-    const foreignSeat = seatOfRole(assignments, 'foreign');
+    const defenseSeat = seatOfRole(assignments, 'defense');
 
-    // Get out of chiefPhase first.
-    runMoves(client, [{ player: chiefSeat, move: 'chiefEndPhase' }]);
+    // Get out of chiefPhase first (flip + end-phase per D22).
+    runMoves(client, [
+      { player: chiefSeat, move: 'chiefFlipTrack' },
+      { player: chiefSeat, move: 'chiefEndPhase' },
+    ]);
     expect(client.getState()!.ctx.phase).toBe('othersPhase');
 
-    // Science seat flips done — domestic and foreign still pending.
-    runMoves(client, [{ player: scienceSeat, move: 'scienceSeatDone' }]);
+    // Science seat must burn at least one card per the post-fix rule
+    // before flipping done. Slot 0 is always populated in fresh setup.
+    runMoves(client, [
+      { player: scienceSeat, move: 'scienceLibraryBurn', args: [0] },
+      { player: scienceSeat, move: 'scienceSeatDone' },
+    ]);
     expect(client.getState()!.G.othersDone?.[scienceSeat]).toBe(true);
     expect(client.getState()!.ctx.phase).toBe('othersPhase');
 
-    // Now domestic + foreign — phase should transition through endOfRound
+    // Now domestic + defense — phase should transition through endOfRound
     // back to chiefPhase once the last seat flips.
     runMoves(client, [{ player: domesticSeat, move: 'domesticSeatDone' }]);
-    runMoves(client, [{ player: foreignSeat, move: 'foreignSeatDone' }]);
+    runMoves(client, [{ player: defenseSeat, move: 'defenseSeatDone' }]);
     expect(client.getState()!.ctx.phase).toBe('chiefPhase');
   });
 
@@ -101,5 +107,25 @@ describe('scienceSeatDone (14.2)', () => {
     const G = baseState();
     const result = callSeatDone(G, undefined, ctxAt('1', 'scienceTurn'));
     expect(result).toBe(INVALID_MOVE);
+  });
+
+  // SL fix-5 gap #6 — refill is gated on G.library presence. Older /
+  // minimal fixtures may dispatch scienceSeatDone against a state that
+  // never seeded G.library; the move must not crash and the existing
+  // seat-done end-of-turn behavior (othersDone flag) must still fire.
+  it('with G.library absent, does not crash and still flips othersDone[seat]', () => {
+    const G = baseState();
+    // baseState() returns a state without G.library — mirroring legacy
+    // fixtures that pre-date SL 2.2.
+    expect(G.library).toBeUndefined();
+
+    // 4-player layout: seat '1' holds the science role.
+    const result = callSeatDone(G, '1', ctxAt('1', 'scienceTurn'));
+
+    expect(result).not.toBe(INVALID_MOVE);
+    expect(G.othersDone?.['1']).toBe(true);
+    // The library slot stays absent — the guard short-circuits the
+    // refill helper rather than synthesizing one on demand.
+    expect(G.library).toBeUndefined();
   });
 });

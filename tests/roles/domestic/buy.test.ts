@@ -20,7 +20,7 @@ import type { DomesticBuilding } from '../../../src/game/roles/domestic/types.ts
 import { cellKey } from '../../../src/game/roles/domestic/grid.ts';
 import { initialMats } from '../../../src/game/resources/playerMat.ts';
 
-// 2-player layout: seat '0' = chief+science, seat '1' = domestic+foreign.
+// 2-player layout: seat '0' = chief+science, seat '1' = domestic+defense.
 const build2pState = (
   walletOf: Partial<ResourceBag>,
   domestic: DomesticState,
@@ -34,10 +34,9 @@ const build2pState = (
 
   return {
     bank: bagOf({}),
-    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 1,
-    settlementsJoined: 0,
+    bossResolved: false,
     hands,
     mats,
     domestic,
@@ -70,7 +69,7 @@ const callBuy = (
 describe('domesticBuyBuilding (06.2)', () => {
   it('happy path: removes from hand, places on grid, deducts wallet, credits bank', () => {
     const granary = BUILDINGS.find((b) => b.name === 'Granary')!;
-    expect(granary.cost).toBe(10);
+    expect(granary.cost).toBe(8);
 
     const G = build2pState(
       { gold: 15 },
@@ -84,15 +83,18 @@ describe('domesticBuyBuilding (06.2)', () => {
 
     expect(result).toBeUndefined();
     // Wallet drained by the cost; bank credited symmetrically.
-    expect(G.mats['1']?.stash).toEqual(bagOf({ gold: 5 }));
-    expect(G.bank).toEqual(bagOf({ gold: 10 }));
+    expect(G.mats['1']?.stash).toEqual(bagOf({ gold: 7 }));
+    expect(G.bank).toEqual(bagOf({ gold: 8 }));
     // Card removed from hand.
     expect(G.domestic!.hand).toHaveLength(0);
-    // Building placed on grid.
+    // Building placed on grid; defense redesign D15 — placement seeds
+    // hp = maxHp from BuildingDef.maxHp (Granary: 1).
     const placed: DomesticBuilding = {
       defID: 'Granary',
       upgrades: 0,
       worker: null,
+      hp: 1,
+      maxHp: 1,
     };
     expect(G.domestic!.grid[cellKey(0, 0)]).toEqual(placed);
   });
@@ -105,6 +107,8 @@ describe('domesticBuyBuilding (06.2)', () => {
       defID: 'Market',
       upgrades: 0,
       worker: null,
+      hp: 3,
+      maxHp: 3,
     };
     const G = build2pState(
       { gold: 50 },

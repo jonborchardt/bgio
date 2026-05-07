@@ -51,17 +51,16 @@ const FOUR_PLAYER_ASSIGNMENTS: Record<PlayerID, Role[]> = {
   '0': ['chief'],
   '1': ['science'],
   '2': ['domestic'],
-  '3': ['foreign'],
+  '3': ['defense'],
 };
 
 // Build a SettlementState shell around an EventsState so we can drive the
 // round-end hook against a realistic G shape.
 const wrapInG = (events: EventsState): SettlementState => ({
   bank: { ...EMPTY_BAG },
-  centerMat: { tradeRequest: null },
   roleAssignments: FOUR_PLAYER_ASSIGNMENTS,
   round: 0,
-  settlementsJoined: 0,
+  bossResolved: false,
   hands: { '0': {}, '1': {}, '2': {}, '3': {} },
   mats: {
     '1': { in: { ...EMPTY_BAG }, out: { ...EMPTY_BAG }, stash: { ...EMPTY_BAG } },
@@ -82,7 +81,7 @@ describe('setupEvents (08.1)', () => {
     //   chief    → gold   → seat '0'
     //   science  → blue   → seat '1'
     //   domestic → green  → seat '2'
-    //   foreign  → red    → seat '3'
+    //   defense  → red    → seat '3'
     expect(events.hands.gold['0']).toBeDefined();
     expect(events.hands.gold['0']).toHaveLength(4);
     expect(events.hands.gold['0']!.every((c) => c.color === 'gold')).toBe(

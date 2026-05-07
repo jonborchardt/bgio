@@ -1,8 +1,8 @@
 // 08.6 — Tech-card effect glue.
 //
 // Tech cards carry three optional effect lists (per 08.6's `TechEffect`
-// interface): `onAcquire` (fired once at distribution time by 05.3's
-// `scienceComplete`), `onPlay` (fired by `<role>PlayTech` when the
+// interface): `onAcquire` (fired once at distribution time by
+// `scienceLibraryBuy`), `onPlay` (fired by `<role>PlayTech` when the
 // holder explicitly plays it), and `passive` (read by `techPassives` so
 // the modifier pipeline can layer per-card bonuses on top of dispatched
 // effects).
@@ -18,12 +18,88 @@
 // and decides per-call whether they apply.
 
 import type { SettlementState, PlayerID } from '../types.ts';
-import type { TechnologyDef } from '../../data/schema.ts';
+import type {
+  BuildingDef,
+  TechnologyDef,
+  UnitDef,
+} from '../../data/schema.ts';
+import { BUILDINGS, UNITS } from '../../data/index.ts';
 import type { RandomAPI } from '../random.ts';
 import type { EventCardDef, EventColor } from '../events/state.ts';
 import type { EventEffect } from '../events/effects.ts';
 import { dispatch } from '../events/dispatcher.ts';
 import type { StageEvents, StageName } from '../phases/stages.ts';
+
+/** Split a comma-list ("Sentry, Watchman") into trimmed names. Empty
+ *  string → empty array. */
+const splitNames = (raw: string | undefined): string[] => {
+  if (raw === undefined || raw.trim().length === 0) return [];
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+};
+
+const buildingByName = new Map<string, BuildingDef>(
+  BUILDINGS.map((b) => [b.name.toLowerCase(), b]),
+);
+const unitByName = new Map<string, UnitDef>(
+  UNITS.map((u) => [u.name.toLowerCase(), u]),
+);
+
+/** True if the tech has at least one named unlock (building or unit). */
+export const techHasUnlocks = (tech: TechnologyDef): boolean =>
+  splitNames(tech.buildings).length > 0 || splitNames(tech.units).length > 0;
+
+/**
+ * Push a single building / unit unlock into the matching role's hand.
+ * Issue 019 extracted this so `unlockCard`-shaped EventEffect entries
+ * can route through the same dedupe-and-push behavior `grantTechUnlocks`
+ * uses for its text-field walk. Returns true iff a new card landed.
+ */
+export const applyUnlockCard = (
+  G: SettlementState,
+  ref: string,
+  refKind: 'building' | 'unit',
+): boolean => {
+  if (refKind === 'building') {
+    const def = buildingByName.get(ref.toLowerCase());
+    if (def === undefined) return false;
+    if (G.domestic === undefined) return false;
+    if (G.domestic.hand.some((b) => b.name === def.name)) return false;
+    G.domestic.hand.push(def);
+    return true;
+  }
+  const def = unitByName.get(ref.toLowerCase());
+  if (def === undefined) return false;
+  if (G.defense === undefined) return false;
+  if (G.defense.hand.some((u) => u.name === def.name)) return false;
+  G.defense.hand.push(def);
+  return true;
+};
+
+/**
+ * Grant the tech's `buildings` and `units` unlocks into the appropriate
+ * role hands: BuildingDefs → `G.domestic.hand`, UnitDefs → `G.defense.hand`.
+ * Skips entries that don't resolve to a known def (so a typo in the JSON
+ * is a silent no-op rather than a crash). Skips entries already present
+ * in the destination hand so repeat plays don't stack duplicates.
+ *
+ * Returns true iff at least one card was granted.
+ */
+export const grantTechUnlocks = (
+  G: SettlementState,
+  tech: TechnologyDef,
+): boolean => {
+  let granted = 0;
+  for (const name of splitNames(tech.buildings)) {
+    if (applyUnlockCard(G, name, 'building')) granted += 1;
+  }
+  for (const name of splitNames(tech.units)) {
+    if (applyUnlockCard(G, name, 'unit')) granted += 1;
+  }
+  return granted > 0;
+};
 
 /**
  * Public-facing shape per the 08.6 plan. Tech-card content mostly lives
@@ -108,15 +184,36 @@ export const applyTechOnPlay = (
   tech: TechnologyDef,
   context?: { events?: StageEvents; returnTo?: StageName },
 ): boolean => {
+  let did = false;
   const effects = tech.onPlayEffects;
-  if (effects === undefined || effects.length === 0) return false;
-  const card = techAsEventCard(tech, effects);
-  dispatch(G, ctx, random, card, undefined, {
-    playerID: holder,
-    events: context?.events,
-    returnTo: context?.returnTo,
-  });
-  return true;
+  if (effects !== undefined && effects.length > 0) {
+    // Issue 019 — `unlockCard` effects route through the unlock helper
+    // so the resulting hand-push is identical to the `tech.buildings`
+    // / `tech.units` text-field path. The dispatcher sees the same
+    // entries as no-ops; we apply the unlocks here so a tech can carry
+    // an explicit `unlockCard` effect for content the loose text
+    // fields don't capture.
+    for (const eff of effects) {
+      const e = eff as EventEffect;
+      if (e.kind === 'unlockCard') {
+        if (applyUnlockCard(G, e.ref, e.refKind)) did = true;
+      }
+    }
+    const card = techAsEventCard(tech, effects);
+    dispatch(G, ctx, random, card, undefined, {
+      playerID: holder,
+      events: context?.events,
+      returnTo: context?.returnTo,
+    });
+    did = true;
+  }
+  // Cards that name unlocked buildings / units always grant them on play.
+  // This is the canonical "playing a tech spawns the unlocked cards in
+  // the right role's hand" behavior — derived from the tech's `buildings`
+  // / `units` text fields rather than an explicit `onPlayEffects` entry,
+  // so content authors don't have to repeat themselves.
+  if (grantTechUnlocks(G, tech)) did = true;
+  return did;
 };
 
 /**
@@ -124,14 +221,11 @@ export const applyTechOnPlay = (
  * slots) and concat their `passiveEffects` into a single list.
  *
  * Today the four hands are:
- *   - `G.chief.hand`     — gold-distributed techs (05.3)
- *   - `G.science.hand`   — blue-distributed techs (05.3)
+ *   - `G.chief.hand`        — gold-distributed techs (05.3)
+ *   - `G.science.hand`      — blue-distributed techs (05.3)
  *   - `G.domestic.techHand` — green-distributed techs (05.3)
- *   - `G.foreign.hand`   — red-distributed techs (07.4 / 05.3, plus
- *                          starter UnitDef entries from 07.2 — the
- *                          slot is mixed-typed today; we filter for
- *                          entries that look like tech defs by
- *                          presence of the `branch` field).
+ *   - `G.defense.techHand`  — red-distributed techs (05.3); separate
+ *                             from `G.defense.hand` which holds units.
  *
  * `holder` here is the seat — we resolve which roles that seat holds
  * via the role-assignment table on `G` and concat from the matching
@@ -160,23 +254,7 @@ export const techPassives = (
   if (roles.includes('chief')) collect(G.chief?.hand);
   if (roles.includes('science')) collect(G.science?.hand);
   if (roles.includes('domestic')) collect(G.domestic?.techHand);
-  if (roles.includes('foreign')) {
-    // ForeignState.hand is mixed-typed today: starter entries are
-    // UnitDef (no `branch`) and 05.3 distribution adds TechnologyDef
-    // (with `branch`). Filter to tech-shaped entries only — see the
-    // module-level note above and the 07.4 plan's eventual hand-
-    // type refactor. TypeScript can't structurally narrow `UnitDef`
-    // (which lacks `branch`) to `TechnologyDef`, so we route through
-    // `unknown` to strip the source-side type before the predicate.
-    const foreignHand = G.foreign?.hand;
-    if (foreignHand !== undefined) {
-      const techsOnly = (foreignHand as unknown as unknown[]).filter(
-        (e): e is TechnologyDef =>
-          typeof (e as { branch?: unknown }).branch === 'string',
-      );
-      collect(techsOnly);
-    }
-  }
+  if (roles.includes('defense')) collect(G.defense?.techHand);
 
   return out;
 };

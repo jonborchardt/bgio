@@ -3,19 +3,11 @@
 // boardgame.io calls `playerView(G, ctx, playerID)` server-side to produce
 // the slice of state actually shipped to each connected client. Anything not
 // returned here is unrecoverable from the client side — that's the security
-// boundary for hidden information (Foreign decks, Domestic hand, etc.).
+// boundary for hidden information (Defense decks, Domestic hand, etc.).
 //
 // We resolve which roles the viewing seat holds and redact every slice owned
 // by a role they don't hold. Counts stay visible (we replace contents with
 // `null` while preserving array length); only order/contents become opaque.
-//
-// The full hand/deck shapes don't exist yet — 06.1 lands the Foreign decks
-// and 07.1 lands the Domestic hand. Today `hands[seat]` is the placeholder
-// `{}` from `setup`. The redactor here is intentionally defensive: it walks
-// only the array-shaped fields that 06.1/07.1 are slated to introduce
-// (`domestic`, `foreign`, `foreignDecks.<name>`) and no-ops on anything
-// missing. When 06.1/07.1 plug in real shapes, this file should not need to
-// change unless new private array fields are added.
 
 import type { Ctx } from 'boardgame.io';
 import type { PlayerID, Role, SettlementState } from './types.ts';
@@ -39,23 +31,20 @@ export const redactHand = <T>(hand: T[]): T[] =>
 // --- internal helpers ------------------------------------------------------
 
 // Shape we know how to redact today. Defensive — every field optional and
-// only touched if it's actually an array on the live state. 06.1 and 07.1
-// will refine these into the real per-role hand/deck shapes; this stays
-// permissive so it doesn't break under the current placeholder `{}`.
+// only touched if it's actually an array on the live state.
 interface DomesticSlice {
   domestic?: unknown;
 }
-interface ForeignSlice {
-  foreign?: unknown;
-  foreignDecks?: Record<string, unknown>;
+interface DefenseHandSlice {
+  defense?: unknown;
 }
-type HandSlice = DomesticSlice & ForeignSlice & Record<string, unknown>;
+type HandSlice = DomesticSlice & DefenseHandSlice & Record<string, unknown>;
 
 const isArray = (x: unknown): x is unknown[] => Array.isArray(x);
 
 /**
  * Returns a fresh hand object for `seat` with the Domestic-owned fields
- * redacted. No-ops on missing fields. Documented expansion point for 07.1.
+ * redacted. No-ops on missing fields.
  */
 const redactDomesticForSeat = (
   hands: Record<PlayerID, unknown>,
@@ -75,11 +64,10 @@ const redactDomesticForSeat = (
 };
 
 /**
- * Returns a fresh hand object for `seat` with the Foreign-owned fields
- * redacted (the hand itself + every deck under `foreignDecks.<name>`).
- * No-ops on missing fields. Documented expansion point for 06.1.
+ * Returns a fresh hand object for `seat` with the Defense-owned fields
+ * redacted. No-ops on missing fields.
  */
-const redactForeignForSeat = (
+const redactDefenseForSeat = (
   hands: Record<PlayerID, unknown>,
   seat: PlayerID,
 ): Record<PlayerID, unknown> => {
@@ -89,19 +77,8 @@ const redactForeignForSeat = (
     return next;
   }
   const cloned: HandSlice = { ...(slice as HandSlice) };
-  if (isArray(cloned.foreign)) {
-    cloned.foreign = redactHand(cloned.foreign);
-  }
-  if (
-    cloned.foreignDecks !== undefined &&
-    cloned.foreignDecks !== null &&
-    typeof cloned.foreignDecks === 'object'
-  ) {
-    const decks: Record<string, unknown> = { ...cloned.foreignDecks };
-    for (const [name, deck] of Object.entries(decks)) {
-      if (isArray(deck)) decks[name] = redactDeckOrder(deck);
-    }
-    cloned.foreignDecks = decks;
+  if (isArray(cloned.defense)) {
+    cloned.defense = redactHand(cloned.defense);
   }
   next[seat] = cloned;
   return next;
@@ -129,7 +106,7 @@ const trySeatOfRole = (
  * Internal redactor: returns the slice of `G` visible to `playerID`.
  *
  * - `playerID === null`/`undefined` → spectator. We treat this as "viewer
- *   holds zero roles" and redact every Domestic hand and Foreign hand/deck.
+ *   holds zero roles" and redact every Domestic / Defense hand.
  * - Otherwise we resolve the viewer's roles via `rolesAtSeat` and redact
  *   the slices owned by every role NOT in that set.
  *
@@ -167,34 +144,23 @@ export const playerViewFor = (
     if (domSeat !== null) hands = redactDomesticForSeat(hands, domSeat);
   }
 
-  if (!has('foreign')) {
-    const forSeat = trySeatOfRole(G.roleAssignments, 'foreign');
-    if (forSeat !== null) hands = redactForeignForSeat(hands, forSeat);
+  if (!has('defense')) {
+    const defSeat = trySeatOfRole(G.roleAssignments, 'defense');
+    if (defSeat !== null) hands = redactDefenseForSeat(hands, defSeat);
   }
 
-  // 07.1 + 07.2 — the real Foreign state lives on G.foreign. Its hand,
-  // deck order, the in-flight battle (drawn-but-unresolved), and any
-  // pendingTrade are private to whoever holds Foreign. Only deck/hand
+  // 1.4 — the real Defense state lives on G.defense. Its hand and
+  // techHand are private to whoever holds Defense. Only deck/hand
   // *length* leaks (we replace contents with null and keep the array
   // shape).
-  let foreign = G.foreign;
-  if (!has('foreign') && foreign !== undefined) {
-    foreign = {
-      ...foreign,
-      hand: redactHand(foreign.hand),
-      battleDeck: redactDeckOrder(foreign.battleDeck),
-      tradeDeck: redactDeckOrder(foreign.tradeDeck),
-      // Hide the in-flight battle card itself; keep `committed` visible
-      // because committed unit counts are a public consequence of the
-      // flip (the chief sees how many troops are in play).
-      inFlight: foreign.inFlight
-        ? { ...foreign.inFlight, battle: foreign.inFlight.battle ? null : null }
-        : foreign.inFlight,
-      // 07.5 pending trade is held by Foreign waiting on chief's
-      // decision; the chief needs to see the card to decide, but
-      // other seats just learn one is pending. We strip it for
-      // non-foreign+non-chief viewers.
-      pendingTrade: has('chief') ? foreign.pendingTrade : undefined,
+  let defense = G.defense;
+  if (!has('defense') && defense !== undefined) {
+    defense = {
+      ...defense,
+      hand: redactHand(defense.hand),
+      ...(defense.techHand !== undefined
+        ? { techHand: redactHand(defense.techHand) }
+        : {}),
     };
   }
 
@@ -219,7 +185,7 @@ export const playerViewFor = (
   }
 
   // 08.1 — every role's event-card hand. Each color belongs to exactly
-  // one role (chief=gold, science=blue, domestic=green, foreign=red);
+  // one role (chief=gold, science=blue, domestic=green, defense=red);
   // a viewer sees only the hand for the colors of roles they hold.
   // `used` and `playedThisRound` stay visible (those are public
   // bookkeeping the cycle UI needs).
@@ -229,28 +195,43 @@ export const playerViewFor = (
       chief: 'gold',
       science: 'blue',
       domestic: 'green',
-      foreign: 'red',
+      defense: 'red',
     };
+    // Issue 040 — iterate every seat that holds cards in each color
+    // map and redact unless the *viewer* owns that role at that seat.
+    // Earlier this only redacted `seatOfRole(role)` per role, missing
+    // any extra seat entry in test fixtures or future N-seats-per-role
+    // configurations.
     const nextHands = { ...events.hands };
-    for (const role of ['chief', 'science', 'domestic', 'foreign'] as Role[]) {
-      if (has(role)) continue;
-      const color = colorByRole[role];
-      const seat = trySeatOfRole(G.roleAssignments, role);
-      if (seat === null) continue;
+    for (const color of ['gold', 'blue', 'green', 'red'] as const) {
       const perColor = nextHands[color];
       if (!perColor) continue;
-      const arr = perColor[seat];
-      if (!Array.isArray(arr)) continue;
-      nextHands[color] = { ...perColor, [seat]: redactHand(arr) };
+      // Find the role whose color this is — a seat is "owned" by the
+      // viewer for redaction purposes when the viewer holds that role.
+      const role = (Object.keys(colorByRole) as Role[]).find(
+        (r) => colorByRole[r] === color,
+      );
+      const viewerOwnsThisColor = role !== undefined && has(role);
+      if (viewerOwnsThisColor) continue;
+      let next: Record<string, unknown[]> | undefined;
+      for (const seat of Object.keys(perColor)) {
+        const arr = perColor[seat];
+        if (!Array.isArray(arr)) continue;
+        if (next === undefined) next = { ...perColor };
+        next[seat] = redactHand(arr);
+      }
+      if (next !== undefined) {
+        nextHands[color] = next as typeof perColor;
+      }
     }
     events = { ...events, hands: nextHands };
   }
 
-  // 08.2 awaiting-input parks an effect a seat is resolving (e.g. a
-  // swapTwoScienceCards prompt). The effect itself describes what
-  // they're picking from, which can be sensitive — only the seat
-  // actually resolving needs it. We drop other seats' entries entirely
-  // (rather than null-ing them) since the type is
+  // 08.2 awaiting-input parks an effect a seat is resolving (an
+  // `awaitInput` prompt). The effect itself describes what they're
+  // picking from, which can be sensitive — only the seat actually
+  // resolving needs it. We drop other seats' entries entirely (rather
+  // than null-ing them) since the type is
   // `Record<PlayerID, EventEffect>` and null isn't assignable.
   let awaitingInput = G._awaitingInput;
   if (awaitingInput !== undefined) {
@@ -268,44 +249,69 @@ export const playerViewFor = (
     awaitingInput = filtered;
   }
 
-  // 08.4 — opponent wander deck. The deck order is hidden from EVERY
-  // viewer (including the chief seat) — there's no role that "owns" the
-  // opponent's hand. `currentlyApplied` and `discard` stay visible so
-  // observers can see what just hit the village.
-  let opponent = G.opponent;
-  if (opponent !== undefined) {
-    opponent = {
-      ...opponent,
-      wander: {
-        ...opponent.wander,
-        deck: redactDeckOrder(opponent.wander.deck),
-      },
-    };
+  // Defense redesign 2.2 — `G.track` (the Global Event Track) is fully
+  // public table information: every viewer sees the same `upcoming`,
+  // `history`, and `currentPhase`. The face-up next card is the design's
+  // table-presence telegraph (D19), so we deliberately do *not* redact
+  // it here. No code below this comment touches `G.track`.
+
+  // Science Library SL fix-2 — `G.library.deck` is the tier-stacked draw
+  // pile. The face-up `row`, the public `lostIdeas` burn pile, and every
+  // seat's `discountTableaus` (each seat's own bought cards) are public
+  // table information; viewers see those unchanged. The deck order,
+  // though, is hidden information at a real table — players know that
+  // T1 reveals before T2 before T3, but not the specific sequence
+  // within a tier. We redact the deck the same way hands are redacted:
+  // length preserved (so the UI can show "N cards remaining"), contents
+  // nulled. No UI consumer currently reads `library.deck` (only setup
+  // and refill on the server touch it), so a plain `null`-fill is
+  // safe — we don't need to expose tier-per-slot today.
+  let library = G.library;
+  if (library !== undefined) {
+    library = { ...library, deck: redactDeckOrder(library.deck) };
+  }
+
+  // Help requests: each row is visible only to the requester and the
+  // recipient. Spectators see none. The list is small (a handful of
+  // active rows at most), so a simple filter is fine.
+  let requests = G.requests;
+  if (requests !== undefined) {
+    const viewerSeat =
+      playerID === null || playerID === undefined ? null : playerID;
+    if (viewerSeat === null) {
+      requests = [];
+    } else {
+      requests = requests.filter(
+        (r) => r.fromSeat === viewerSeat || r.toSeat === viewerSeat,
+      );
+    }
   }
 
   // Only allocate a new top-level object if anything actually changed.
   if (
     hands === G.hands &&
-    foreign === G.foreign &&
+    defense === G.defense &&
     chief === G.chief &&
     domestic === G.domestic &&
     science === G.science &&
     events === G.events &&
     awaitingInput === G._awaitingInput &&
-    opponent === G.opponent
+    requests === G.requests &&
+    library === G.library
   ) {
     return { ...G };
   }
   return {
     ...G,
     hands,
-    foreign,
+    defense,
     chief,
     domestic,
     science,
     events,
     _awaitingInput: awaitingInput,
-    opponent,
+    requests,
+    library,
   };
 };
 

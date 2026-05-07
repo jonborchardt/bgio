@@ -20,6 +20,7 @@ import { BUILDINGS } from '../../../data/index.ts';
 import { canAfford } from '../../resources/bag.ts';
 import { payFromStash } from '../../resources/moves.ts';
 import { cellKey } from './grid.ts';
+import { clearUndoable } from '../../undo.ts';
 
 export const domesticUpgradeBuilding: Move<SettlementState> = (
   { G, ctx, playerID },
@@ -46,6 +47,9 @@ export const domesticUpgradeBuilding: Move<SettlementState> = (
   const key = cellKey(x, y);
   const building = domestic.grid[key];
   if (building === undefined) return INVALID_MOVE;
+  // Defense redesign D2 — the center tile is a coordinate anchor, not a
+  // building. It is not upgradeable.
+  if (building.isCenter === true) return INVALID_MOVE;
 
   // Look up the original def to compute the delta cost. If the building's
   // defID is missing from BUILDINGS we treat the upgrade as illegal —
@@ -60,6 +64,8 @@ export const domesticUpgradeBuilding: Move<SettlementState> = (
   if (mat === undefined) return INVALID_MOVE;
   const cost = { gold: deltaCost };
   if (!canAfford(mat.stash, cost)) return INVALID_MOVE;
+
+  clearUndoable(G);
 
   // Pay the bank if the delta is non-zero (a 0-cost upgrade is a no-op
   // payment but still legitimately bumps the counter — e.g. `cost=1` →

@@ -17,9 +17,11 @@ import { Box, Button, ButtonGroup, Stack, Typography } from '@mui/material';
 import type { PlayerID, Role } from '../../game/types.ts';
 import {
   RESOURCES,
+  RESOURCE_DISPLAY,
   type Resource,
   type ResourceBag,
 } from '../../game/resources/types.ts';
+import { ResourceToken } from '../resources/ResourceToken.tsx';
 
 // Mirrors SeatPicker / Circle ROLE_ACCENT_PRIORITY so the editor's
 // title and accent match the mat tile for the same seat.
@@ -27,7 +29,7 @@ const ROLE_ACCENT_PRIORITY: ReadonlyArray<Role> = [
   'chief',
   'science',
   'domestic',
-  'foreign',
+  'defense',
 ];
 
 const accentRoleFor = (roles: ReadonlyArray<Role>): Role | undefined =>
@@ -58,11 +60,21 @@ export function CircleEditor({
 }: CircleEditorProps) {
   const accent = accentRoleFor(roles);
   const label = roles.length > 0 ? roles.map(titleCase).join(' · ') : '—';
-  // Render every resource the bank holds. Gold is forced visible (it's
-  // the canonical chief output) so the row layout doesn't flicker when
-  // other resources transiently drain to zero between rounds.
+  const heading = roles.length > 0 ? `Send to ${label}` : label;
+  // Render every resource that's relevant to this seat right now:
+  //   - gold is always shown (canonical chief output, prevents row
+  //     flicker between rounds when bank gold transiently drains);
+  //   - any resource the bank still holds → still pushable;
+  //   - any resource the seat's `in` slot already holds → must stay
+  //     visible so the chief can pull it back via the negative steppers.
+  // Without the third clause, pushing the bank's last unit of (e.g.)
+  // wood to a seat would hide the row immediately and lock the chief
+  // out of undoing the push.
   const resourcesShown: Resource[] = RESOURCES.filter(
-    (r) => r === 'gold' || (bank[r] ?? 0) > 0,
+    (r) =>
+      r === 'gold' ||
+      (bank[r] ?? 0) > 0 ||
+      (inBag[r] ?? 0) > 0,
   );
 
   return (
@@ -87,13 +99,14 @@ export function CircleEditor({
           mb: 0.5,
         }}
       >
-        {label}
+        {heading}
       </Typography>
 
       <Stack spacing={1}>
         {resourcesShown.map((resource) => {
           const placed = inBag[resource] ?? 0;
           const inBank = bank[resource] ?? 0;
+          const displayName = RESOURCE_DISPLAY[resource].name;
           return (
             <Stack
               key={resource}
@@ -105,30 +118,31 @@ export function CircleEditor({
                 sx={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  minWidth: '6rem',
+                  gap: 0.75,
+                  minWidth: '6.5rem',
                 }}
+                aria-label={displayName}
               >
-                <Box
-                  aria-hidden
-                  sx={{
-                    width: '0.75rem',
-                    height: '0.75rem',
-                    borderRadius: '50%',
-                    bgcolor: (t) => t.palette.resource[resource].main,
-                    mr: 1,
-                  }}
-                />
+                <ResourceToken resource={resource} size="detailed" />
                 <Typography
+                  variant="caption"
                   sx={{
                     color: (t) => t.palette.resource[resource].main,
                     fontWeight: 600,
-                    textTransform: 'capitalize',
+                    letterSpacing: '0.02em',
                   }}
                 >
-                  {resource}
+                  {displayName}
                 </Typography>
               </Box>
               <ButtonGroup size="small" variant="outlined">
+                <Button
+                  disabled={!canPush || placed <= 0}
+                  onClick={() => onPush(resource, -placed)}
+                  aria-label={`Pull all ${displayName} from ${label}`}
+                >
+                  -all
+                </Button>
                 {STEP_AMOUNTS.slice(0, 2).map((amount) => {
                   const disabled = !canPush || placed < -amount;
                   return (
@@ -136,7 +150,7 @@ export function CircleEditor({
                       key={amount}
                       disabled={disabled}
                       onClick={() => onPush(resource, amount)}
-                      aria-label={`Pull ${amount} ${resource} from ${label}`}
+                      aria-label={`Pull ${amount} ${displayName} from ${label}`}
                     >
                       {amount}
                     </Button>
@@ -144,7 +158,7 @@ export function CircleEditor({
                 })}
                 <Button
                   disabled
-                  aria-label={`Current ${resource} placed: ${placed}`}
+                  aria-label={`Current ${displayName} placed: ${placed}`}
                   sx={{
                     minWidth: '2.5rem',
                     fontWeight: 700,
@@ -162,12 +176,19 @@ export function CircleEditor({
                       key={amount}
                       disabled={disabled}
                       onClick={() => onPush(resource, amount)}
-                      aria-label={`Push +${amount} ${resource} to ${label}`}
+                      aria-label={`Push +${amount} ${displayName} to ${label}`}
                     >
                       +{amount}
                     </Button>
                   );
                 })}
+                <Button
+                  disabled={!canPush || inBank <= 0}
+                  onClick={() => onPush(resource, inBank)}
+                  aria-label={`Push all ${displayName} to ${label}`}
+                >
+                  +all
+                </Button>
               </ButtonGroup>
             </Stack>
           );

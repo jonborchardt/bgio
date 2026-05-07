@@ -1,29 +1,25 @@
-// 11.4 — ScienceBot.
+// Issue 004 — `scienceBot.play()` for solo + idle-takeover bot wiring.
 //
-// Pure heuristic for the Science role. Greedy strategy:
-//   1. Find the lowest-level non-completed card per color column (this
-//      is the only one the contribute / complete moves accept).
-//   2. If any of those is paid-off AND the per-round completion limit
-//      hasn't been hit, complete it.
-//   3. Otherwise: find the card with the smallest *remaining* cost (sum
-//      of cost - paid across all resources). If the stash has any of
-//      those resources, contribute 1 unit of one resource at a time.
-//   4. Else: nothing to do — return null.
+// The science seat's main lever is the Library: scan `G.library.row`,
+// pick the cheapest affordable card whose discount-tableau path actually
+// helps the seat (matching color), and route through
+// `scienceLibraryBuy`. Burns are deliberately omitted — the V1 boss
+// debuff is driven by *cards bought*, so a bot that burns volunteers
+// progress away from the win condition.
 //
-// The bot returns one move per call; the caller chains repeated calls
-// to drain the stash into the cheapest reachable card. Single-resource
-// increments keep the move's parameter shape simple and avoid having
-// to compute multi-resource bundles up-front.
+// We mirror `domesticBot`'s structure: a single move per call, returning
+// `null` when nothing legal exists (the composed bot then falls through
+// to the next role or to the harness's seat-done flow).
 
 import type { Ctx } from 'boardgame.io';
 import type { PlayerID, SettlementState } from '../types.ts';
 import { rolesAtSeat } from '../roles.ts';
+import { canAffordFromStashOrBank } from '../resources/moves.ts';
+import { effectiveResearchCost } from '../library/costs.ts';
 import { RESOURCES } from '../resources/types.ts';
-import type { Resource } from '../resources/types.ts';
-import type { ScienceCardDef } from '../../data/scienceCards.ts';
+import type { ResourceBag } from '../resources/types.ts';
 import type { MoveCandidate } from './enumerate.ts';
-
-export type BotAction = MoveCandidate;
+import type { LibraryCard } from '../library/types.ts';
 
 interface BotState {
   G: SettlementState;
@@ -31,131 +27,62 @@ interface BotState {
   playerID: PlayerID;
 }
 
-/**
- * For each color column, return the lowest-level non-completed card —
- * those are the only ones contribute / complete will accept.
- */
-const lowestPerColumn = (G: SettlementState): ScienceCardDef[] => {
-  const science = G.science;
-  if (science === undefined) return [];
-  const out: ScienceCardDef[] = [];
-  for (const column of science.grid) {
-    let best: ScienceCardDef | undefined;
-    for (const c of column) {
-      if (science.completed.includes(c.id)) continue;
-      if (best === undefined || c.level < best.level) best = c;
-    }
-    if (best !== undefined) out.push(best);
-  }
-  return out;
+/** Total resources in a cost bag — used to sort affordable buys cheapest-
+ *  first when no other tiebreaker applies. */
+const sumCost = (cost: ResourceBag): number => {
+  let total = 0;
+  for (const r of RESOURCES) total += cost[r] ?? 0;
+  return total;
 };
 
-/** Sum of remaining cost across all resources for a card. */
-const remainingCost = (
-  card: ScienceCardDef,
-  paid: Record<Resource, number>,
-): number => {
-  let sum = 0;
-  for (const r of RESOURCES) {
-    const need = card.cost[r] ?? 0;
-    const have = paid[r] ?? 0;
-    const left = need - have;
-    if (left > 0) sum += left;
-  }
-  return sum;
-};
+interface CandidateBuy {
+  slotIndex: number;
+  card: LibraryCard;
+  cost: ResourceBag;
+  costSum: number;
+}
 
-/**
- * Whether `paid` already covers `card.cost` (every resource).
- */
-const isPaidOff = (
-  card: ScienceCardDef,
-  paid: Record<Resource, number>,
-): boolean => {
-  for (const r of RESOURCES) {
-    const need = card.cost[r] ?? 0;
-    const have = paid[r] ?? 0;
-    if (have < need) return false;
-  }
-  return true;
-};
-
-const play = (state: BotState): BotAction | null => {
+const play = (state: BotState): MoveCandidate | null => {
   const { G, ctx, playerID } = state;
 
-  // Stage gate: only act in `scienceTurn` for a science seat.
   if (ctx.activePlayers?.[playerID] !== 'scienceTurn') return null;
-  if (!rolesAtSeat(G.roleAssignments, playerID).includes('science')) {
-    return null;
-  }
+  if (!rolesAtSeat(G.roleAssignments, playerID).includes('science')) return null;
 
-  const science = G.science;
-  if (science === undefined) return null;
+  const lib = G.library;
+  if (lib === undefined) return null;
 
-  const reachable = lowestPerColumn(G);
-  if (reachable.length === 0) return null;
+  const tableau = lib.discountTableaus[playerID] ?? [];
 
-  // Step 1: complete a paid-off card if the per-round cap isn't hit.
-  if (science.perRoundCompletions < 1) {
-    // Sort by id so ties resolve deterministically.
-    const sorted = [...reachable].sort((a, b) => a.id.localeCompare(b.id));
-    for (const card of sorted) {
-      const paid = science.paid[card.id];
-      if (paid === undefined) continue;
-      if (isPaidOff(card, paid)) {
-        return { move: 'scienceComplete', args: [card.id] };
-      }
-    }
-  }
-
-  // Step 2: contribute one resource toward the card with the smallest
-  // remaining cost. We only consider cards that still need something
-  // AND for which the stash has at least one of the needed resources.
-  const stash = G.mats?.[playerID]?.stash;
-  if (stash === undefined) return null;
-
-  // Find the card with the smallest remaining cost (>0). Tie-break by id.
-  const candidates = reachable
-    .map((card) => ({ card, remaining: remainingCost(card, science.paid[card.id] ?? makeZeroBag()) }))
-    .filter((x) => x.remaining > 0)
-    .sort((a, b) => {
-      if (a.remaining !== b.remaining) return a.remaining - b.remaining;
-      return a.card.id.localeCompare(b.card.id);
+  const affordable: CandidateBuy[] = [];
+  for (let slotIndex = 0; slotIndex < lib.row.length; slotIndex++) {
+    const card = lib.row[slotIndex];
+    if (card === null || card === undefined) continue;
+    const cost = effectiveResearchCost(card, tableau);
+    if (!canAffordFromStashOrBank(G, playerID, cost)) continue;
+    affordable.push({
+      slotIndex,
+      card,
+      cost,
+      costSum: sumCost(cost),
     });
-
-  for (const { card } of candidates) {
-    const paid = science.paid[card.id] ?? makeZeroBag();
-    // Pick a resource we have AND that the card still needs. Iterate in
-    // RESOURCES order for deterministic selection.
-    for (const r of RESOURCES) {
-      const need = card.cost[r] ?? 0;
-      const have = paid[r] ?? 0;
-      const left = need - have;
-      if (left <= 0) continue;
-      if ((stash[r] ?? 0) <= 0) continue;
-      return {
-        move: 'scienceContribute',
-        args: [card.id, { [r]: 1 }],
-      };
-    }
   }
 
-  return null;
+  if (affordable.length === 0) return null;
+
+  // Prefer cheaper buys; tie-break by tier ascending (build the discount
+  // ladder bottom-up) and then slot index for determinism.
+  affordable.sort((a, b) => {
+    if (a.costSum !== b.costSum) return a.costSum - b.costSum;
+    if (a.card.tier !== b.card.tier) return a.card.tier - b.card.tier;
+    return a.slotIndex - b.slotIndex;
+  });
+
+  return {
+    move: 'scienceLibraryBuy',
+    args: [affordable[0]!.slotIndex],
+  };
 };
 
-const makeZeroBag = (): Record<Resource, number> => ({
-  gold: 0,
-  wood: 0,
-  stone: 0,
-  steel: 0,
-  horse: 0,
-  food: 0,
-  production: 0,
-  science: 0,
-  happiness: 0,
-  worker: 0,
-});
-
-export const scienceBot: { play: (state: BotState) => BotAction | null } = {
+export const scienceBot: { play: (state: BotState) => MoveCandidate | null } = {
   play,
 };

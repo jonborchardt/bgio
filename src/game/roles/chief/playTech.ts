@@ -1,7 +1,7 @@
 // chiefPlayTech (08.6) — Chief plays a gold-color tech card.
 //
-// Tech cards distributed by 05.3's `scienceComplete` for a gold-color
-// science card land in `G.chief.hand`. This move lets the Chief play
+// Tech cards distributed by `scienceLibraryBuy` for a gold-color
+// Library card land in `G.chief.hand`. This move lets the Chief play
 // any tech in that hand whose `onPlayEffects` is non-empty.
 //
 // All gating + dispatch logic lives in the shared `playTechStub`

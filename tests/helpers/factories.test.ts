@@ -8,7 +8,6 @@ import { describe, expect, it } from 'vitest';
 import {
   seedAfterChiefDistribute,
   seedFreshGame,
-  seedMidScienceProgress,
   seedWithBuilding,
   seedWithUnit,
 } from './factories.ts';
@@ -22,10 +21,9 @@ describe('seedFreshGame', () => {
     expect(G.mats).toBeDefined();
     expect(G.roleAssignments).toBeDefined();
     expect(G.science).toBeDefined();
-    expect(G.foreign).toBeDefined();
+    expect(G.defense).toBeDefined();
     expect(G.domestic).toBeDefined();
     expect(G.events).toBeDefined();
-    expect(G.opponent).toBeDefined();
     expect(typeof G.round).toBe('number');
   });
 
@@ -77,6 +75,8 @@ describe('seedWithBuilding', () => {
       defID: def!.name,
       upgrades: 0,
       worker: null,
+      hp: def!.maxHp,
+      maxHp: def!.maxHp,
     });
     expect(() => assertNoNegativeResources(G)).not.toThrow();
   });
@@ -87,34 +87,21 @@ describe('seedWithBuilding', () => {
 });
 
 describe('seedWithUnit', () => {
-  it('appends a UnitInstance with the given count', () => {
+  it('appends one UnitInstance per requested copy on G.defense.inPlay', () => {
     const def = UNITS[0];
     expect(def).toBeDefined();
     const G = seedWithUnit(def!.name, 2);
-    const row = G.foreign?.inPlay.find((u) => u.defID === def!.name);
-    expect(row).toBeDefined();
-    expect(row!.count).toBe(2);
+    const rows = G.defense?.inPlay.filter((u) => u.defID === def!.name) ?? [];
+    expect(rows.length).toBe(2);
     expect(() => assertNoNegativeResources(G)).not.toThrow();
   });
 
-  it('increments count when called twice for the same defID', () => {
+  it('keeps appending instances when called again for the same defID', () => {
     const def = UNITS[0];
     const G = seedWithUnit(def!.name, 1);
     seedWithUnit(def!.name, 2, G);
-    const row = G.foreign?.inPlay.find((u) => u.defID === def!.name);
-    expect(row?.count).toBe(3);
+    const rows = G.defense?.inPlay.filter((u) => u.defID === def!.name) ?? [];
+    expect(rows.length).toBe(3);
   });
 });
 
-describe('seedMidScienceProgress', () => {
-  it('credits the named card with the supplied paid bag', () => {
-    const G = seedFreshGame(2);
-    // Pick any one card id from the science grid.
-    const cardId = Object.keys(G.science!.paid)[0];
-    expect(cardId).toBeDefined();
-    seedMidScienceProgress(cardId as string, { science: 1, gold: 2 }, G);
-    expect(G.science!.paid[cardId as string]?.science).toBe(1);
-    expect(G.science!.paid[cardId as string]?.gold).toBe(2);
-    expect(() => assertNoNegativeResources(G)).not.toThrow();
-  });
-});

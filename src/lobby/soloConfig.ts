@@ -27,9 +27,9 @@
 import type { PlayerID, Role, SettlementState } from '../game/types.ts';
 import { assignRoles, rolesAtSeat, seatOfRole } from '../game/roles.ts';
 import { chiefBot } from '../game/ai/chiefBot.ts';
-import { scienceBot } from '../game/ai/scienceBot.ts';
 import { domesticBot } from '../game/ai/domesticBot.ts';
-import { foreignBot } from '../game/ai/foreignBot.ts';
+import { defenseBot } from '../game/ai/defenseBot.ts';
+import { scienceBot } from '../game/ai/scienceBot.ts';
 import type { MoveCandidate } from '../game/ai/enumerate.ts';
 import type { Ctx } from 'boardgame.io';
 
@@ -53,7 +53,7 @@ const ROLE_BOTS: Record<
   chief: chiefBot,
   science: scienceBot,
   domestic: domesticBot,
-  foreign: foreignBot,
+  defense: defenseBot,
 };
 
 /** State shape passed into a composed bot. Mirrors the per-role bots'
@@ -91,7 +91,7 @@ const composeBotForSeat = (roles: Role[]): ComposedBot => {
  *
  * - Resolves `humanRole` to a seat via `seatOfRole(assignRoles(numPlayers), humanRole)`.
  * - For every *other* seat in the assignment, composes the per-role bots
- *   (chiefBot / scienceBot / domesticBot / foreignBot) that cover that
+ *   (chiefBot / scienceBot / domesticBot / defenseBot) that cover that
  *   seat's owned roles.
  * - 1-player solo: human owns all four roles, so the result is the empty map.
  * - 2-player solo: 2 seats, one of which is human and the other gets a

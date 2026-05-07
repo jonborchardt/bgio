@@ -18,16 +18,14 @@ describe('data loaders', () => {
     expect(TECHNOLOGIES.length).toBeGreaterThan(0);
   });
 
-  it('exposes BENEFIT_TOKENS with the documented verbs', () => {
+  it('exposes BENEFIT_TOKENS with the documented verbs (issue 013 — defense/unit-maintenance retired)', () => {
     expect(BENEFIT_TOKENS).toEqual([
       'food',
       'production',
       'science',
       'gold',
       'attack',
-      'defense',
       'happiness',
-      'unit maintenance',
     ]);
   });
 
@@ -64,10 +62,13 @@ describe('validators reject malformed input', () => {
           cost: 'free',
           initiative: 1,
           attack: 1,
-          defense: 1,
+          hp: 1,
           altStats: '',
           requires: '',
           note: '',
+          range: 1,
+          regen: 0,
+          firstStrike: false,
         },
       ]),
     ).toThrow(/UnitDef\[0\].*cost/);

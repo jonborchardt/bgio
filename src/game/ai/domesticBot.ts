@@ -114,6 +114,8 @@ const bestCellFor = (
       defID: card.name,
       upgrades: 0,
       worker: null,
+      hp: card.maxHp,
+      maxHp: card.maxHp,
     };
     const bonusBag = yieldAdjacencyBonus(draft, adjacencyRules);
     const bonus = sumBag(bonusBag);
@@ -145,10 +147,16 @@ const play = (state: BotState): BotAction | null => {
   if (stash === undefined) return null;
 
   // Sort hand by gold cost ascending; tie-break by name for determinism.
-  const sortedHand = [...domestic.hand].sort((a, b) => {
-    if (a.cost !== b.cost) return a.cost - b.cost;
-    return a.name.localeCompare(b.name);
-  });
+  // Defensive filter: redacted views can leave null entries in hands
+  // (the production bot driver fetches the authoritative state, but a
+  // test-harness or future client-side bot path may pass a redacted
+  // snapshot). Skip nulls rather than crashing.
+  const sortedHand = domestic.hand
+    .filter((c): c is NonNullable<typeof c> => c !== null && c !== undefined)
+    .sort((a, b) => {
+      if (a.cost !== b.cost) return a.cost - b.cost;
+      return a.name.localeCompare(b.name);
+    });
 
   for (const card of sortedHand) {
     if (!canAfford(stash, buildingCost(card))) continue;

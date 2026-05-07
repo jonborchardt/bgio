@@ -29,5 +29,9 @@ describe('lobbyClient (10.3)', () => {
     }
   });
 
-  it.todo('round-trips createMatch -> listMatches against a live server');
+  // Deferred: the createMatch -> listMatches round-trip lives in
+  // tests/server/boot.test.ts (already exercises the REST endpoint
+  // against a live createServer instance). Replicating the boot
+  // harness here would just duplicate the setup; the smoke check
+  // above is enough at the lobbyClient layer.
 });

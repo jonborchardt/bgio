@@ -3,8 +3,8 @@
 // Returns a flat single-phase initial state. Phases, real decks, and
 // per-player private hands arrive in 02.x / 03.x; until then `hands` is
 // an empty placeholder and the bank is seeded with the default starter
-// `gold: 3` (per 03.2). The center mat (03.3) builds one circle per
-// non-chief seat and an empty trade-request slot. The Science role's 3×3
+// `gold: 3` (per 03.2). The center mat (03.3) is empty in 1.4 — Phase 2
+// will populate it with the global event track. The Science role's 3×4
 // grid + per-cell tech stacks land in 05.1.
 
 import type { Ctx } from 'boardgame.io';
@@ -12,16 +12,30 @@ import type { ResourceBag, Role, SettlementState } from './types.ts';
 import { assignRoles } from './roles.ts';
 import { initialBank } from './resources/bank.ts';
 import type { BankLogEntry } from './resources/bankLog.ts';
-import { initialCenterMat } from './resources/centerMat.ts';
 import { initialMats } from './resources/playerMat.ts';
 import { setupScience } from './roles/science/setup.ts';
-import { buildBattleDeck, buildTradeDeck } from './roles/foreign/decks.ts';
-import { UNITS } from '../data/index.ts';
 import { setupDomestic } from './roles/domestic/grid.ts';
 import { setupEvents } from './events/state.ts';
-import { setupWanderDeck } from './opponent/wanderDeck.ts';
 import { fromBgio, type BgioRandomLike } from './random.ts';
 import { TURN_CAP_DEFAULT } from './endConditions.ts';
+import { TRACK_CARDS, UNITS } from '../data/index.ts';
+import type { UnitDef } from '../data/schema.ts';
+import { buildTrack } from './track.ts';
+import { buildLibrary } from './library/setup.ts';
+
+// Defense redesign 2.5 — starter unit hand for the defense seat. The
+// militia starters are the units in `units.json` with no `requires`
+// gate (Scout / Archer / Brute). They stay in the hand across recruit
+// calls so the seat can repeat-place the same unit; tech-driven
+// unlocks (`grantTechUnlocks`) push additional units onto the same
+// pile.
+const starterUnits = (): UnitDef[] => {
+  const out: UnitDef[] = [];
+  for (const def of UNITS) {
+    if ((def.requires ?? '').trim().length === 0) out.push(def);
+  }
+  return out;
+};
 
 // Per-match tunables passed through bgio's `Match.setupData` (or
 // directly to `setup({ ctx, random }, setupData)` in headless tests).
@@ -77,27 +91,39 @@ export const setup = (
   // map (see types.ts).
   const mats = initialMats(roleAssignments);
 
-  // Fallback random for paths where bgio hasn't plugged in its plugin yet
-  // (e.g., direct unit tests of `setup`). Identity shuffle keeps the result
-  // deterministic — tests that need real randomness drive setup through a
-  // bgio Client.
-  const fallbackRandom: BgioRandomLike = {
-    Shuffle: <T>(arr: ReadonlyArray<T>): T[] => [...arr],
-    Number: () => 0,
-  };
-  const r = fromBgio(random ?? fallbackRandom);
-
-  // Build the science slice first so we can derive the set of
-  // TechnologyDef.name values already taken by Science under-cards. 06.1
-  // accepts that set on `setupDomestic` so the Domestic hand can avoid
-  // duplicating any tech that's already gated under a science card. Today
-  // the Domestic hand is `BuildingDef[]` so this set is reserved for
-  // future widening — see the doc on `setupDomestic`.
-  const science = setupScience(r);
-  const techsAlreadyUsedBy = new Set<string>();
-  for (const stack of Object.values(science.underCards)) {
-    for (const tech of stack) techsAlreadyUsedBy.add(tech.name);
+  // Issue 042 — bgio always supplies its random plugin in production.
+  // When it's missing we're either in a unit test that called `setup`
+  // directly OR something is broken in the plugin chain. In test
+  // builds we fall back to an identity shuffle for ergonomics; in
+  // production we throw loudly so a missing plugin doesn't silently
+  // deal cards in JSON order.
+  const isTestEnv =
+    typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
+  let r;
+  if (random !== undefined) {
+    r = fromBgio(random);
+  } else if (isTestEnv) {
+    const fallbackRandom: BgioRandomLike = {
+      Shuffle: <T>(arr: ReadonlyArray<T>): T[] => [...arr],
+      Number: () => 0,
+    };
+    r = fromBgio(fallbackRandom);
+  } else {
+    throw new Error(
+      "Settlement.setup: bgio's random plugin is missing. The engine " +
+        'requires `ctx.random` to deal decks deterministically. If you ' +
+        'are calling `setup()` from a unit test, set NODE_ENV=test or ' +
+        'pass an explicit `random` stub.',
+    );
   }
+
+  const science = setupScience();
+  // Reserved for a future widening of `setupDomestic` — today the
+  // Domestic hand is `BuildingDef[]`, but the parameter exists so a
+  // tech-bearing hand can de-dupe against techs already slotted
+  // elsewhere. With the Library replacing the science grid, no techs are
+  // pre-allocated at setup time.
+  const techsAlreadyUsedBy = new Set<string>();
 
   const startingBank = initialBank(setupData?.startingBank);
   // Seed the audit trail with the starting balance so the chief tooltip
@@ -129,13 +155,17 @@ export const setup = (
   return {
     bank: startingBank,
     bankLog,
-    centerMat: initialCenterMat(),
+    // Seed the economy high-water mark with the starting bank's gold
+    // so the first round's progress reads against a non-zero baseline
+    // (the boss's economy threshold counts the running max, not the
+    // current value).
+    economyHigh: startingBank.gold ?? 0,
     roleAssignments,
     round: 0,
-    // 08.5 win condition: the village hasn't absorbed any settlements yet.
-    // Incremented later by Foreign 07.4 / 07.5 outcomes. `endIf` ends the
-    // game in a win once this reaches 10.
-    settlementsJoined: 0,
+    // Defense redesign 1.5 (D25) — boss-resolved win flag. Stays `false`
+    // through Phase 1; Phase 2.7's boss-resolution code flips it to `true`
+    // when the village survives the boss card on the global event track.
+    bossResolved: false,
     // 08.5 time-up cap: per-match override from `setupData.turnCap`, default
     // 80. Stored on G so `endIf` doesn't need to look back at setupData.
     turnCap: setupData?.turnCap ?? TURN_CAP_DEFAULT,
@@ -162,26 +192,30 @@ export const setup = (
     _stageStack: {},
     // Science role: built above so we could derive `techsAlreadyUsedBy`.
     science,
-    // Foreign role: Battle and Trade decks per game-design.md §Setup.Foreign.
-    // The hand seeds with the level-0 Militia unit cards (07.2). UnitDef
-    // doesn't carry a `level` field yet, so per the 07.2 plan we treat the
-    // first 3 entries of `UNITS` as Militia. `inPlay` starts empty;
-    // `inFlight` has no flipped card yet — both fill in via the recruit /
-    // flip-flow moves.
-    foreign: {
-      hand: [...UNITS.slice(0, 3)],
+    // Defense redesign 2.5 — starter unit hand (game-design.md §12: "3
+    // starter Militia"). The hand is the pool of units the defense seat
+    // can recruit via `defenseBuyAndPlace`; recruits draw from the pool
+    // (the card stays in hand) so the seat can repeat-place the same
+    // unit. Subsequent units land via tech-driven `grantTechUnlocks`
+    // pushing onto `defense.hand`.
+    defense: {
+      hand: starterUnits(),
       inPlay: [],
-      battleDeck: buildBattleDeck(r),
-      tradeDeck: buildTradeDeck(r),
-      inFlight: { battle: null, committed: [] },
     },
+    // Defense redesign 2.2 — Global Event Track. Built once at setup
+    // from the canonical TRACK_CARDS list: each phase pile is shuffled
+    // independently, then piles are concatenated in phase order so the
+    // boss (the unique phase-10 card) lands at the very end of
+    // `upcoming`. Phase 2.3 wires `chiefFlipTrack` against the helpers
+    // in `./track.ts`.
+    track: buildTrack(r, TRACK_CARDS),
     // Domestic role (06.1): pile of buildings + empty placement grid.
     domestic: setupDomestic(techsAlreadyUsedBy),
     // Chief role: starter worker reserve. game-design.md §Setup.Chief says
     // "1 worker token" but the parent task pinned the starter pool to 3
     // so 04.3's placement flow has a few moves to exercise before the
     // reserve runs out. Tune this when the formal rules pass.
-    chief: { workers: 3 },
+    chief: { workers: 3, taxedThisRound: false },
     // Now that `domestic.grid` exists, flip the feature flag that 04.3's
     // `chiefPlaceWorker` stub gates behind. With the flag on, the move
     // exits its early-bail branch and runs the real placement
@@ -190,9 +224,17 @@ export const setup = (
     // Cross-cutting events (08.1): four decks (gold/blue/green/red) with
     // 4 cards dealt to the role-holding seat's hand per color.
     events: setupEvents(roleAssignments, r),
-    // 08.4 — opponent (wander deck). Shuffled at setup; the
-    // `opponent:wander-step` round-end hook flips one card per round end
-    // and dispatches its effects.
-    opponent: { wander: setupWanderDeck(r) },
+    // Science Library (SL redesign): tier-stacked deck built from every
+    // tagged building / unit / tech / event in `src/data/`. Pre-tagging
+    // (V1 default) the deck is empty; sub-plan 6 backfills the JSON
+    // tags and the deck becomes real content. Refill / buy / burn
+    // moves land in SL 3.x.
+    library: buildLibrary(r, Object.keys(roleAssignments)),
+    // Defense redesign 2.8 — wander deck retired. Its end-of-round role
+    // (boon / modifier flips) is now played by the global event track;
+    // see `./track.ts` and the spec §5 (D19).
+    // Help requests start empty; populated as players click the helper
+    // button next to disabled actions. See `./requests/`.
+    requests: [],
   };
 };

@@ -11,19 +11,15 @@
 // `enumerate` via the same hook). RandomBot picks uniformly across this
 // list, so keeping it small and on-distribution helps random play be
 // vaguely sensible too.
-//
-// Combinatoric blow-up control: we cap the total candidate count at
-// MAX_CANDIDATES and, for moves that take a Partial<ResourceBag>, only
-// enumerate single-resource increments of 1. That's enough granularity for
-// MCTS to find the right *direction* — multi-resource bundles can be
-// reached by chaining single-resource calls when the game allows partial
-// credit.
 
 import type { Ctx } from 'boardgame.io';
 import type { PlayerID, SettlementState } from '../types.ts';
 import type { Resource } from '../resources/types.ts';
 import { rolesAtSeat, seatOfRole } from '../roles.ts';
 import { STAGES } from '../phases/stages.ts';
+import { enumerateDefense as enumerateDefenseRole } from '../roles/defense/ai.ts';
+import { canAfford } from '../resources/bag.ts';
+import { effectiveResearchCost } from '../library/costs.ts';
 
 export interface MoveCandidate {
   move: string;
@@ -74,8 +70,22 @@ const enumerateChief = (
     }
   }
 
-  // chiefEndPhase: always a candidate while in chiefPhase.
-  out.push({ move: 'chiefEndPhase', args: [] });
+  // chiefFlipTrack: when there's a card to flip and the round's flip
+  // hasn't happened yet (D22). The move re-validates legality.
+  const trackPresent = G.track !== undefined && G.track.upcoming.length > 0;
+  const flipPending = trackPresent && G.track!.flippedThisRound !== true;
+  if (flipPending) {
+    out.push({ move: 'chiefFlipTrack', args: [] });
+  }
+
+  // chiefEndPhase: gated on the flip latch when a track is present, so a
+  // bot doesn't spend turn budget on an end-phase move that the engine
+  // will INVALID_MOVE-reject. When no track is configured (older fixtures
+  // / hot-seat runs without track content) the gate degrades to "always
+  // a candidate" so chief turns still terminate.
+  if (!trackPresent || G.track!.flippedThisRound === true) {
+    out.push({ move: 'chiefEndPhase', args: [] });
+  }
 
   // chiefPlaceWorker: a few cell candidates, gated by feature flag and
   // available workers. We don't try every cell — MCTS can re-enumerate after
@@ -110,29 +120,33 @@ const enumerateChief = (
     }
   }
 
-  // chiefDecideTradeDiscard: only legal when the flag is on, but no harm
-  // listing both choices when it is.
-  if (G._awaitingChiefTradeDiscard === true) {
-    out.push({ move: 'chiefDecideTradeDiscard', args: ['existing'] });
-    out.push({ move: 'chiefDecideTradeDiscard', args: ['new'] });
-  }
-
-  // foreignTradeFulfill: chief seat can also fulfill the public trade
-  // request when one is parked (see tradeFulfill.ts). Move re-validates
-  // affordability against the chief's stash — but the chief seat has no
-  // stash in the V1 layout, so this typically rejects in `chiefPhase`.
-  // Listed here for completeness in case a future tech grants the chief
-  // a stash.
-  if (G.centerMat.tradeRequest !== null) {
-    out.push({ move: 'foreignTradeFulfill', args: [] });
-  }
-
   // chiefPlayTech: one candidate per tech in the chief's hand with a non-
   // empty onPlayEffects.
   const chiefTechHand = G.chief?.hand ?? [];
   for (const tech of chiefTechHand) {
     if (tech.onPlayEffects !== undefined && tech.onPlayEffects.length > 0) {
       out.push({ move: 'chiefPlayTech', args: [tech.name] });
+    }
+  }
+
+  // chiefTax: once per round, surface a single candidate when the latch
+  // is unset and at least one non-chief stash has ≥ 2 of any resource
+  // (anything less floors to a take of zero). The move re-validates.
+  if (G.chief?.taxedThisRound !== true) {
+    let hasTaxable = false;
+    for (const [seat, mat] of Object.entries(G.mats ?? {})) {
+      if (mat === undefined) continue;
+      if (rolesAtSeat(G.roleAssignments, seat).includes('chief')) continue;
+      for (const r of SINGLE_RESOURCE_BUMPS) {
+        if ((mat.stash[r] ?? 0) >= 2) {
+          hasTaxable = true;
+          break;
+        }
+      }
+      if (hasTaxable) break;
+    }
+    if (hasTaxable) {
+      out.push({ move: 'chiefTax', args: [] });
     }
   }
 
@@ -149,41 +163,22 @@ const enumerateScience = (
 
   const stash = G.mats?.[playerID]?.stash;
 
-  // scienceContribute: one candidate per uncomplete card × {gold:1} or
-  // {wood:1}. Skip cards already completed.
-  const flatCards = science.grid.flat();
-  for (const card of flatCards) {
-    if (science.completed.includes(card.id)) continue;
-    for (const r of ['gold', 'wood'] as const) {
-      if (stash === undefined || (stash[r] ?? 0) <= 0) continue;
-      out.push({ move: 'scienceContribute', args: [card.id, { [r]: 1 }] });
-    }
-  }
-
-  // scienceComplete: candidate for every uncomplete card whose paid covers
-  // its cost (cheap to check; the move re-validates).
-  for (const card of flatCards) {
-    if (science.completed.includes(card.id)) continue;
-    const paid = science.paid[card.id];
-    if (paid === undefined) continue;
-    let covers = true;
-    for (const [r, need] of Object.entries(card.cost) as Array<
-      [Resource, number]
-    >) {
-      if ((paid[r] ?? 0) < (need ?? 0)) {
-        covers = false;
-        break;
+  // Library moves: one buy candidate per affordable face-up slot, one
+  // burn candidate per non-null slot. The move bodies re-validate cost,
+  // stage, and seat.
+  const library = G.library;
+  if (library !== undefined) {
+    const tableau = library.discountTableaus[playerID] ?? [];
+    for (let slot = 0; slot < library.row.length; slot += 1) {
+      const card = library.row[slot];
+      if (card === null || card === undefined) continue;
+      out.push({ move: 'scienceLibraryBurn', args: [slot] });
+      if (stash === undefined) continue;
+      const cost = effectiveResearchCost(card, tableau);
+      if (canAfford(stash, cost)) {
+        out.push({ move: 'scienceLibraryBuy', args: [slot] });
       }
     }
-    if (covers) {
-      out.push({ move: 'scienceComplete', args: [card.id] });
-    }
-  }
-
-  // foreignTradeFulfill: any seat can fulfill the public trade request
-  // when one is parked. Move re-validates affordability.
-  if (G.centerMat.tradeRequest !== null) {
-    out.push({ move: 'foreignTradeFulfill', args: [] });
   }
 
   // sciencePlayBlueEvent: one candidate per card in the science seat's blue
@@ -203,6 +198,47 @@ const enumerateScience = (
     if (tech.onPlayEffects !== undefined && tech.onPlayEffects.length > 0) {
       out.push({ move: 'sciencePlayTech', args: [tech.name] });
     }
+  }
+
+  // Defense redesign 2.6 (D27) — Drill / Teach candidates. Both target
+  // a unit on the village grid. Once-per-round gating + stash checks
+  // happen inside the moves; the enumerator just surfaces plausible
+  // candidates. We cap the unit fan-out at the first few in-play units
+  // to keep the candidate list bounded — MCTS doesn't need every
+  // permutation.
+  const inPlay = G.defense?.inPlay ?? [];
+  const drillScience = stash?.science ?? 0;
+  if (
+    science.scienceDrillUsed !== true &&
+    drillScience >= 1 &&
+    inPlay.length > 0
+  ) {
+    for (const unit of inPlay.slice(0, 4)) {
+      out.push({ move: 'scienceDrill', args: [unit.id] });
+    }
+  }
+  if (science.scienceTaughtUsed !== true && inPlay.length > 0) {
+    // Teach surfaces (unit, skill) pairs only when the cheapest skill
+    // is affordable; the move itself enforces the per-skill cost.
+    for (const unit of inPlay.slice(0, 3)) {
+      // Hard-code the V1 skill list to keep enumerate.ts free of a
+      // SKILLS import (it doesn't depend on roles/science otherwise).
+      // Tuning lever lives in the SKILLS table; the bot only emits
+      // the cheapest skill candidate per unit so the search space
+      // stays manageable.
+      if ((stash?.science ?? 0) >= 2) {
+        out.push({ move: 'scienceTeach', args: [unit.id, 'extendRange'] });
+      }
+    }
+  }
+
+  // scienceSeatDone: emitted only when the burn requirement is satisfied
+  // (either already burned this round, or no face-up cards left to burn,
+  // or no library at all). Otherwise the move would INVALID_MOVE and the
+  // bot would bounce off it every turn.
+  const rowHasCards = library?.row.some((c) => c !== null) === true;
+  if (science.scienceBurnedThisRound === true || !rowHasCards) {
+    out.push({ move: 'scienceSeatDone', args: [] });
   }
 
   return out;
@@ -242,22 +278,30 @@ const enumerateDomestic = (
     const y = Number(ys);
     if (Number.isFinite(x) && Number.isFinite(y)) {
       const placed = domestic.grid[key]!;
+      // The center tile (D2) is not upgradeable / repairable — skip it in
+      // both surfaces below so the bot doesn't keep trying a guaranteed
+      // INVALID_MOVE.
+      if (placed.isCenter === true) continue;
       out.push({
         move: 'domesticUpgradeBuilding',
         args: [x, y, placed.defID],
       });
+      // domesticRepair (1.3): one candidate per damaged cell. The amount
+      // is always 1 — chaining single-HP repairs reaches any larger
+      // restoration, and the move bottoms out on `missing <= 0` so an
+      // already-full cell harmlessly returns INVALID_MOVE.
+      if (placed.hp < placed.maxHp) {
+        out.push({
+          move: 'domesticRepair',
+          args: [x, y, 1],
+        });
+      }
     }
   }
 
   // domesticProduce: a single candidate (no args). Idempotency is gated by
   // the move itself — a second call returns INVALID_MOVE.
   out.push({ move: 'domesticProduce', args: [] });
-
-  // foreignTradeFulfill: any seat can fulfill the public trade request
-  // when one is parked. Move re-validates affordability.
-  if (G.centerMat.tradeRequest !== null) {
-    out.push({ move: 'foreignTradeFulfill', args: [] });
-  }
 
   // domesticPlayGreenEvent: one candidate per card in the domestic green
   // hand.
@@ -278,133 +322,32 @@ const enumerateDomestic = (
     }
   }
 
+  // domesticSeatDone: always a fallback.
+  out.push({ move: 'domesticSeatDone', args: [] });
+
   return out;
 };
 
-const enumerateForeign = (
+const enumerateDefense = (
   G: SettlementState,
+  ctx: Ctx,
   playerID: PlayerID,
 ): MoveCandidate[] => {
-  const out: MoveCandidate[] = [];
-  const foreign = G.foreign;
-  if (foreign === undefined) return out;
-
-  // foreignRecruit: one candidate per UnitDef in the hand.
-  for (const def of foreign.hand) {
-    out.push({ move: 'foreignRecruit', args: [def.name] });
-  }
-
-  // foreignUpkeep: a single candidate (no args). Idempotency gated by the
-  // move's per-stage `_upkeepPaid` flag.
-  out.push({ move: 'foreignUpkeep', args: [] });
-
-  // foreignReleaseUnit: one candidate per in-play entry.
-  for (const entry of foreign.inPlay) {
-    out.push({ move: 'foreignReleaseUnit', args: [entry.defID] });
-  }
-
-  // foreignFlipBattle: a single candidate. The move rejects when there's
-  // already a battle in flight or the deck is empty.
-  out.push({ move: 'foreignFlipBattle', args: [] });
-
-  // foreignFlipTrade: only legal after a winning battle, but listing it
-  // costs nothing — the move rejects when not.
-  out.push({ move: 'foreignFlipTrade', args: [] });
-
-  // foreignTradeFulfill: any seat can fulfill a parked trade request
-  // (see tradeFulfill.ts). The move re-validates affordability.
-  if (G.centerMat.tradeRequest !== null) {
-    out.push({ move: 'foreignTradeFulfill', args: [] });
-  }
-
-  // foreignPlayRedEvent.
-  if (
-    G.events !== undefined &&
-    G._eventPlayedThisRound?.foreign !== true
-  ) {
-    const redHand = G.events.hands.red[playerID] ?? [];
-    for (const card of redHand) {
-      out.push({ move: 'foreignPlayRedEvent', args: [card.id] });
-    }
-  }
-
-  // foreignPlayTech. ForeignState.hand currently holds UnitDefs but
-  // 05.3 also pushes TechnologyDefs through the same slot (see the
-  // file-level note in 05.3). We tolerate both — only enumerate
-  // entries that look like a tech (have an `onPlayEffects` field).
-  for (const entry of foreign.hand as ReadonlyArray<unknown>) {
-    if (
-      typeof entry === 'object' &&
-      entry !== null &&
-      Array.isArray((entry as { onPlayEffects?: unknown[] }).onPlayEffects) &&
-      ((entry as { onPlayEffects: unknown[] }).onPlayEffects.length ?? 0) > 0
-    ) {
-      const name = (entry as { name?: unknown }).name;
-      if (typeof name === 'string') {
-        out.push({ move: 'foreignPlayTech', args: [name] });
-      }
-    }
-  }
-
-  return out;
+  // Defense redesign 2.5 — delegates to the role-local enumerator
+  // (`src/game/roles/defense/ai.ts`). Buy + place candidates are
+  // scored by "covers the telegraphed next card's path"; tech plays
+  // and the seat-done fallback are appended per the plan.
+  if (G.defense === undefined) return [];
+  return enumerateDefenseRole(G, ctx, playerID);
 };
 
 const enumeratePlayingEvent = (
-  G: SettlementState,
-  playerID: PlayerID,
+  _G: SettlementState,
+  _playerID: PlayerID,
 ): MoveCandidate[] => {
-  const out: MoveCandidate[] = [];
-  const effect = G._awaitingInput?.[playerID];
-
-  if (effect?.kind === 'swapTwoScienceCards' && G.science !== undefined) {
-    // Generate a small number of (a, b) candidate pairs so MCTS has
-    // *something* to branch on. We only take the first few science cards;
-    // a 9-card grid has 36 distinct pairs — too many to enumerate without
-    // exploding the candidate count.
-    const cards = G.science.grid.flat();
-    const ids = cards.map((c) => c.id).slice(0, 4);
-    for (let i = 0; i < ids.length; i++) {
-      for (let j = i + 1; j < ids.length; j++) {
-        out.push({
-          move: 'eventResolve',
-          args: [{ a: ids[i]!, b: ids[j]! }],
-        });
-      }
-    }
-  } else {
-    // For any other parked effect (or `awaitInput`), an empty-payload
-    // resolve is the catch-all — the dispatcher accepts it and pops the
-    // stage.
-    out.push({ move: 'eventResolve', args: [undefined] });
-  }
-
-  return out;
-};
-
-const enumerateForeignAwaitingDamage = (
-  G: SettlementState,
-): MoveCandidate[] => {
-  const foreign = G.foreign;
-  if (foreign === undefined) return [];
-
-  // V1: a single auto-allocation candidate. The DamageAllocation
-  // shape (07.3 battleResolver) is `{ byUnit: Record<defID, number> }`,
-  // not `{ sourceIdx, targetIdx, amount }`. The resolver consumes
-  // one allocation per incoming-damage event from enemy → player, so
-  // the simplest plan that doesn't deadlock the bot is "absorb the
-  // first hit by piling damage onto the lowest-HP committed unit".
-  // The resolver rejects under-allocations with `outcome: 'mid'` and
-  // assignDamage converts that to INVALID_MOVE, which is fine — MCTS
-  // collapses the branch and the foreignBot heuristic picks up next.
-  if (foreign.inFlight.committed.length === 0) return [];
-  const first = foreign.inFlight.committed[0];
-  if (first === undefined) return [];
-  return [
-    {
-      move: 'foreignAssignDamage',
-      args: [[{ byUnit: { [first.defID]: 1 } }]],
-    },
-  ];
+  // Generic resolve: an empty-payload call is the catch-all that the
+  // dispatcher accepts to pop the seat back to the prior stage.
+  return [{ move: 'eventResolve', args: [undefined] }];
 };
 
 /**
@@ -429,10 +372,8 @@ export const enumerate = (
       out.push(...enumerateScience(G, playerID));
     } else if (stage === STAGES.domesticTurn && seatRoles.includes('domestic')) {
       out.push(...enumerateDomestic(G, playerID));
-    } else if (stage === STAGES.foreignTurn && seatRoles.includes('foreign')) {
-      out.push(...enumerateForeign(G, playerID));
-    } else if (stage === STAGES.foreignAwaitingDamage) {
-      out.push(...enumerateForeignAwaitingDamage(G));
+    } else if (stage === STAGES.defenseTurn && seatRoles.includes('defense')) {
+      out.push(...enumerateDefense(G, ctx, playerID));
     } else if (stage === STAGES.playingEvent) {
       out.push(...enumeratePlayingEvent(G, playerID));
     }
@@ -449,7 +390,28 @@ export const enumerate = (
   // overshoot it's the bulk of the role-specific list that gets trimmed —
   // which is fine: MCTS doesn't need *every* candidate, just a fair
   // sample.
+  //
+  // SL fix-5 gap #7: preserve any `<role>SeatDone` candidate across the
+  // trim. A degenerate worst-case (e.g. a science turn with a full
+  // library row + deep stash + a big blue-event hand + drill / teach
+  // candidates) can fan out enough buy / burn / event candidates to push
+  // SeatDone past index 49 in the unsorted list. Dropping it leaves the
+  // bot with no way to declare its turn finished — the round stalls and
+  // the smoke test (gap #4) goes silent. We splice SeatDone out of `out`
+  // before the slice, take the first MAX_CANDIDATES - 2 of the rest,
+  // then re-attach SeatDone and the trailing `pass`.
   if (out.length > MAX_CANDIDATES) {
+    const seatDoneIdx = out.findIndex((c) => /SeatDone$/.test(c.move));
+    if (seatDoneIdx >= 0) {
+      const seatDone = out[seatDoneIdx]!;
+      const without = out.filter((_, i) => i !== seatDoneIdx);
+      // Reserve 2 slots at the tail for seatDone + pass; cap the rest.
+      return [
+        ...without.slice(0, MAX_CANDIDATES - 2),
+        seatDone,
+        { move: 'pass', args: [] },
+      ];
+    }
     return [...out.slice(0, MAX_CANDIDATES - 1), { move: 'pass', args: [] }];
   }
   return out;

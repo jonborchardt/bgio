@@ -1,0 +1,50 @@
+[
+  {
+    "defID": "Mill",
+    "whenAdjacentTo": "Granary",
+    "bonus": {
+      "food": 1
+    },
+    "flavor": "A mill grinds finer when its grain pile is next door."
+  },
+  {
+    "defID": "Workshop",
+    "whenAdjacentTo": "Forge",
+    "bonus": {
+      "production": 1
+    },
+    "flavor": "Forge sparks feed the workshop's tooling."
+  },
+  {
+    "defID": "Library",
+    "whenAdjacentTo": "School",
+    "bonus": {
+      "science": 1
+    },
+    "flavor": "Students cycling through the stacks copy faster."
+  },
+  {
+    "defID": "School",
+    "whenAdjacentTo": "Library",
+    "bonus": {
+      "science": 1
+    },
+    "flavor": "Reference shelves a door away cut research time."
+  },
+  {
+    "defID": "Market",
+    "whenAdjacentTo": "Mint",
+    "bonus": {
+      "gold": 1
+    },
+    "flavor": "Fresh-struck coin moves quickly through a busy market."
+  },
+  {
+    "defID": "Forge",
+    "whenAdjacentTo": "Barracks",
+    "bonus": {
+      "production": 1
+    },
+    "flavor": "Soldiers requisition tools straight from the next-door forge."
+  }
+]

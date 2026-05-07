@@ -20,6 +20,8 @@ const building = (defID: string): DomesticBuilding => ({
   defID,
   upgrades: 0,
   worker: null,
+  hp: 1,
+  maxHp: 1,
 });
 
 // Snapshot the production rule set so each test can restore it after

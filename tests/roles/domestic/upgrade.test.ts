@@ -20,7 +20,7 @@ import type { DomesticBuilding } from '../../../src/game/roles/domestic/types.ts
 import { cellKey } from '../../../src/game/roles/domestic/grid.ts';
 import { initialMats } from '../../../src/game/resources/playerMat.ts';
 
-// 2-player layout: seat '1' = domestic+foreign.
+// 2-player layout: seat '1' = domestic+defense.
 const build2pState = (
   walletOf: Partial<ResourceBag>,
   domestic: DomesticState,
@@ -34,10 +34,9 @@ const build2pState = (
 
   return {
     bank: bagOf({}),
-    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 1,
-    settlementsJoined: 0,
+    bossResolved: false,
     hands,
     mats,
     domestic,
@@ -77,6 +76,8 @@ describe('domesticUpgradeBuilding (06.2)', () => {
       defID: 'Mill',
       upgrades: 0,
       worker: null,
+      hp: 2,
+      maxHp: 2,
     };
     const G = build2pState(
       { gold: 20 },

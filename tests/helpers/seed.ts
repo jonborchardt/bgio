@@ -24,11 +24,10 @@ export const seedAfterChiefDistribution = (
 
   const base: SettlementState = {
     bank: freshBag(), // bank fully distributed → empty
-    centerMat: { tradeRequest: null },
     mats: initialMats(roleAssignments),
     roleAssignments,
     round: 1, // post-distribution → past round 0 setup
-    settlementsJoined: 0,
+    bossResolved: false,
     hands,
   };
 

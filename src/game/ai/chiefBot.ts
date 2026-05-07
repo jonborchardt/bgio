@@ -5,29 +5,26 @@
 // expected to flip whatever seat-done flag the harness uses).
 //
 // The bot keeps it simple by design:
-//   1. If a chief decision is parked (trade-discard interrupt from 07.5),
-//      resolve it. V1 always picks 'new' so the most recently flipped
-//      trade card wins.
-//   2. Otherwise, distribute resources from the bank toward the seat
-//      that has the most demand. We send 1 gold per call so the caller
-//      can chain repeated bot.play(...) invocations to drain the bank
-//      monotonically — each call re-evaluates demand against the
-//      updated state.
-//   3. If the bank is empty or no other seat shows demand, end the
+//   1. Distribute resources from the bank toward the seat that has the
+//      most demand. We send 1 gold per call so the caller can chain
+//      repeated bot.play(...) invocations to drain the bank monotonically
+//      — each call re-evaluates demand against the updated state.
+//   2. If the bank is empty or no other seat shows demand, end the
 //      chief phase.
 //
-// The "demand" model is intentionally rough: foreign demand is the sum
-// of in-play unit costs (an upper bound on next upkeep), domestic
-// demand is the cheapest hand BuildingDef cost, science demand is the
-// smallest remaining gold cost across non-completed cards. The bot
-// only routes gold — chief distribution of other resources is
-// reserved for a future heuristic.
+// The "demand" model is intentionally rough: domestic demand is the
+// cheapest hand BuildingDef cost, science demand is the cheapest research
+// cost across face-up Library slots, defense demand is currently 0 (Phase
+// 2 will add the real recruit / placement loop and re-introduce per-
+// defense-seat demand). The bot only routes gold — chief distribution
+// of other resources is reserved for a future heuristic.
 
 import type { Ctx } from 'boardgame.io';
 import type { PlayerID, SettlementState } from '../types.ts';
 import { rolesAtSeat, seatOfRole } from '../roles.ts';
-import { UNITS } from '../../data/index.ts';
 import type { MoveCandidate } from './enumerate.ts';
+import type { LibraryCard } from '../library/types.ts';
+import { researchCost } from '../library/costs.ts';
 
 export type BotAction = MoveCandidate;
 
@@ -45,39 +42,36 @@ const tryChiefSeat = (G: SettlementState): PlayerID | null => {
   }
 };
 
-const foreignDemandAt = (G: SettlementState): number => {
-  const foreign = G.foreign;
-  if (foreign === undefined) return 0;
-  let total = 0;
-  for (const entry of foreign.inPlay) {
-    const def = UNITS.find((u) => u.name === entry.defID);
-    if (def === undefined) continue;
-    total += def.cost * entry.count;
-  }
-  return total;
-};
-
 const domesticDemandAt = (G: SettlementState): number => {
   const domestic = G.domestic;
   if (domestic === undefined) return 0;
   let cheapest = Number.POSITIVE_INFINITY;
   for (const def of domestic.hand) {
-    if (def.cost < cheapest) cheapest = def.cost;
+    // Defensive: redacted views can leave null entries in hands, and
+    // a bot driven against a server-redacted snapshot shouldn't
+    // crash on a null member. Authoritative bots see the full hand;
+    // this guard is the test-harness safety net.
+    if (def && def.cost < cheapest) cheapest = def.cost;
   }
   return Number.isFinite(cheapest) ? cheapest : 0;
 };
 
+// Library cost includes a primary research resource that isn't always
+// gold; for the chief's gold-routing heuristic we only count the
+// printed gold demand of the cheapest face-up slot.
+const goldCostFor = (card: LibraryCard): number => {
+  const cost = researchCost(card);
+  return cost.gold ?? 0;
+};
+
 const scienceDemandAt = (G: SettlementState): number => {
-  const science = G.science;
-  if (science === undefined) return 0;
+  const library = G.library;
+  if (library === undefined) return 0;
   let smallest = Number.POSITIVE_INFINITY;
-  for (const card of science.grid.flat()) {
-    if (science.completed.includes(card.id)) continue;
-    const paid = science.paid[card.id];
-    const need = card.cost.gold ?? 0;
-    const haveGold = paid?.gold ?? 0;
-    const remaining = Math.max(0, need - haveGold);
-    if (remaining > 0 && remaining < smallest) smallest = remaining;
+  for (const slot of library.row) {
+    if (slot === null || slot === undefined) continue;
+    const need = goldCostFor(slot);
+    if (need > 0 && need < smallest) smallest = need;
   }
   return Number.isFinite(smallest) ? smallest : 0;
 };
@@ -102,15 +96,52 @@ const seatDemands = (
     if (!G.mats?.[seat]) continue;
     const roles = rolesAtSeat(G.roleAssignments, seat);
     let amount = 0;
-    if (roles.includes('foreign')) amount += foreignDemandAt(G);
     if (roles.includes('domestic')) amount += domesticDemandAt(G);
     if (roles.includes('science')) amount += scienceDemandAt(G);
+    // 1.4: defense demand is 0 until Phase 2 reintroduces recruit costs.
     out.push({ seat, amount });
   }
   return out;
 };
 
 const endPhase = (): BotAction => ({ move: 'chiefEndPhase', args: [] });
+
+// Issue 036 — Tax thresholds. Tax is the chief's primary lever
+// post-defense-redesign; a bot that never reaches for it understates
+// the chief's capability and biases win-rate measurements. We fire
+// Tax once per round when bank gold is low AND at least one
+// non-chief seat has hoarded enough that the haul (the floor-half
+// summed across seats) clears `TAX_MIN_HAUL_THRESHOLD`.
+const TAX_BANK_GOLD_THRESHOLD = 4;
+const TAX_MIN_HAUL_THRESHOLD = 3;
+
+const seatStashHaul = (G: SettlementState, seat: PlayerID): number => {
+  const stash = G.mats?.[seat]?.stash;
+  if (!stash) return 0;
+  let total = 0;
+  for (const r of Object.keys(stash)) {
+    const v = (stash as Record<string, number | undefined>)[r] ?? 0;
+    if (v > 1) total += Math.floor(v / 2);
+  }
+  return total;
+};
+
+const totalTaxableHaul = (G: SettlementState, chiefSeat: PlayerID): number => {
+  let total = 0;
+  for (const seat of Object.keys(G.roleAssignments)) {
+    if (seat === chiefSeat) continue;
+    if (rolesAtSeat(G.roleAssignments, seat).includes('chief')) continue;
+    total += seatStashHaul(G, seat);
+  }
+  return total;
+};
+
+const shouldTax = (G: SettlementState, chiefSeat: PlayerID): boolean => {
+  if (G.chief?.taxedThisRound === true) return false;
+  const bankGold = G.bank.gold ?? 0;
+  if (bankGold > TAX_BANK_GOLD_THRESHOLD) return false;
+  return totalTaxableHaul(G, chiefSeat) >= TAX_MIN_HAUL_THRESHOLD;
+};
 
 const play = (state: BotState): BotAction | null => {
   const { G, ctx, playerID } = state;
@@ -120,14 +151,25 @@ const play = (state: BotState): BotAction | null => {
   const chiefSeat = tryChiefSeat(G);
   if (chiefSeat === null || chiefSeat !== playerID) return null;
 
-  // Pending chief decision: resolve trade-discard interrupt first.
-  if (G._awaitingChiefTradeDiscard === true) {
-    return { move: 'chiefDecideTradeDiscard', args: ['new'] };
+  // Issue 036 — Tax first when the bank's bare and the room has
+  // hoarded enough to make the haul worthwhile.
+  if (shouldTax(G, chiefSeat)) {
+    return { move: 'chiefTax', args: [] };
   }
 
-  // Empty bank → nothing to distribute, end phase.
+  // Empty bank → nothing left to distribute. End the phase, but only if
+  // the round's track flip has happened — otherwise flip first (D22).
   const bankGold = G.bank.gold ?? 0;
-  if (bankGold <= 0) return endPhase();
+  if (bankGold <= 0) {
+    if (
+      G.track !== undefined &&
+      G.track.flippedThisRound !== true &&
+      G.track.upcoming.length > 0
+    ) {
+      return { move: 'chiefFlipTrack', args: [] };
+    }
+    return endPhase();
+  }
 
   // Find the seat with maximum demand. Ties broken by sorted seat order
   // (set up in `seatDemands` already).
@@ -139,7 +181,15 @@ const play = (state: BotState): BotAction | null => {
   }
 
   if (best === null) {
-    // No other seat needs anything → just end the phase.
+    // No other seat needs anything → just end the phase. Flip the
+    // track first if we haven't this round.
+    if (
+      G.track !== undefined &&
+      G.track.flippedThisRound !== true &&
+      G.track.upcoming.length > 0
+    ) {
+      return { move: 'chiefFlipTrack', args: [] };
+    }
     return endPhase();
   }
 

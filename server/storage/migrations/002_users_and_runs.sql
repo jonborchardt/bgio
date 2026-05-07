@@ -23,13 +23,15 @@ CREATE TABLE IF NOT EXISTS auth_tokens (
 
 CREATE INDEX IF NOT EXISTS auth_tokens_by_user ON auth_tokens(user_id);
 
+-- Issue 007 — `settlements_joined` retired (defense redesign 1.5 dropped
+-- the legacy score field). The column was unused; the migration was the
+-- only place it lived, so we just remove it from the CREATE.
 CREATE TABLE IF NOT EXISTS runs (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   match_id TEXT NOT NULL,
   outcome TEXT NOT NULL,            -- 'win' | 'timeUp'
   turns INTEGER NOT NULL,
-  settlements_joined INTEGER NOT NULL,
   created_at INTEGER NOT NULL,
   UNIQUE (match_id, user_id)        -- 10.7 idempotency
 );

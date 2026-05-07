@@ -42,10 +42,9 @@ describe('bank', () => {
       const sideBag = bagOf({ wood: 4, stone: 1 });
       const G: SettlementState = {
         bank: bagOf({ gold: 3, wood: 2 }),
-        centerMat: { tradeRequest: null },
         roleAssignments: {},
         round: 0,
-        settlementsJoined: 0,
+        bossResolved: false,
         hands: {},
         mats: {
           '1': { in: bagOf({}), out: bagOf({}), stash: sideBag },

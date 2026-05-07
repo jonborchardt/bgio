@@ -25,7 +25,7 @@ describe('pickActiveSeat (14.12)', () => {
         '0': 'done', // chief already ended their phase
         '1': 'done', // science already flipped done
         '2': 'domesticTurn',
-        '3': 'foreignTurn',
+        '3': 'defenseTurn',
       },
       currentPlayer: '1',
       roleAssignments,
@@ -46,7 +46,7 @@ describe('pickActiveSeat (14.12)', () => {
         '0': 'done',
         '1': 'scienceTurn', // not 'done', but...
         '2': 'domesticTurn',
-        '3': 'foreignTurn',
+        '3': 'defenseTurn',
       },
       othersDone: { '1': true }, // ...science seat already flipped done.
       currentPlayer: '1',
@@ -64,7 +64,7 @@ describe('pickActiveSeat (14.12)', () => {
         '0': 'done',
         '1': 'scienceTurn',
         '2': 'domesticTurn',
-        '3': 'foreignTurn',
+        '3': 'defenseTurn',
       },
       othersDone: { '1': true, '2': true, '3': true },
       currentPlayer: '3',

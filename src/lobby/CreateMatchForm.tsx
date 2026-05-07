@@ -38,7 +38,7 @@ export interface CreateMatchFormProps {
   defaultNumPlayers?: 1 | 2 | 3 | 4;
 }
 
-const ROLES: Role[] = ['chief', 'science', 'domestic', 'foreign'];
+const ROLES: Role[] = ['chief', 'science', 'domestic', 'defense'];
 
 export function CreateMatchForm({
   onCreate,

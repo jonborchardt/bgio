@@ -19,12 +19,12 @@
 //   2. `colors` / per-domain groups (`resource`, `role`, `tier`,
 //      `eventColor`) — semantic tokens that resolve to ramp references.
 
-import { createTheme } from '@mui/material/styles';
+import { alpha, createTheme } from '@mui/material/styles';
 import type { PaletteColor } from '@mui/material/styles';
 import { RESOURCES } from './game/resources/types.ts';
 import type { Resource } from './game/resources/types.ts';
 import type { Role } from './game/types.ts';
-import type { EventColor } from './data/events.ts';
+import type { EventColor } from './data/index.ts';
 
 // ── ramps (raw palette grouped by hue) ────────────────────────────
 // Step numbers follow the existing 50 / 300 / 500 / 700 / 800 / 900
@@ -77,11 +77,14 @@ export const ramps = {
     500: '#10b981',
     700: '#047857',
   },
-  ochre: {
-    50: '#fdf6e3',
-    300: '#e7c97a',
-    500: '#b8860b',
-    700: '#7c5b08',
+  // Saddle brown — distinct from `brown` (wood) so the two browns can sit
+  // next to each other on the player mat without blurring. CSS saddlebrown
+  // (#8b4513) is redder/warmer than wood's yellow-brown.
+  saddleBrown: {
+    50: '#fbe9d9',
+    300: '#cd9362',
+    500: '#8b4513',
+    700: '#5a2d0c',
   },
   blueScience: {
     50: '#eff6ff',
@@ -89,11 +92,22 @@ export const ramps = {
     500: '#3b82f6',
     700: '#1d4ed8',
   },
-  pink: {
-    50: '#fdf2f8',
-    300: '#f9a8d4',
-    500: '#ec4899',
-    700: '#be185d',
+  // Steel-blue — distinct from `grey` (stone) and `slate` (UI surfaces).
+  // Anchored on CSS `steelblue` (#4682b4) so the steel resource reads
+  // unmistakably blue next to stone's neutral gray.
+  steelBlue: {
+    50: '#eaf2fb',
+    300: '#85a9d3',
+    500: '#4682b4',
+    700: '#2e5784',
+  },
+  // Purple — used by the Approval (formerly Happiness) resource. Reads as
+  // an abstract / social hue, distinct from the warm production orange.
+  purple: {
+    50: '#faf5ff',
+    300: '#d8b4fe',
+    500: '#a855f7',
+    700: '#6b21a8',
   },
   teal: {
     50: '#f0fdfa',
@@ -154,16 +168,52 @@ export const colors = {
   // Status accents — `active` highlights the current player's score
   // tile and the in-progress status line; `muted` is for footer copy
   // and the score-tile labels.
+  //
+  // Defense redesign 3.2 — `healthy` / `warning` / `critical` drive the
+  // HpPips color states (full / ≤50% / 1) on every damage-bearing
+  // building tile. They also paint the per-tile damage / repair flash
+  // when `BuildingTile` sees `hp` change between renders.
+  //
+  // Issue 010 — `mutedBorder` replaces the `${muted}66` hex-alpha
+  // concatenation that several card shells used; consumers pull the
+  // pre-baked rgba string instead of suffixing two hex digits.
   status: {
     active: ramps.sky[400],
     muted: ramps.slate[400],
+    mutedBorder: alpha(ramps.slate[400], 0.4),
+    healthy: ramps.green[500],
+    warning: ramps.yellow[500],
+    critical: ramps.red[500],
   },
 
   // App-wide surface fallbacks. Used by CssBaseline (background.default)
   // and the centering wrapper in main.tsx.
+  //
+  // Issue 010 — `overlay04` / `overlay12` / `overlay40` are pre-baked
+  // white-on-dark tints for inset / hover / focus surfaces. Component
+  // code reads these from the palette instead of hand-rolling
+  // `rgba(255,255,255,0.04)`.
   surface: {
     base: ramps.slate[900],
     text: ramps.slate[50],
+    overlay04: alpha('#ffffff', 0.04),
+    overlay12: alpha('#ffffff', 0.12),
+    /** Black scrim used by the cell focus ring + hand drop shadow. */
+    scrim40: alpha('#000000', 0.4),
+  },
+
+  // Drop-shadow tokens. Component code reads these via
+  // `t.palette.shadow.<key>` so the only `rgba(...)` literals in the
+  // codebase live here, alongside the rest of the design tokens.
+  shadow: {
+    /** Subtle card lift. Used by the canonical CardFrame. */
+    card: '0 1px 2px rgba(0,0,0,0.35)',
+    /** Floating panel / drawer shadow (Dev sidebar, dialogs). */
+    floating: '0 4px 12px rgba(0,0,0,0.4)',
+    /** Inset emboss for the player-mat slot panels: a top-edge shadow
+     *  + a faint bottom highlight reads as a pressed tray. */
+    embossInset:
+      'inset 0 1px 2px rgba(0,0,0,0.5), inset 0 -1px 0 rgba(255,255,255,0.04)',
   },
 } as const;
 
@@ -173,16 +223,20 @@ export const colors = {
 // `t.palette.resource.<key>.main` etc. — no raw hex literals at the
 // call site.
 
+// Resource → ramp mapping. Single-letter symbol overrides for collisions
+// (stone/steel, science, wood/worker, horse/happiness) live in
+// `RESOURCE_DISPLAY` next to the type definition; the colors here pair
+// with those symbols.
 const resource: Record<Resource, PaletteColor> = {
   gold: pc(ramps.yellow),
   wood: pc(ramps.brown),
   stone: pc(ramps.grey),
-  steel: pc(ramps.slate as Ramp4),
-  horse: pc(ramps.orange),
+  steel: pc(ramps.steelBlue),
+  horse: pc(ramps.saddleBrown),
   food: pc(ramps.greenFood),
-  production: pc(ramps.ochre),
+  production: pc(ramps.orange),
   science: pc(ramps.blueScience),
-  happiness: pc(ramps.pink),
+  happiness: pc(ramps.purple),
   worker: pc(ramps.teal),
 };
 
@@ -195,11 +249,24 @@ for (const r of RESOURCES) {
   }
 }
 
-const role: Record<Role, PaletteColor> = {
-  chief: pc(ramps.yellow),
-  science: pc(ramps.blueScience),
-  domestic: pc(ramps.green),
-  foreign: pc(ramps.red),
+// Per-role accent. Issue 010 — `surfaceTint` and `surfaceTintStrong`
+// are pre-baked tints used by the V9 card shell's section panels and
+// other role-coloured surfaces, replacing the `${main}14` / `${main}1f`
+// hex-alpha concatenations call sites used to do.
+type RoleColor = PaletteColor & {
+  surfaceTint: string;
+  surfaceTintStrong: string;
+};
+const roleEntry = (r: Ramp4): RoleColor => ({
+  ...pc(r),
+  surfaceTint: alpha(r[500], 0.08), // ≈ hex `14`
+  surfaceTintStrong: alpha(r[500], 0.12), // ≈ hex `1f`
+});
+const role: Record<Role, RoleColor> = {
+  chief: roleEntry(ramps.yellow),
+  science: roleEntry(ramps.blueScience),
+  domestic: roleEntry(ramps.green),
+  defense: roleEntry(ramps.red),
 };
 
 const tier: Record<'beginner' | 'intermediate' | 'advanced', PaletteColor> = {
@@ -233,6 +300,140 @@ const eventColor: Record<EventColor, PaletteColor> = {
   red: pc(ramps.red),
 };
 
+// Defense redesign 3.2 — center tile (the village vault at (0,0)) palette.
+//
+// `accent`     — outer ring color so the circular vault reads as different
+//                from a regular building tile.
+// `surface`    — interior fill so the vault sits visibly above the empty-
+//                cell spacer beneath it.
+// `text`       — on-`surface` foreground for the label and the live
+//                pooled-stash total.
+//
+// All three resolve to ramp slots — no raw hex literals leak into
+// component code. Post-3.9 preference sweep: anchored on the warm
+// neutral `slate` ramp with a `yellow` accent (a "stone vault with a
+// gold-trim seal") so the centre tile reads as part of the village —
+// distinct from the role accents (chief yellow, science blue, domestic
+// green, defense red) without competing with them. Earlier passes used
+// purple, which rendered as a colourful sticker against the village.
+const centerTile = {
+  accent: ramps.yellow[500],
+  surface: ramps.slate[700],
+  text: ramps.slate[50],
+};
+
+// Defense redesign 3.5 — boss-readout threshold tokens.
+//
+// The boss readout (rendered when the boss card is the next-card telegraph)
+// shows the village's current Science / Economy / Military totals next to
+// the boss's required thresholds. Each row reads as either "met" (green) or
+// "unmet" (warning amber). Anchored on the existing `green` / `yellow`
+// ramps so the tokens compose with the rest of the status palette without
+// introducing new hues.
+//
+// `metAccent`     — border / icon color for a satisfied threshold row.
+// `metSurface`    — subtle row tint, sits visibly above the readout's
+//                   own surface without washing the foreground text.
+// `unmetAccent`   — border / icon color for a pending threshold row.
+// `unmetSurface`  — subtle warning tint, paired with `unmetAccent`.
+// `text`          — on-surface foreground. Pulled from the same neutral
+//                   surface text token as the rest of the strip so met /
+//                   unmet rows stay equally readable.
+//
+// Color is paired with a ✓ / ✗ glyph in the component (CLAUDE.md
+// accessibility rule: never communicate state via hue alone).
+const bossReadout = {
+  metAccent: ramps.green[500],
+  metSurface: ramps.green[700],
+  unmetAccent: ramps.yellow[500],
+  unmetSurface: ramps.yellow[700],
+  text: ramps.slate[50],
+};
+
+// Defense redesign 3.4 — center-burn banner tokens.
+//
+// The banner appears in/near the center mat when a threat reaches the
+// village vault and burns from the pooled stash. The visual reads as
+// "alarm + audit": red border accent for "things were lost" plus a
+// dimmed slate surface so the banner can sit over the seat tiles
+// without washing them out. Anchored on the existing `red` and `slate`
+// ramps so no new hue lands.
+//
+// `accent`   — border / icon color (alarm red).
+// `surface`  — banner background. Slate so the banner reads as a
+//              floating panel that's *not* part of the playable grid.
+// `text`     — on-`surface` foreground for headline + detail lines.
+// `subText`  — slightly muted on-`surface` foreground used for the
+//              second line ("to ⚔ Cyclone | round 14").
+const centerBurnBanner = {
+  accent: ramps.red[500],
+  surface: ramps.slate[800],
+  text: ramps.slate[50],
+  subText: ramps.slate[300],
+};
+
+// Defense redesign 3.3 — path-overlay tokens.
+//
+// The PathOverlay highlights the cells a threat just walked across,
+// pulses the impact tiles, and (on a center-burn) ripples from the
+// vault outward. All three states share the existing `red` ramp so the
+// overlay reads as "incoming threat" without introducing a new hue.
+//
+// `pathTrail`        — base highlight along every cell on the threat's
+//                      path. Soft red so non-impact cells read as
+//                      "where it traveled" not "where it hit."
+// `pathImpact`       — saturated red for the impact tiles (where the
+//                      threat actually consumed HP). Pulses briefly on
+//                      animation.
+// `pathFire`         — the firing units' tiles (yellow accent) so the
+//                      table can read "these are the units that shot."
+// `centerRipple`     — purple (matches the centerTile accent) for the
+//                      ripple-from-center animation when the threat
+//                      reached the vault.
+const pathOverlay = {
+  pathTrail: ramps.red[300],
+  pathImpact: ramps.red[500],
+  pathFire: ramps.yellow[300],
+  centerRipple: ramps.purple[300],
+};
+
+// Defense redesign 3.1 — track strip palette tokens.
+//
+// `past`     — already-flipped cards, greyed out at the left of the strip.
+// `current`  — the just-flipped card, briefly highlighted before sliding
+//              into the past row on round transition.
+// `next`     — the face-up telegraph card that defense plans against.
+// `boss`     — distinct accent for the unique phase-10 boss card so the
+//              table reads it as different from a regular threat.
+// `phaseMarkers` — gradient across `ramps.purple` so each phase marker
+//              above the strip carries a slightly darker shade as the
+//              game progresses; phase 10 is the densest. Length 10 so
+//              `phaseMarkers[phase - 1]` indexes safely without bounds
+//              checks at every call site.
+//
+// All values resolve to ramp slots — no raw hex literals leak into
+// component code. Track-specific shading uses `purple` (already in the
+// ramps) for the phase progression and `red` for the boss to match the
+// existing `role.defense` accent.
+const track = {
+  past: ramps.slate[600],
+  current: ramps.yellow[500],
+  next: ramps.yellow[300],
+  boss: ramps.red[500],
+  phaseMarkers: [
+    ramps.purple[50],
+    ramps.purple[300],
+    ramps.purple[300],
+    ramps.purple[500],
+    ramps.purple[500],
+    ramps.purple[500],
+    ramps.purple[700],
+    ramps.purple[700],
+    ramps.purple[700],
+    ramps.red[700],
+  ] as readonly string[],
+};
+
 // ── module augmentation ──────────────────────────────────────────
 
 declare module '@mui/material/styles' {
@@ -240,10 +441,42 @@ declare module '@mui/material/styles' {
     card: typeof colors.card;
     status: typeof colors.status;
     appSurface: typeof colors.surface;
+    shadow: typeof colors.shadow;
     resource: Record<Resource, PaletteColor>;
-    role: Record<Role, PaletteColor>;
+    role: Record<Role, RoleColor>;
     tier: Record<'beginner' | 'intermediate' | 'advanced', PaletteColor>;
     eventColor: Record<EventColor, PaletteColor>;
+    track: {
+      past: string;
+      current: string;
+      next: string;
+      boss: string;
+      phaseMarkers: readonly string[];
+    };
+    centerTile: {
+      accent: string;
+      surface: string;
+      text: string;
+    };
+    bossReadout: {
+      metAccent: string;
+      metSurface: string;
+      unmetAccent: string;
+      unmetSurface: string;
+      text: string;
+    };
+    pathOverlay: {
+      pathTrail: string;
+      pathImpact: string;
+      pathFire: string;
+      centerRipple: string;
+    };
+    centerBurnBanner: {
+      accent: string;
+      surface: string;
+      text: string;
+      subText: string;
+    };
   }
   // PaletteOptions mirrors Palette for the createTheme input. We
   // accept the same shapes (Partial keeps the existing tokens
@@ -252,10 +485,42 @@ declare module '@mui/material/styles' {
     card?: typeof colors.card;
     status?: typeof colors.status;
     appSurface?: typeof colors.surface;
+    shadow?: typeof colors.shadow;
     resource?: Record<Resource, PaletteColor>;
-    role?: Record<Role, PaletteColor>;
+    role?: Record<Role, RoleColor>;
     tier?: Record<'beginner' | 'intermediate' | 'advanced', PaletteColor>;
     eventColor?: Record<EventColor, PaletteColor>;
+    track?: {
+      past: string;
+      current: string;
+      next: string;
+      boss: string;
+      phaseMarkers: readonly string[];
+    };
+    centerTile?: {
+      accent: string;
+      surface: string;
+      text: string;
+    };
+    bossReadout?: {
+      metAccent: string;
+      metSurface: string;
+      unmetAccent: string;
+      unmetSurface: string;
+      text: string;
+    };
+    pathOverlay?: {
+      pathTrail: string;
+      pathImpact: string;
+      pathFire: string;
+      centerRipple: string;
+    };
+    centerBurnBanner?: {
+      accent: string;
+      surface: string;
+      text: string;
+      subText: string;
+    };
   }
 }
 
@@ -276,10 +541,16 @@ export const theme = createTheme({
     card: colors.card,
     status: colors.status,
     appSurface: colors.surface,
+    shadow: colors.shadow,
     resource,
     role,
     tier,
     eventColor,
+    track,
+    centerTile,
+    bossReadout,
+    pathOverlay,
+    centerBurnBanner,
   },
   typography: {
     fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',

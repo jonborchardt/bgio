@@ -13,7 +13,7 @@
 // `domesticTurn`.
 //
 // `parsed.effects` are intentionally not applied here — they affect other
-// moves (Foreign upkeep / recruit, combat, happiness).
+// moves (combat, happiness).
 //
 // Idempotency: `producedThisRound` on `DomesticState`, cleared at
 // endOfRound by the `domestic:reset-produced` hook registered below.
@@ -24,12 +24,44 @@ import type { SettlementState } from '../../types.ts';
 import { rolesAtSeat } from '../../roles.ts';
 import { BUILDINGS } from '../../../data/index.ts';
 import { add } from '../../resources/bag.ts';
-import { EMPTY_BAG } from '../../resources/types.ts';
-import type { ResourceBag } from '../../resources/types.ts';
+import { EMPTY_BAG, RESOURCES } from '../../resources/types.ts';
+import type { Resource, ResourceBag } from '../../resources/types.ts';
 import { registerRoundEndHook } from '../../hooks.ts';
 import { placeIntoOut } from '../../resources/playerMat.ts';
 import { parseBenefit, type BenefitYield } from './parseBenefit.ts';
 import { adjacencyRules, yieldAdjacencyBonus } from './adjacency.ts';
+import { techPassives } from '../../tech/effects.ts';
+import type { EventEffect } from '../../events/effects.ts';
+
+/**
+ * Defense redesign D16 — prorates a parsed building's yield bag by its
+ * current HP / maxHp. The **loss** side rounds up: `yieldLost = ceil(raw *
+ * damagePct)`, with `damagePct = (maxHp - hp) / maxHp`. Effective yield
+ * per resource is `max(0, raw - yieldLost)`. The ceiling-on-loss reading
+ * (vs. floor-on-keep) is intentional: it ensures even 1 HP off a 4-yield
+ * building shaves 1 from the yield, where the floor-on-keep alternative
+ * would silently round small damage to nothing.
+ *
+ * `maxHp <= 0` is defensive: shouldn't happen in practice, but if it
+ * did the math would NaN — clamping to "no damage" keeps the bag valid.
+ */
+const prorateResources = (
+  raw: Partial<ResourceBag>,
+  hp: number,
+  maxHp: number,
+): Partial<ResourceBag> => {
+  if (maxHp <= 0 || hp >= maxHp) return raw;
+  const damagePct = (maxHp - hp) / maxHp;
+  const out: Partial<ResourceBag> = {};
+  for (const r of RESOURCES) {
+    const v = raw[r as Resource];
+    if (v === undefined || v === 0) continue;
+    const lost = Math.ceil(v * damagePct);
+    const kept = Math.max(0, v - lost);
+    if (kept > 0) out[r as Resource] = kept;
+  }
+  return out;
+};
 
 /**
  * Pure produce step: sums building yields (with worker doubling and
@@ -55,6 +87,11 @@ export const runProduceForSeat = (
   let runningYield: ResourceBag = { ...EMPTY_BAG };
 
   for (const placed of Object.values(domestic.grid)) {
+    // Defense redesign D2 — skip the synthetic center tile. It is a
+    // coordinate anchor, not a producing building; it has no `BuildingDef`
+    // entry and contributes zero yield. The check is explicit rather than
+    // relying on the `BUILDINGS.find` miss below so the intent is local.
+    if (placed.isCenter === true) continue;
     const def = BUILDINGS.find((b) => b.name === placed.defID);
     if (def === undefined) continue;
 
@@ -64,13 +101,54 @@ export const runProduceForSeat = (
       parseCache.set(placed.defID, parsed);
     }
 
-    runningYield = add(runningYield, parsed.resources);
+    // Defense redesign D16 — prorate this cell's yield by the building's
+    // current damage. `damagePct = (maxHp - hp) / maxHp`, and the **loss**
+    // side rounds up: `yieldLost = ceil(rawYield * damagePct)`. Even one
+    // HP missing visibly bites (a 4-yield Mill at HP-3-of-4 produces 3,
+    // not 4). Worker doubling is applied to the prorated yield so a
+    // damaged building stays damaged regardless of whether it's worker-
+    // boosted that round.
+    const proratedResources = prorateResources(
+      parsed.resources,
+      placed.hp,
+      placed.maxHp,
+    );
+    runningYield = add(runningYield, proratedResources);
     if (placed.worker !== null) {
-      runningYield = add(runningYield, parsed.resources);
+      runningYield = add(runningYield, proratedResources);
     }
   }
 
   runningYield = add(runningYield, yieldAdjacencyBonus(domestic.grid, adjacencyRules));
+
+  // Issue 019 — `producePerRound` tech-passive bonuses. Each tech in
+  // the seat's domestic-tech hand may contribute a flat bag that's
+  // summed into produce. Read via `techPassives`, which scans every
+  // tech-card hand the seat owns; we filter here to the producePerRound
+  // kind. The bump applies once per produce call; tests pinning produce
+  // bags can preset the techHand to assert the layered total.
+  for (const eff of techPassives(G, playerID)) {
+    if (eff.kind === 'producePerRound') {
+      const e = eff as Extract<EventEffect, { kind: 'producePerRound' }>;
+      runningYield = add(runningYield, e.bag);
+    }
+  }
+
+  // Issue 017 — `doubleProduceThisRound` modifier doubles whatever the
+  // seat's produce bag totals up to (after building yields, adjacency,
+  // and tech passives). Not consumed: the modifier persists across
+  // every domestic seat's produce in the same round; round-end clears
+  // it. Multiple stacks compound (×2 → ×4 → …); we count and apply
+  // `add(running, running)` once per stack rather than calling
+  // `consumeModifier` so the same modifier benefits every domestic
+  // seat in a multi-domestic game.
+  let doubleStack = 0;
+  for (const m of G._modifiers ?? []) {
+    if (m.kind === 'doubleProduceThisRound') doubleStack += 1;
+  }
+  for (let i = 0; i < doubleStack; i++) {
+    runningYield = add(runningYield, runningYield);
+  }
 
   placeIntoOut(seatMat, runningYield);
   domestic.producedThisRound = true;

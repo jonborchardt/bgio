@@ -72,7 +72,11 @@ describe('credentials (10.6)', () => {
     expect(loadCreds()).toBeNull();
   });
 
-  it.todo(
-    'server-down spinner: probe failure triggers retry-with-backoff (1s/2s/5s/15s/30s/60s, capped) and a manual retry button resets the schedule',
-  );
+  // Deferred: the server-down retry-with-backoff spinner is owned by
+  // the lobby UI and exercised in tests-e2e/smoke.spec.ts (the
+  // Playwright spec drives a real browser through the cold-start
+  // wake window). In vitest the timer scheduling can be unit-tested
+  // separately if it surfaces — today the schedule lives inline in
+  // <LobbyShell> and would need to be extracted to a pure helper
+  // first.
 });

@@ -1,71 +1,42 @@
-// BuildingCard (09.2) — presentational view of a BuildingDef.
-//
-// Renders the building's name, gold cost, and benefit string. When `count > 1`
-// adds a small "×N" badge — used by callers that count-collapse identical
-// buildings (e.g. the Domestic grid summary).
+// BuildingCard — presentational view of a BuildingDef. Delegates to the
+// V9 shell; visual changes belong in `V9CardShell.tsx`. Default size is
+// `detailed` (large) — the form most game UI now renders. Smaller sizes
+// stay supported for the relationships modal + graph.
 
-import { Box, Stack, Typography } from '@mui/material';
 import type { BuildingDef } from '../../data/schema.ts';
-import { CardFrame } from './CardFrame.tsx';
+import type { CardSize } from './sizes.ts';
+import { idForBuilding } from '../../cards/registry.ts';
+import { buildingDisplay } from './cardDisplay.ts';
+import { V9CardShell } from './V9CardShell.tsx';
 
 export interface BuildingCardProps {
   def: BuildingDef;
   count?: number;
+  size?: CardSize;
+  /** Override the auto-derived card id (`building:<name>`). Pass an
+   *  empty string to suppress the `?` button entirely. */
+  cardId?: string;
+  /** defIDs of the buildings currently neighbouring this one on the
+   *  village grid. When present, the adjacency block on the card paints
+   *  each rule as `✓` (active) or `·` (latent). Omit for in-hand /
+   *  preview cards — those render every rule as inactive guidance. */
+  activeNeighbors?: ReadonlySet<string>;
 }
 
-export function BuildingCard({ def, count }: BuildingCardProps) {
+export function BuildingCard({
+  def,
+  count,
+  size = 'detailed',
+  cardId,
+  activeNeighbors,
+}: BuildingCardProps) {
+  const id = cardId === undefined ? idForBuilding(def) : cardId || undefined;
   return (
-    <CardFrame>
-      <Stack spacing={0.5}>
-        <Stack
-          direction="row"
-          spacing={1}
-          sx={{ alignItems: 'center', justifyContent: 'space-between' }}
-        >
-          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-            {def.name}
-          </Typography>
-          {count !== undefined && count > 1 ? (
-            <Box
-              aria-label={`Count ${count}`}
-              sx={{
-                px: 0.75,
-                borderRadius: 0.5,
-                bgcolor: (t) => t.palette.role.domestic.main,
-                color: (t) => t.palette.role.domestic.contrastText,
-                fontSize: '0.75rem',
-                fontWeight: 700,
-              }}
-            >
-              ×{count}
-            </Box>
-          ) : null}
-        </Stack>
-        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-          <Box
-            aria-hidden
-            sx={{
-              width: '0.625rem',
-              height: '0.625rem',
-              borderRadius: '50%',
-              bgcolor: (t) => t.palette.resource.gold.main,
-            }}
-          />
-          <Typography
-            variant="caption"
-            sx={{ color: (t) => t.palette.resource.gold.main, fontWeight: 600 }}
-          >
-            {def.cost}g
-          </Typography>
-        </Stack>
-        <Typography
-          variant="caption"
-          sx={{ color: (t) => t.palette.status.muted }}
-        >
-          {def.benefit}
-        </Typography>
-      </Stack>
-    </CardFrame>
+    <V9CardShell
+      display={buildingDisplay(def, count, activeNeighbors)}
+      size={size}
+      cardId={id}
+    />
   );
 }
 

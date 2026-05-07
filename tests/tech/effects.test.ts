@@ -59,10 +59,9 @@ const build4pState = (
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
   return {
     bank: bagOf({}),
-    centerMat: { tradeRequest: null },
     roleAssignments,
     round: 1,
-    settlementsJoined: 0,
+    bossResolved: false,
     hands,
     mats: initialMats(roleAssignments),
     ...partial,
@@ -122,38 +121,48 @@ describe('applyTechOnAcquire (08.6)', () => {
 
 describe('techPassives (08.6)', () => {
   it('returns concat of every passive effect from the holder seat\'s tech hands', () => {
+    const sciencePassiveEffect = {
+      kind: 'gainResource',
+      bag: { science: 1 },
+      target: 'bank',
+    } as const;
+    const chiefPassiveEffect = {
+      kind: 'gainResource',
+      bag: { gold: 1 },
+      target: 'bank',
+    } as const;
     const sciencePassive: TechnologyDef = baseTech({
       name: 'sci-passive-1',
-      passiveEffects: [{ kind: 'doubleScience' }],
+      passiveEffects: [sciencePassiveEffect],
     });
     const chiefPassive: TechnologyDef = baseTech({
       name: 'chief-passive-1',
-      passiveEffects: [{ kind: 'forbidBuy' }],
+      passiveEffects: [chiefPassiveEffect],
     });
 
     // 4-player: chief is seat 0, science is seat 1.
     const G = build4pState({
       chief: { workers: 0, hand: [chiefPassive] },
       science: {
-        grid: [],
-        underCards: {},
-        paid: {},
-        completed: [],
-        perRoundCompletions: 0,
         hand: [sciencePassive],
       },
     });
 
-    expect(techPassives(G, '0')).toEqual([{ kind: 'forbidBuy' }]);
-    expect(techPassives(G, '1')).toEqual([{ kind: 'doubleScience' }]);
+    expect(techPassives(G, '0')).toEqual([chiefPassiveEffect]);
+    expect(techPassives(G, '1')).toEqual([sciencePassiveEffect]);
     // Seat with neither role contributes nothing.
     expect(techPassives(G, '2')).toEqual([]);
   });
 
   it('skips techs with no passiveEffects', () => {
+    const passive = {
+      kind: 'gainResource',
+      bag: { gold: 1 },
+      target: 'bank',
+    } as const;
     const techWith: TechnologyDef = baseTech({
       name: 'has-passive',
-      passiveEffects: [{ kind: 'forbidBuy' }],
+      passiveEffects: [passive],
     });
     const techWithout: TechnologyDef = baseTech({ name: 'no-passive' });
 
@@ -161,7 +170,7 @@ describe('techPassives (08.6)', () => {
       chief: { workers: 0, hand: [techWith, techWithout] },
     });
 
-    expect(techPassives(G, '0')).toEqual([{ kind: 'forbidBuy' }]);
+    expect(techPassives(G, '0')).toEqual([passive]);
   });
 
   it('returns [] for a seat with no roles', () => {
@@ -232,8 +241,12 @@ describe('technologies.json parses without throwing (08.6)', () => {
           onAcquireEffects: [
             { kind: 'gainResource', bag: { gold: 1 }, target: 'bank' },
           ],
-          onPlayEffects: [{ kind: 'doubleScience' }],
-          passiveEffects: [{ kind: 'forbidBuy' }],
+          onPlayEffects: [
+            { kind: 'gainResource', bag: { science: 1 }, target: 'bank' },
+          ],
+          passiveEffects: [
+            { kind: 'gainResource', bag: { wood: 1 }, target: 'bank' },
+          ],
         },
       ]),
     ).not.toThrow();
@@ -311,11 +324,15 @@ describe('chiefPlayTech (08.6)', () => {
     const result = callMove(chiefPlayTech, G, '0', 'Tax Collector');
     expect(result).toBeUndefined();
     expect(G.bank.gold).toBe(4);
-    // Card stays in hand (V1 model: tech persists).
-    expect(G.chief!.hand!.length).toBe(1);
+    // Played techs are consumed: removed from the seat's hand.
+    expect(G.chief!.hand!.length).toBe(0);
   });
 
-  it('returns INVALID_MOVE when the tech has empty onPlayEffects', () => {
+  it('still resolves and consumes a tech with empty onPlayEffects (no-op effect, card is removed)', () => {
+    // Cards like Compass have no engine-level play effect — their value
+    // lives in the per-color event reactions. Playing them must still
+    // resolve the card (charge cost, remove from hand) so the player
+    // gets visible feedback when they click.
     const tech = baseTech({
       name: 'Idle',
       onPlayEffects: [],
@@ -323,21 +340,21 @@ describe('chiefPlayTech (08.6)', () => {
     const G = build4pState({
       chief: { workers: 0, hand: [tech] },
     });
-    const before = JSON.parse(JSON.stringify(G));
 
     const result = callMove(chiefPlayTech, G, '0', 'Idle');
-    expect(result).toBe(INVALID_MOVE);
-    expect(G).toEqual(before);
+    expect(result).toBeUndefined();
+    expect(G.chief!.hand!.length).toBe(0);
   });
 
-  it('returns INVALID_MOVE when the tech is missing onPlayEffects entirely', () => {
+  it('still resolves a tech missing onPlayEffects entirely (no unlocks either)', () => {
     const tech = baseTech({ name: 'NoPlay' });
     const G = build4pState({
       chief: { workers: 0, hand: [tech] },
     });
 
     const result = callMove(chiefPlayTech, G, '0', 'NoPlay');
-    expect(result).toBe(INVALID_MOVE);
+    expect(result).toBeUndefined();
+    expect(G.chief!.hand!.length).toBe(0);
   });
 
   it('returns INVALID_MOVE when caller does not hold chief role', () => {
@@ -366,9 +383,101 @@ describe('chiefPlayTech (08.6)', () => {
   });
 });
 
+describe('playTechStub cost-charging', () => {
+  it('chief play debits the bank by costBag and resolves', () => {
+    const tech = baseTech({
+      name: 'Costly Plan',
+      costBag: { gold: 3 },
+      onPlayEffects: [
+        { kind: 'gainResource', bag: { gold: 1 }, target: 'bank' },
+      ],
+    });
+    const G = build4pState({
+      bank: bagOf({ gold: 5 }),
+      chief: { workers: 0, hand: [tech] },
+    });
+
+    const result = callMove(chiefPlayTech, G, '0', 'Costly Plan');
+    expect(result).toBeUndefined();
+    // Spent 3, then onPlayEffects credited 1 → net -2 from initial 5.
+    expect(G.bank.gold).toBe(3);
+    expect(G.chief!.hand!.length).toBe(0);
+  });
+
+  it('chief play returns INVALID_MOVE when bank cannot afford the costBag', () => {
+    const tech = baseTech({
+      name: 'Too Expensive',
+      costBag: { gold: 10 },
+      onPlayEffects: [{ kind: 'gainResource', bag: { gold: 1 }, target: 'bank' }],
+    });
+    const G = build4pState({
+      bank: bagOf({ gold: 2 }),
+      chief: { workers: 0, hand: [tech] },
+    });
+    const before = JSON.parse(JSON.stringify(G));
+
+    const result = callMove(chiefPlayTech, G, '0', 'Too Expensive');
+    expect(result).toBe(INVALID_MOVE);
+    expect(G).toEqual(before);
+  });
+
+  // Non-chief play paths covered by domesticPlayTech tests above. The
+  // defense play-tech move was retired in 1.4 (D14); Phase 2.5 will
+  // reintroduce it with the new defense card economy.
+});
+
+describe('applyTechOnPlay grants unlocks', () => {
+  it('pushes named building unlocks into G.domestic.hand and named units into G.defense.hand', () => {
+    // Use real building / unit names so the registry lookup in
+    // grantTechUnlocks resolves them.
+    const tech = baseTech({
+      branch: 'Civic',
+      name: 'Bartering',
+      buildings: 'Trading Post',
+      units: 'Scout',
+    });
+    const G = build4pState({
+      domestic: { hand: [], grid: {}, techHand: [tech] },
+      defense: {
+        hand: [],
+        inPlay: [],
+      },
+    });
+    // Seat 2 is domestic in 4-player.
+    const result = callMove(domesticPlayTech, G, '2', 'Bartering');
+    expect(result).toBeUndefined();
+    expect(G.domestic!.hand.map((b) => b.name)).toContain('Trading Post');
+    expect(G.defense!.hand.map((u) => u.name)).toContain('Scout');
+    // Tech is consumed.
+    expect(G.domestic!.techHand!.length).toBe(0);
+  });
+
+  it('does not duplicate an unlock that is already in the hand', () => {
+    const trader = { name: 'Trading Post' } as unknown as { name: string };
+    const tech = baseTech({
+      branch: 'Civic',
+      name: 'Bartering',
+      buildings: 'Trading Post',
+    });
+    const G = build4pState({
+      // Pre-seed the hand with a Trading-Post-named entry.
+      domestic: {
+        hand: [trader as never],
+        grid: {},
+        techHand: [tech],
+      },
+    });
+    callMove(domesticPlayTech, G, '2', 'Bartering');
+    // Still only one Trading Post — grant skipped the dupe.
+    const tps = G.domestic!.hand.filter((b) => b.name === 'Trading Post');
+    expect(tps.length).toBe(1);
+  });
+});
+
 describe('domesticPlayTech wrong-role rejection (08.6)', () => {
-  it('domesticPlayTech on a red tech (in foreign hand) returns INVALID_MOVE', () => {
-    // Place the red tech in foreign.hand — it never reaches domestic.techHand.
+  it('domesticPlayTech on a red tech (in defense techHand) returns INVALID_MOVE', () => {
+    // Place the red tech in defense.techHand — it never reaches
+    // domestic.techHand.
     const redTech = baseTech({
       branch: 'Fighting',
       name: 'Big Guns',
@@ -376,16 +485,11 @@ describe('domesticPlayTech wrong-role rejection (08.6)', () => {
         { kind: 'gainResource', bag: { gold: 1 }, target: 'bank' },
       ],
     });
-    // Cast through `unknown` because ForeignState.hand is currently typed
-    // UnitDef[]; 05.3 distribution pushes TechnologyDef entries through
-    // that loose slot (07.4 will eventually refactor).
     const G = build4pState({
-      foreign: {
-        hand: [redTech] as unknown as never[],
+      defense: {
+        hand: [],
+        techHand: [redTech],
         inPlay: [],
-        battleDeck: [],
-        tradeDeck: [],
-        inFlight: { battle: null, committed: [] },
       },
       domestic: { hand: [], grid: {}, techHand: [] },
     });

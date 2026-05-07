@@ -64,9 +64,21 @@ COPY --from=builder /app/tsconfig.json ./tsconfig.json
 # vite-node reads vite.config.ts to set up its resolver, so copy it too.
 COPY --from=builder /app/vite.config.ts ./vite.config.ts
 
+# Issue 045 — drop privileges. The `node` user ships in the official
+# Node image; chown the app tree + the persistent data mount so
+# vite-node + better-sqlite3 can read/write under it.
+RUN mkdir -p /data && chown -R node:node /app /data
+USER node
+
 EXPOSE 8000
 
-# `npm run server:start` shells out to `vite-node server/start.ts`; we
-# call the script directly to keep the entrypoint visible in process
-# listings.
-CMD ["npx", "vite-node", "server/start.ts"]
+# Issue 045 — Render's free tier auto-restarts on hard failure, but a
+# liveness check here lets local docker / non-Render runs surface a
+# wedged process. `wget` ships in the alpine base. The `/games`
+# endpoint is bgio's lobby root — a 200 means the Koa app is up.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:8000/games || exit 1
+
+# Call vite-node directly (resolved at build time so every restart skips
+# npx's per-invocation lookup tax).
+CMD ["node", "/app/node_modules/vite-node/dist/cli.js", "server/start.ts"]

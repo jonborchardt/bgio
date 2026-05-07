@@ -9,21 +9,20 @@ import type { BankLogEntry } from './resources/bankLog.ts';
 // Type-only edge into `./resources/centerMat.ts`. That module imports
 // `PlayerID` / `Role` back from this file, but because both edges are
 // `import type`-only there is no runtime cycle — TypeScript erases them.
-import type { CenterMat } from './resources/centerMat.ts';
 // Per-seat player mat (in / out / stash). Same cycle-erasing trick.
 import type { PlayerMat } from './resources/playerMat.ts';
 // Type-only edge for the canonical TechnologyDef shape — referenced from
-// the per-role hand fields (chief/domestic) populated by `scienceComplete`
-// in 05.3 when a science card's underlying tech cards are distributed.
+// the per-role hand fields (chief/domestic) populated by the Library
+// when a tech-flavored card is bought.
 import type { TechnologyDef } from '../data/schema.ts';
 // Same trick for the Science role state — type-only edge so there is no
 // runtime cycle with `./roles/science/setup.ts`, which imports `RandomAPI`
 // and `registerRoundEndHook` back from this package.
 import type { ScienceState } from './roles/science/setup.ts';
-// Same trick for the Foreign role state — type-only edge so there is no
-// runtime cycle with `./roles/foreign/decks.ts`, which imports `RandomAPI`
-// back from this package.
-import type { ForeignState } from './roles/foreign/decks.ts';
+// Same trick for the Defense role state (1.4 — defense redesign). The
+// `./roles/defense/types.ts` module is type-only, so the import is purely
+// nominal.
+import type { DefenseState } from './roles/defense/types.ts';
 // Same trick for the Domestic role state (06.1) — `./roles/domestic/types.ts`
 // re-imports `PlayerID` from this file at the type level only.
 import type { DomesticState } from './roles/domestic/types.ts';
@@ -35,26 +34,33 @@ import type { EventsState } from './events/state.ts';
 // modifier stack and the awaiting-input map below. `./events/effects.ts`
 // has no runtime imports back from this file.
 import type { EventEffect } from './events/effects.ts';
-// Type-only edge for the 08.4 opponent (wander deck) state. The runtime
-// module under `./opponent/wanderDeck.ts` imports `RandomAPI` and
-// `registerRoundEndHook` back from this package, so an `import type`
-// here keeps the cycle erased.
-import type { WanderState } from './opponent/wanderDeck.ts';
+// Type-only edge for help-request rows. The runtime module under
+// `./requests/move.ts` imports types from this file, so the `import type`
+// keeps the cycle erased.
+import type { HelpRequest } from './requests/types.ts';
+// Defense redesign 2.2 — Global Event Track runtime state. The
+// `./track.ts` module is pure (no runtime imports back from this file)
+// so a plain type-only edge is enough to keep the cycle erased.
+import type { TrackState } from './track.ts';
+// Science Library SL 2.1 — runtime state for the Library deck / row /
+// per-seat discount tableaus. `./library/state.ts` only imports types
+// from this file, so the type-only edge keeps the cycle erased.
+import type { LibraryState } from './library/state.ts';
 
-export type Role = 'chief' | 'science' | 'domestic' | 'foreign';
+export type Role = 'chief' | 'science' | 'domestic' | 'defense';
 
 // boardgame.io identifies seats as string indices: '0', '1', '2', '3'.
 export type PlayerID = string;
 
 export type {
   ResourceBag,
-  CenterMat,
   PlayerMat,
   ScienceState,
-  ForeignState,
+  DefenseState,
   EventsState,
   DomesticState,
-  WanderState,
+  TrackState,
+  LibraryState,
 };
 
 export interface SettlementState {
@@ -66,15 +72,23 @@ export interface SettlementState {
   // mutation. Optional so older test fixtures stay source-compatible —
   // `appendBankLog` lazily initializes the slot.
   bankLog?: BankLogEntry[];
-  centerMat: CenterMat;
+  // Running maximum of `G.bank.gold` ever observed during the match.
+  // Refreshed by `appendBankLog` at every bank mutation, so all
+  // bank-touching moves keep it in sync without a per-call hook. The
+  // boss's economy threshold checks against this rather than current
+  // `bank.gold` so a chief who briefly stockpiles can't fail the check
+  // simply by spending the gold afterwards. Optional so older fixtures
+  // stay source-compatible.
+  economyHigh?: number;
   roleAssignments: Record<PlayerID, Role[]>;
   round: number;
 
-  // Total number of settlements the village has joined / absorbed. Source of
-  // truth for the win condition (08.5): the game ends in a win when this
-  // reaches 10. Incremented by 07.4 (Foreign battle wins flagged `joins`)
-  // and 07.5 (Foreign tribute trade completion). Initialized to 0 by setup.
-  settlementsJoined: number;
+  // Defense redesign 1.5 (D25): when set to `true`, `endIf` returns a win.
+  // The flag is owned by Phase 2.7 (boss resolution) — until then nothing
+  // sets it, so the only end-of-game outcome is the `turnCap` time-up
+  // path. Defaulted to `false` at setup so `endIf` can read it without a
+  // guard.
+  bossResolved: boolean;
 
   // Per-match override for the round-count time-up cap (08.5). When unset,
   // the engine uses `TURN_CAP_DEFAULT` (80). Set at `setup` from
@@ -88,13 +102,27 @@ export interface SettlementState {
   chiefStipend?: number;
 
   // Optional snapshot of `G.round` at the moment the win condition fired.
-  // Reserved for the persistence hook (10.7) so the server can write the
-  // win-time score even if `G.round` advances further before `endIf` is
-  // re-checked. `endIf` itself reads `G.round` directly today.
+  // Set by `resolveBoss` (Phase 2.7) at the same time `bossResolved` flips
+  // so the persistence hook (10.7) can write the win-time score even if
+  // `G.round` advances before `endIf` is re-checked. `endIf` prefers this
+  // when set and falls back to `G.round` otherwise.
   turnsAtWin?: number;
 
-  // Private slices populated by 02.4; refined per role later.
-  // Decks belong to whoever owns them and live under those players' hands.
+  // Flat post-mortem snapshot written by `endConditions.onEnd` (Phase 2.7)
+  // when `endIf` returns a truthy outcome for the first time. Read by
+  // server-side score persistence (10.7) and the future lobby-summary UI.
+  // Optional so older test fixtures and live mid-game states stay source-
+  // compatible — present iff the game has ended.
+  _score?: import('./endConditions.ts').RunScore;
+
+  // Per-seat private slices. Issue 056k — production no longer
+  // routes anything through `G.hands` (Domestic / Defense /
+  // Library / Events all live on their own top-level slices); the
+  // field stays for backwards-compat with hand-built test fixtures
+  // that stash placeholder shapes here. The element type is kept
+  // intentionally loose so fixtures can pin arbitrary shapes
+  // (`{ domestic: ['A','B'] }`, `{}`, etc.) without re-typing the
+  // whole field; the production setup just writes empty objects.
   hands: Record<PlayerID, unknown>;
 
   // Per-seat player mat: `in` (chief just dropped here), `out` (this seat
@@ -128,24 +156,40 @@ export interface SettlementState {
   // narrower `StageName` subtype.
   _stageStack?: Record<PlayerID, string[]>;
 
-  // Science role state — 3×3 grid of science cards, the tech cards stacked
-  // under each, per-card resource contributions, completion log, and the
-  // per-round completion counter that the `science:reset-completions` hook
-  // clears at endOfRound. Optional so older test fixtures that pre-date 05.1
-  // remain source-compatible; hooks and moves that touch it must guard.
+  // Science role state — the blue-tech `hand` populated by the Library,
+  // plus per-round drill/teach latches (D27). Optional so older test
+  // fixtures stay source-compatible.
   science?: ScienceState;
 
-  // Foreign role state — Battle and Trade decks (top-of-deck = lowest number)
-  // plus the Foreign hand. Built at setup by 07.1; refined by 07.2-07.4.
-  // Optional so older test fixtures that pre-date 07.1 remain source-
-  // compatible; moves and the playerView redactor must guard for `undefined`.
-  foreign?: ForeignState;
+  // Defense role state — Phase 2 will repopulate this with real units in
+  // play, hand of unit cards, and (via 05.3) the red-color tech hand. For
+  // 1.4 it's a stub: empty hand, empty inPlay. Optional so older test
+  // fixtures that pre-date 1.4 remain source-compatible; moves and the
+  // playerView redactor must guard for `undefined`.
+  defense?: DefenseState;
+
+  // Defense redesign 2.2 — Global Event Track (D19). Built at setup by
+  // `buildTrack` (one shuffle per phase pile, then concatenate phases in
+  // order). Phase 2.3 will wire `chiefFlipTrack` against `advanceTrack`;
+  // Phase 2.5's red-tech "peek N" effects will read `peekFollowing`.
+  //
+  // Fully public: every player sees the same `G.track`. `playerView`
+  // performs no redaction — the face-up next card is the table-presence
+  // telegraph the design leans on. Optional so older fixtures (pre-2.2)
+  // stay source-compatible; helpers and moves that touch it must guard.
+  track?: TrackState;
 
   // Cross-cutting events state (08.x): per-color decks, per-seat hands /
   // used / playedThisRound. Built at setup by 08.1. Optional so older test
   // fixtures that pre-date 08.1 remain source-compatible; moves and hooks
   // that touch it must guard.
   events?: EventsState;
+
+  // Science Library (SL redesign): row / deck / lost-ideas pile / per-
+  // seat discount tableaus. Built at setup by SL 2.2; mutated by the
+  // SL 3.x moves. Optional so test fixtures and pre-SL setups stay
+  // source-compatible — moves that read it must guard for `undefined`.
+  library?: LibraryState;
 
   // Feature-flag bag toggled by later slices' `setup` once the
   // corresponding state shape exists. Used by stub moves that need to
@@ -164,60 +208,80 @@ export interface SettlementState {
     chief?: boolean;
     science?: boolean;
     domestic?: boolean;
-    foreign?: boolean;
+    defense?: boolean;
   };
 
   // 08.2 — modifier stack pushed by the event-effect dispatcher. Effects
-  // that condition a *subsequent* move (e.g. `doubleScience`, `forbidBuy`)
-  // push themselves here on dispatch; the move consults
-  // `hasModifierActive(...)` and calls `consumeModifier(...)` after
-  // applying. Optional so test fixtures and pre-08.2 setups stay clean.
+  // that condition a *subsequent* move push themselves here on dispatch;
+  // the move consults `hasModifierActive(...)` and calls
+  // `consumeModifier(...)` after applying. No live `EventEffect` kinds
+  // are modifier-shaped today; the slot stays as the integration seam.
+  // Optional so test fixtures and pre-08.2 setups stay clean.
   _modifiers?: EventEffect[];
 
   // 08.2 — per-seat "awaiting follow-up input" map. The dispatcher stashes
-  // an effect here when it can't apply immediately (e.g.
-  // `swapTwoScienceCards` needs the seat to pick which two cards). The
-  // follow-up `eventResolve(payload)` move (08.3) reads this slot, applies
-  // the effect with the payload, and clears the entry. Optional for the
-  // same reason as `_modifiers`.
+  // an effect here when it can't apply immediately (an `awaitInput`
+  // effect needing a seat-supplied payload). The follow-up
+  // `eventResolve(payload)` move (08.3) reads this slot, applies the
+  // effect with the payload, and clears the entry. Optional for the same
+  // reason as `_modifiers`.
   _awaitingInput?: Record<PlayerID, EventEffect>;
-
-  // 07.5 — set by `placeOrInterruptTrade` when a Foreign-flipped trade
-  // card lands on top of an already-occupied `centerMat.tradeRequest` slot.
-  // The pending TradeCardDef itself is held in `G.foreign.pendingTrade`;
-  // this boolean is the cross-cutting "chief, please decide" flag the
-  // `chiefDecideTradeDiscard` move gates on. V1 simplification: bgio's
-  // `setStage` only acts on the calling seat, so we don't try to push the
-  // chief into the `awaitingChiefDecision` stage from inside a foreign
-  // move — the flag is the contract instead. Cleared by
-  // `chiefDecideTradeDiscard`.
-  _awaitingChiefTradeDiscard?: boolean;
 
   // Chief-role-specific runtime state — worker token reserve, etc. Filled
   // out incrementally as chief features land (04.3 introduces `workers`).
-  // 05.3 adds the optional `hand` slot: the Chief receives gold-color
-  // technology cards distributed by `scienceComplete`. Optional so existing
-  // tests / fixtures stay clean.
+  // The optional `hand` slot receives gold-color technology cards
+  // distributed by `scienceLibraryBuy`. The `taxedThisRound`
+  // latch belongs to the chief Tax super-power: once-per-round gate that
+  // the `chief:reset-tax` round-end hook clears. Optional so existing tests
+  // / fixtures stay clean.
   chief?: {
     workers: number;
     hand?: TechnologyDef[];
+    taxedThisRound?: boolean;
   };
 
   // Domestic role state — the full shape lands in 06.1 (hand of buildings
-  // + placed-building grid). 05.3's `scienceComplete` distributes green-
-  // color tech cards to the Domestic seat; those go into the optional
-  // `techHand` slot inside `DomesticState` (renamed from `hand` so the
-  // 06.1 plan's `hand: BuildingDef[]` slot stays unambiguous). 04.3's
+  // + placed-building grid). `scienceLibraryBuy` distributes green-color
+  // tech cards to the Domestic seat; those go into the optional `techHand`
+  // slot inside `DomesticState` (renamed from `hand` so the 06.1 plan's
+  // `hand: BuildingDef[]` slot stays unambiguous). 04.3's
   // `chiefPlaceWorker` stub still reads `domestic.grid[key].worker` — the
   // new `DomesticBuilding` shape is a superset of the previous stub shape
   // (it adds `defID` + `upgrades` alongside the existing `worker` field),
   // so the stub keeps working unchanged.
   domestic?: DomesticState;
 
-  // 08.4 — opponent state. Today this just holds the wander deck (the V1
-  // opponent: a card flipped at each round end whose effects bonus or
-  // hurt our village). Optional so older fixtures stay source-compatible
-  // and so the `opponent:wander-step` round-end hook can no-op cleanly
-  // when not present.
-  opponent?: { wander: WanderState };
+  // Per-seat ordered log of cards the seat has played / placed /
+  // recruited. Each entry carries enough info for the UI to render the
+  // card via `cardById(id)` and surface "what round did I play this in".
+  // Public state — every seat sees every other seat's graveyard (it's a
+  // table-visible discard pile, not secret information). Optional so
+  // older test fixtures stay source-compatible; helpers lazy-init.
+  graveyards?: Record<PlayerID, GraveyardEntry[]>;
+
+  // Generic "1 undo at a time" slot — written by every undoable card-play
+  // / recruit move via `markUndoable`, cleared by every other mutating
+  // move via `clearUndoable`, restored by the `undoLast` move. Carries a
+  // full deep clone of G as it was right before the move's mutations,
+  // plus a UI label and the seat that owns the undo. See `./undo.ts` for
+  // the contract and the parallel-actives reasoning.
+  _lastAction?: import('./undo.ts').UndoSnapshot;
+
+  // Per-recipient help requests: "I want to do X, you have what I need."
+  // Toggled via the `requestHelp` move; auto-cleared at the action's
+  // completion site via `clearRequestsForTarget`. Redacted by
+  // `playerView` so each viewer sees only rows where they are the
+  // requester or recipient. Optional so older test fixtures stay
+  // source-compatible.
+  requests?: HelpRequest[];
+}
+
+/** A single entry in a seat's graveyard log. `cardId` is the canonical
+ *  `<kind>:<name>` id from `src/cards/registry.ts` so the UI can resolve
+ *  it back to the card def via `cardById`. */
+export interface GraveyardEntry {
+  cardId: string;
+  kind: 'tech' | 'building' | 'unit';
+  name: string;
+  round: number;
 }

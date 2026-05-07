@@ -11,22 +11,22 @@ type NumPlayers = 1 | 2 | 3 | 4;
 
 const ASSIGNMENTS: Record<NumPlayers, Record<PlayerID, Role[]>> = {
   1: {
-    '0': ['chief', 'science', 'domestic', 'foreign'],
+    '0': ['chief', 'science', 'domestic', 'defense'],
   },
   2: {
     '0': ['chief', 'science'],
-    '1': ['domestic', 'foreign'],
+    '1': ['domestic', 'defense'],
   },
   3: {
     '0': ['chief', 'science'],
     '1': ['domestic'],
-    '2': ['foreign'],
+    '2': ['defense'],
   },
   4: {
     '0': ['chief'],
     '1': ['science'],
     '2': ['domestic'],
-    '3': ['foreign'],
+    '3': ['defense'],
   },
 };
 

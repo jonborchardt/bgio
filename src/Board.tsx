@@ -1,62 +1,206 @@
-// Board (04.5) — top-level board component.
+// Board — top-level board component.
 //
-// Linear, full-width stack:
-//   1. StatusBar (phase / player / round / mode)
-//   2. SeatPicker (debug seat chooser)
-//   3. CenterMat (per-seat player mats: in / out / stash + trade slot)
-//   4. Role panel(s) the local seat owns — the player's action surface
+// Linear stack:
+//   1. Header — "Settlement" title plus a single-line turn/round line
+//      ("It's your turn — Round 3" or "Waiting on Chief — Round 3").
+//   2. CenterMat — the row of per-seat tiles. In hot-seat mode each
+//      tile is a clickable seat tab (replacing the older SeatPicker
+//      Tabs strip); in networked mode tiles are read-only.
+//   3. RequestsRow — per-peer help-request boxes for the local seat.
+//   4. Role panel(s) the local seat owns — the player's action surface.
+//
+// Phase / player / round / mode debug info is no longer surfaced to
+// players; it lives inside `<DevSidebar>` (dev-only fly-out) so the
+// player view stays focused on "your turn / not your turn".
 
-import { useContext } from 'react';
-import { Box, Stack, Typography } from '@mui/material';
+import { useCallback, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
+import { Box, Stack } from '@mui/material';
 import type { BoardProps } from 'boardgame.io/react';
-import type { PlayerID, SettlementState } from './game/index.ts';
+import type { SettlementState } from './game/index.ts';
 import { rolesAtSeat } from './game/roles.ts';
-import { detectMode } from './clientMode.ts';
-import type { StatusBarMode } from './ui/layout/StatusBar.tsx';
 import { ChiefPanel } from './ui/chief/ChiefPanel.tsx';
 import { SciencePanel } from './ui/science/SciencePanel.tsx';
 import { DomesticPanel } from './ui/domestic/DomesticPanel.tsx';
-import { ForeignPanel } from './ui/foreign/ForeignPanel.tsx';
+import { DefensePanel } from './ui/defense/DefensePanel.tsx';
 import { GameOverBanner } from './ui/layout/GameOverBanner.tsx';
-import { PhaseHint } from './ui/layout/PhaseHint.tsx';
-import { SeatPicker } from './ui/layout/SeatPicker.tsx';
-import { SeatPickerContext } from './ui/layout/SeatPickerContext.ts';
-import { pickActiveSeat } from './ui/layout/activeSeat.ts';
-import { StatusBar } from './ui/layout/StatusBar.tsx';
 import type { GameOutcome } from './game/endConditions.ts';
-import { CenterMat } from './ui/mat/CenterMat.tsx';
-import { ChatSection } from './ui/chat/ChatSection.tsx';
+import { SeatTiles } from './ui/mat/CenterMat.tsx';
+import { CenterBurnBanner } from './ui/center/CenterBurnBanner.tsx';
+import { RelationshipsModalHost } from './ui/relationships/RelationshipsModalHost.tsx';
+import { DevSidebar } from './ui/layout/DevSidebar.tsx';
+import { EventLogDrawer } from './ui/log/EventLogDrawer.tsx';
+import { TrackStrip } from './ui/track/TrackStrip.tsx';
+import { countLibraryCardsBought } from './game/track/boss.ts';
+import {
+  ResolveAnimationProvider,
+  ResolveTraceWatcher,
+} from './ui/track/resolveAnimationContext.tsx';
+import { ResolveStepBanner } from './ui/track/ResolveStepBanner.tsx';
+import { RangeHighlightProvider } from './ui/track/RangeHighlightProvider.tsx';
+import { BuildingGrid } from './ui/domestic/BuildingGrid.tsx';
+import { CentralBoard } from './ui/centralBoard/CentralBoard.tsx';
+import { ProgressBoxes } from './ui/centralBoard/ProgressBoxes.tsx';
+import { VillagePlacementContext } from './ui/layout/VillagePlacementContext.ts';
+import { RESOURCES } from './game/resources/types.ts';
+import { LostIdeasPile } from './ui/library/LostIdeasPile.tsx';
+
+// Build the <TrackStrip> node from the current G.track slice. Lifted
+// out of the SettlementBoard render to keep the central-board assembly
+// readable; returns `null` when the track is absent (older fixtures).
+function buildTrackNode(G: SettlementState): ReactNode {
+  if (G.track === undefined) return null;
+  const history = G.track.history;
+  const flippedThisRound = G.track.flippedThisRound === true;
+  const currentCard =
+    flippedThisRound && history.length > 0
+      ? history[history.length - 1]
+      : undefined;
+  const pastCards =
+    currentCard !== undefined
+      ? history.slice(0, history.length - 1)
+      : history;
+  return (
+    <TrackStrip
+      history={pastCards}
+      current={currentCard}
+      upcoming={G.track.upcoming}
+      phase={G.track.currentPhase}
+    />
+  );
+}
+
+// Locate the boss card. The 2.1 loader guarantees exactly one boss
+// card exists; the only question is whether it's still face-down
+// (in `upcoming`) or already flipped (in `history`).
+function findBoss(G: SettlementState) {
+  if (G.track === undefined) return undefined;
+  const inUpcoming = G.track.upcoming.find((c) => c.kind === 'boss');
+  if (inUpcoming !== undefined && inUpcoming.kind === 'boss') {
+    return inUpcoming;
+  }
+  const inHistory = G.track.history.find((c) => c.kind === 'boss');
+  return inHistory !== undefined && inHistory.kind === 'boss'
+    ? inHistory
+    : undefined;
+}
+
+function buildScienceTracker(G: SettlementState): ReactNode {
+  const boss = findBoss(G);
+  const target = boss?.thresholds.science ?? 0;
+  const current = countLibraryCardsBought(G);
+  return (
+    <ProgressBoxes
+      label="Science"
+      current={current}
+      target={target}
+      accent="science"
+      tooltipTitle={
+        target > 0
+          ? `Completed science: ${current} of ${target} (boss threshold).`
+          : 'No boss threshold yet.'
+      }
+    />
+  );
+}
+
+function buildEconomyTracker(G: SettlementState): ReactNode {
+  const boss = findBoss(G);
+  const target = boss?.thresholds.economy ?? 0;
+  const current = G.economyHigh ?? G.bank.gold ?? 0;
+  return (
+    <ProgressBoxes
+      label="Economy"
+      current={current}
+      target={target}
+      accent="gold"
+      tooltipTitle={
+        target > 0
+          ? `Most gold ever in vault: ${current} of ${target} (boss threshold).`
+          : 'No boss threshold yet.'
+      }
+    />
+  );
+}
 
 export function SettlementBoard(props: BoardProps<SettlementState>) {
-  const { G, ctx, playerID } = props;
+  const { G, ctx, moves, playerID } = props;
   const gameOver = ctx.gameover !== undefined;
 
-  // 14.1 — App.tsx owns the hot-seat seat state and exposes a setter
-  // through `SeatPickerContext`. In networked mode the provider is
-  // absent (the lobby is the authority on which seat you hold), so
-  // the picker falls back to its read-only badge.
-  const seatCtx = useContext(SeatPickerContext);
+  // Post-3.9 preference sweep — the BuildingGrid was lifted out of
+  // DomesticPanel / DefensePanel into the board so every seat sees
+  // the village + the threat-resolution path overlay. The board owns
+  // the placement state (which building / which unit is armed); the
+  // role panels publish into it via VillagePlacementContext when the
+  // local seat selects from their hand.
+  const [selectedBuildingName, setSelectedBuildingName] = useState<
+    string | undefined
+  >(undefined);
+  const [selectedUnitName, setSelectedUnitName] = useState<string | undefined>(
+    undefined,
+  );
 
-  // 10.8 — spectator mode. `playerID === null` is bgio's "no seat,
-  // watching only" connection (02.4's `playerView(G, ctx, null)`
-  // redacts secret state). `undefined` happens under headless test
-  // Clients that don't bind a player; we treat that as "no local seat"
-  // for read-only purposes too (panels render summary view, no action
-  // buttons). We split the two:
-  //   - isSpectator: explicitly watching (null) — show "Spectating" tag.
-  //   - hasSeat: there is a local seat (defined and not null).
-  const isSpectator = playerID === null;
+  const placementContextValue = useMemo(
+    () => ({
+      selectedBuildingName,
+      setSelectedBuildingName,
+      selectedUnitName,
+      setSelectedUnitName,
+    }),
+    [selectedBuildingName, selectedUnitName],
+  );
+
+  // Pooled non-chief stash total — fed into the centre tile so every
+  // seat reads the at-risk number at a glance (D2 / 3.2). Computed
+  // once per render off `G.mats`; the chief seat is intentionally
+  // absent from `mats`.
+  const pooled = useMemo(() => {
+    const breakdown = RESOURCES.map((r) => {
+      let amount = 0;
+      const mats = G.mats ?? {};
+      for (const seatMat of Object.values(mats)) {
+        amount += seatMat?.stash?.[r] ?? 0;
+      }
+      return { resource: r, amount };
+    });
+    const total = breakdown.reduce((s, b) => s + b.amount, 0);
+    return { total, breakdown };
+  }, [G.mats]);
+
+  // Resolve the armed building name to its def via the local seat's
+  // domestic hand. This is only meaningful when the local seat owns
+  // domestic; otherwise the active card is simply undefined and the
+  // grid renders read-only.
+  const activeBuildingDef = useMemo(() => {
+    if (selectedBuildingName === undefined) return undefined;
+    return G.domestic?.hand.find((c) => c.name === selectedBuildingName);
+  }, [selectedBuildingName, G.domestic]);
+
+  // Issue 057g — useCallback so memoized children (BuildingGrid,
+  // CellSlot, UnitStack) don't bust their `React.memo` boundary on
+  // every Board render.
+  const handlePlaceBuilding = useCallback(
+    (x: number, y: number): void => {
+      if (selectedBuildingName === undefined) return;
+      moves.domesticBuyBuilding(selectedBuildingName, x, y);
+      setSelectedBuildingName(undefined);
+    },
+    [selectedBuildingName, moves],
+  );
+
+  const handlePickUnitCell = useCallback(
+    (cellKey: string): void => {
+      if (selectedUnitName === undefined) return;
+      moves.defenseBuyAndPlace(selectedUnitName, cellKey);
+      setSelectedUnitName(undefined);
+    },
+    [selectedUnitName, moves],
+  );
+
+  // Spectator vs seated. `playerID === null` is bgio's "watching only"
+  // connection (02.4's `playerView(G, ctx, null)` redacts secrets);
+  // `undefined` is a headless test client.
   const hasSeat = playerID !== undefined && playerID !== null;
-
-  // 14.3 — actual client mode for the StatusBar "Mode" tag. A null
-  // local seat in networked mode is a spectator (10.8); everything
-  // else just reports the build-time mode.
-  const clientMode = detectMode();
-  const statusMode: StatusBarMode | undefined = isSpectator
-    ? 'spectating'
-    : clientMode === 'networked'
-      ? 'networked'
-      : 'hotseat';
 
   // A role's panel is rendered when the local seat holds it OR when we're
   // in a single-player game (hot-seat solo: everything visible).
@@ -64,41 +208,11 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
     ? rolesAtSeat(G.roleAssignments, playerID)
     : [];
   const isSolo = ctx.numPlayers === 1;
-  const expanded = (role: 'chief' | 'science' | 'domestic' | 'foreign') =>
+  const expanded = (role: 'chief' | 'science' | 'domestic' | 'defense') =>
     isSolo || localRoles.includes(role);
 
-  return (
-    <Box sx={{ width: 'min(100%, 60rem)', mx: 'auto', display: 'grid', gap: 3 }}>
-      <Box component="header" sx={{ textAlign: 'center' }}>
-        <Typography
-          variant="h4"
-          component="h1"
-          sx={{ fontWeight: 700, letterSpacing: '0.02em', mb: 0.5 }}
-        >
-          Settlement
-        </Typography>
-        <Typography
-          sx={{
-            fontWeight: 500,
-            color: (t) =>
-              gameOver ? t.palette.status.muted : t.palette.status.active,
-          }}
-        >
-          {gameOver
-            ? 'Game over'
-            : (() => {
-                const active = pickActiveSeat({
-                  activePlayers: ctx.activePlayers,
-                  currentPlayer: ctx.currentPlayer,
-                  roleAssignments: G.roleAssignments,
-                  othersDone: G.othersDone,
-                  localSeat: playerID,
-                });
-                return `${active.label}'s turn`;
-              })()}
-        </Typography>
-      </Box>
-
+  const playArea = (
+    <Stack spacing={3} sx={{ minWidth: 0 }}>
       {gameOver ? (
         <GameOverBanner
           outcome={ctx.gameover as GameOutcome}
@@ -110,72 +224,101 @@ export function SettlementBoard(props: BoardProps<SettlementState>) {
         />
       ) : null}
 
-      {/* 1. Phase / player / round / mode bar. */}
-      <Box>
-        <StatusBar
-          phase={ctx.phase ?? null}
-          currentPlayer={ctx.currentPlayer}
-          round={G.round}
-          mode={statusMode}
-        />
-        <Box sx={{ mt: 0.5 }}>
-          <PhaseHint
-            phase={ctx.phase ?? null}
-            stage={hasSeat ? ctx.activePlayers?.[playerID] : undefined}
-            rolesAtSeat={localRoles}
-            isSpectator={isSpectator}
-          />
-        </Box>
-      </Box>
-
-      {/* 2. Debug player view chooser. Hot-seat: tab strip to switch seat.
-          Networked: read-only "You are Player N" badge. Spectators (null
-          playerID) get nothing — they have no seat to mirror. */}
-      {playerID !== undefined && playerID !== null ? (
-        <SeatPicker
-          numPlayers={ctx.numPlayers as 1 | 2 | 3 | 4}
-          current={playerID as PlayerID}
-          roleAssignments={G.roleAssignments}
-          onChange={
-            seatCtx ? (seat: PlayerID) => seatCtx.setSeat(seat) : undefined
+      {/* Game board: track strip on top, village grid centred below,
+          flanked by Science (left) + Economy (right) progress trackers
+          in the side gutters. The boss card is never surfaced on the
+          table — the gutters carry the boss-threshold telegraph. */}
+      {G.track !== undefined || G.domestic !== undefined ? (
+        <CentralBoard
+          track={buildTrackNode(G)}
+          lostIdeas={
+            G.library !== undefined ? (
+              <LostIdeasPile lostIdeas={G.library.lostIdeas} />
+            ) : null
           }
+          village={
+            G.domestic !== undefined ? (
+              <BuildingGrid
+                grid={G.domestic.grid}
+                activeCard={activeBuildingDef}
+                onPlace={handlePlaceBuilding}
+                units={G.defense?.inPlay}
+                pooledTotal={pooled.total}
+                pooledBreakdown={pooled.breakdown}
+                unitPlacement={{
+                  selectedUnitName,
+                  onPick: handlePickUnitCell,
+                }}
+              />
+            ) : null
+          }
+          scienceTracker={buildScienceTracker(G)}
+          economyTracker={buildEconomyTracker(G)}
+          overlay={<ResolveStepBanner />}
         />
       ) : null}
 
-      {/* 3. Player mats / stats of all seats (incl. other players). */}
-      <CenterMat {...props} />
-
-      {/* 4. Chat — placed above the role action area so it's visible
-          while a player is deciding what to do. `chatMessages` and
-          `sendChatMessage` are bgio-Client-provided props under both
-          the SocketIO and Local transports, so hot-seat and networked
-          both render the panel. Spectators (no `sendChatMessage`) get
-          a read-only view. ChatSection adds an optimistic local outbox
-          so the sender always sees their own message even if bgio's
-          Local transport echo is dropped or duplicated under hot-seat
-          seat-switching. */}
-      {props.sendChatMessage !== undefined || (props.chatMessages?.length ?? 0) > 0 ? (
-        <ChatSection
-          chatMessages={props.chatMessages ?? []}
-          sendChatMessage={props.sendChatMessage}
-          localSender={playerID ?? null}
-          roleAssignments={G.roleAssignments}
-        />
-      ) : null}
-
-      {/* 5. The local seat's action element(s) — the role panel(s) the
-          local player owns. In solo mode (hot-seat 1p), all four render. */}
-      <Stack spacing={3}>
-        {expanded('chief') ? <ChiefPanel {...props} /> : null}
-        {expanded('science') ? <SciencePanel {...props} /> : null}
-        {expanded('domestic') ? <DomesticPanel {...props} /> : null}
-        {expanded('foreign') ? <ForeignPanel {...props} /> : null}
+      {/* Seat tiles fuse into the active role panel below: zero-gap
+          Stack + selected tile drops its bottom border (Circle.tsx) +
+          role panel squares its top corners (RolePanel.tsx). The
+          trade-request slot lives inside the ChiefPanel as its own
+          "Trade Requests" section — it's chief-private, so it's not
+          rendered at the board level. */}
+      <Stack spacing={0}>
+        {/* Defense redesign 3.4 — center-burn banner. Floats above the
+            seat-tile row when a threat reaches the village vault and
+            the resolver writes a `centerBurnDetail` onto the latest
+            trace. The wrapper is `position: relative` so the banner's
+            absolute layout resolves against the tile row; the banner
+            itself is `pointer-events: none` so seat-tile clicks pass
+            through. */}
+        <Box sx={{ position: 'relative' }}>
+          <CenterBurnBanner lastResolve={G.track?.lastResolve} />
+          <SeatTiles {...props} />
+        </Box>
+        <Stack spacing={3}>
+          {expanded('chief') ? <ChiefPanel {...props} /> : null}
+          {expanded('science') ? <SciencePanel {...props} /> : null}
+          {expanded('domestic') ? <DomesticPanel {...props} /> : null}
+          {expanded('defense') ? <DefensePanel {...props} /> : null}
+        </Stack>
       </Stack>
 
-      {/* 14.2 removed the legacy bottom "End my turn" stub that called
-          `pass()`. Chief uses ChiefPanel's own "End my turn" button
-          (chiefEndPhase); every non-chief role uses the matching
-          per-panel `<role>SeatDone` button. */}
+      <RelationshipsModalHost matchState={G} />
+      <DevSidebar
+        moves={props.moves}
+        phase={ctx.phase ?? null}
+        currentPlayer={ctx.currentPlayer}
+        round={G.round}
+      />
+      <EventLogDrawer log={props.log ?? []} G={G} />
+    </Stack>
+  );
+
+  return (
+    <Box
+      sx={{
+        width: '100%',
+        maxWidth: '60rem',
+        mx: 'auto',
+        px: { xs: 1, md: 2 },
+      }}
+    >
+      {/* Defense redesign 3.3 — animation queue + watcher for path
+          overlay. The provider wraps the whole board so any consumer
+          (BuildingGrid in DomesticPanel, future track/center widgets)
+          reads from the same queue; the watcher pushes
+          `G.track.lastResolve` updates onto it as the engine resolves
+          flips. Mounted unconditionally — when `G.track` is missing
+          (older fixtures) the watcher pushes `undefined` and no-ops. */}
+      <ResolveAnimationProvider>
+        <ResolveTraceWatcher lastResolve={G.track?.lastResolve} />
+        <RangeHighlightProvider>
+          <VillagePlacementContext.Provider value={placementContextValue}>
+            {playArea}
+          </VillagePlacementContext.Provider>
+        </RangeHighlightProvider>
+      </ResolveAnimationProvider>
     </Box>
   );
 }

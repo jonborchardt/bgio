@@ -16,6 +16,20 @@ import type { DomesticBuilding, DomesticState } from './types.ts';
 export const cellKey = (x: number, y: number): string => `${x},${y}`;
 
 /**
+ * Synthetic `defID` worn by the village-vault center tile planted by
+ * `setupDomestic` at `(0, 0)`. Per the spec recommendation (defense-redesign-
+ * spec §2 + sub-phase 1.2 "Open question (b)"), Center is **not** a real
+ * `BuildingDef` — there is no entry in `BUILDINGS` for it. Code paths that
+ * walk the grid identify it via the `isCenter: true` tag on the placed
+ * cell; the `defID` is informational so logs / telemetry / UI fallbacks
+ * can label the tile without conditional branches everywhere.
+ */
+export const CENTER_DEF_ID = 'Center';
+
+/** Canonical key for the center tile (always `(0, 0)`). */
+export const CENTER_CELL_KEY = cellKey(0, 0);
+
+/**
  * `true` iff the two grid keys describe orthogonally-adjacent cells —
  * i.e. their Manhattan distance is exactly 1 (diagonals do not count).
  *
@@ -83,24 +97,47 @@ export const isPlacementLegal = (
  * by other roles' Science under-card stacks. Today it's reserved.
  *
  * @param techsAlreadyUsedBy - optional set of TechnologyDef.name values
- *   that have been claimed elsewhere (typically derived by flattening
- *   `G.science.underCards` in `setup.ts`). Reserved for filtering once
- *   the hand mixes BuildingDef and TechnologyDef.
+ *   that have been claimed elsewhere. Reserved for filtering once the
+ *   hand mixes BuildingDef and TechnologyDef.
  */
 export const setupDomestic = (
   techsAlreadyUsedBy?: Set<string>,
 ): DomesticState => {
-  // `BUILDINGS` is a frozen ReadonlyArray — copy into a fresh mutable list
-  // so callers can shuffle / filter without tripping the freeze.
-  const hand: BuildingDef[] = [...BUILDINGS];
+  // Seed only the starter buildings — those whose note carries no
+  // "Requires X" prefix. The rest land in the hand later when the player
+  // plays the matching tech card (`grantTechUnlocks` in
+  // `game/tech/effects.ts` pushes them in). This keeps the hand small at
+  // game start and makes tech-play visibly progress the buildable list.
+  const hand: BuildingDef[] = BUILDINGS.filter(
+    (b) => !/^Requires\b/i.test((b.note ?? '').trim()),
+  );
 
   // Reserved-for-future filter; today the hand has no TechnologyDef
   // entries, so the set has no effect. Reference the parameter so strict
   // TypeScript doesn't flag it as unused once the hand union widens.
   void techsAlreadyUsedBy;
 
+  // Defense redesign D2 — plant the village-vault center tile at (0, 0).
+  // It is the always-present anchor for placement adjacency (the first
+  // real building must be orthogonally adjacent to it), and in Phase 2
+  // it becomes the terminal target for any threat path. The synthetic
+  // defID `'Center'` does NOT correspond to a `BuildingDef`; consumers
+  // identify it via `isCenter: true`. `hp` / `maxHp` are set to 99 (D3
+  // — the center is never destroyed, so a non-trivial maxHp keeps any
+  // accidental damagePct math from producing NaN). Production / repair
+  // / combat paths skip it via `isCenter` regardless.
+  const grid: Record<string, DomesticBuilding> = {};
+  grid[CENTER_CELL_KEY] = {
+    defID: CENTER_DEF_ID,
+    upgrades: 0,
+    worker: null,
+    hp: 99,
+    maxHp: 99,
+    isCenter: true,
+  };
+
   return {
     hand,
-    grid: {},
+    grid,
   };
 };

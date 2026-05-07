@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Deck config",
+  "description": "Selects which card-deck content the build loads. Loaders read this file at module load. Set VITE_DECK env var to override `active` at build time (useful for A/B builds and CI matrices).",
+  "type": "object",
+  "required": ["active", "default", "decks"],
+  "properties": {
+    "active": {
+      "type": "string",
+      "description": "Deck id loaded by default. Must match one of `decks[].id`. Env var VITE_DECK overrides this."
+    },
+    "default": {
+      "type": "string",
+      "description": "Fallback deck id when `active` is absent or invalid."
+    },
+    "decks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "path"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable identifier (used by VITE_DECK and by loaders)."
+          },
+          "label": { "type": "string", "description": "Human-readable label." },
+          "path": {
+            "type": "string",
+            "description": "Folder name under `card-decks/` containing the deck JSON files."
+          }
+        }
+      }
+    }
+  }
+}

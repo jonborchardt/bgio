@@ -18,6 +18,10 @@ import { makeIdleWatcher, type IdleWatcher } from './idle/idleWatcher.ts';
 import { mountAuthRoutes } from './auth/routes.ts';
 import { setAccountsStore } from './auth/accounts.ts';
 import { createSqliteAccountsStore } from './auth/sqliteAccountsStore.ts';
+import { authenticateCredentials } from './auth/authenticateCredentials.ts';
+import { makeBotDriver, type BotDriver } from './bots/botDriver.ts';
+import { setRunsStore } from './runs/runs.ts';
+import { createSqliteRunsStore } from './runs/sqliteRunsStore.ts';
 
 /** Result of `createServer` — exposes the bgio Server instance plus a
  * `port` Promise that resolves once the underlying Koa app is listening.
@@ -32,6 +36,10 @@ export interface CreatedServer {
    * no idle seats). Tests can stop it via `server.idleWatcher.stop()`
    * before running an unrelated assertion. */
   idleWatcher: IdleWatcher;
+  /** Issue 003 — server-side bot driver. Stopped by `botDriver.stop()`
+   * in tests; started unconditionally because the loop is a no-op until
+   * a match has a seat with `metadata.players[id].isBot === true`. */
+  botDriver: BotDriver;
 }
 
 export interface CreateServerOptions {
@@ -58,9 +66,37 @@ export interface CreateServerOptions {
  * top-level `boardgame.io/server` entry; passing one through is enough.
  */
 export const createServer = (opts: CreateServerOptions = {}): CreatedServer => {
-  const serverConfig: { games: typeof Settlement[]; db?: unknown } = {
+  // Issue 002 — gate every move through the auth hook. The default
+  // bgio behavior (compare credentials to metadata) is preserved for
+  // human seats; bots get a synthetic `bot:<seat>` credential that's
+  // only honored when the seat is explicitly flagged isBot=true.
+  // Issue 006 — `origins` (CSV from ALLOWED_ORIGINS) is forwarded to
+  // bgio's SocketIO transport so cross-origin connects from the Pages
+  // build succeed in production.
+  const serverConfig: {
+    games: typeof Settlement[];
+    db?: unknown;
+    authenticateCredentials: typeof authenticateCredentials;
+    origins?: string[];
+  } = {
     games: [Settlement],
+    authenticateCredentials,
   };
+  // Issue 006 — default to the dev client URL when ALLOWED_ORIGINS is
+  // unset so bgio doesn't emit its "Server `origins` option is not set"
+  // warning. Production deploys must set ALLOWED_ORIGINS to the Pages
+  // URL via render.yaml.
+  const allowedOriginsEnv = (
+    typeof process !== 'undefined' ? process.env?.ALLOWED_ORIGINS : undefined
+  );
+  if (typeof allowedOriginsEnv === 'string' && allowedOriginsEnv.length > 0) {
+    serverConfig.origins = allowedOriginsEnv
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  } else {
+    serverConfig.origins = ['http://localhost:5179'];
+  }
   if (opts.storage !== undefined) {
     // String → run through the 10.4 factory; non-string → assume the caller
     // already built an Async-shaped adapter and pass it through verbatim.
@@ -77,6 +113,21 @@ export const createServer = (opts: CreateServerOptions = {}): CreatedServer => {
   // FlatFile / real adapters land in 10.4.
   const server = Server(serverConfig as Parameters<typeof Server>[0]);
 
+  // Issue 023 — when running behind a reverse proxy (Render's edge,
+  // nginx, etc.), Koa needs `app.proxy = true` to honour
+  // `X-Forwarded-For` for `ctx.ip`. Without it, every request looks
+  // like it came from the proxy and the auth rate-limiter collapses
+  // every attacker into a single bucket.
+  const trustProxy = (() => {
+    const raw = typeof process !== 'undefined' ? process.env?.TRUST_PROXY : undefined;
+    if (typeof raw !== 'string') return false;
+    return /^(1|true|yes|on)$/i.test(raw.trim());
+  })();
+  if (trustProxy) {
+    const koaApp = (server as unknown as { app?: { proxy?: boolean } }).app;
+    if (koaApp) koaApp.proxy = true;
+  }
+
   // 10.9 — start the idle-takeover watcher. The watcher does nothing
   // until `noteActivity()` registers a seat, and the seat-takeover
   // module itself is a stub (see `server/idle/seatTakeover.ts`), so
@@ -85,6 +136,47 @@ export const createServer = (opts: CreateServerOptions = {}): CreatedServer => {
   // lockstep with the bgio Server it watches.
   const idleWatcher = makeIdleWatcher(server);
   idleWatcher.start();
+
+  // Issue 003 — wire the bot driver. The loop is a no-op until a match
+  // has a seat with `metadata.players[id].isBot=true` (set either at
+  // match-create time or by the idleWatcher's seat-takeover path).
+  const botDriver = makeBotDriver({
+    server: server as unknown as Parameters<typeof makeBotDriver>[0]['server'],
+  });
+  botDriver.start();
+
+  // Issue 054 — periodic log compaction. Drops the per-move log for
+  // matches whose metadata.gameover landed more than COMPACT_AGE_MS
+  // ago. The log is bgio's replay source; dropping it means a finished
+  // match can no longer be replayed move-by-move, which is acceptable
+  // — we keep the final state + metadata. Only fires when the
+  // active storage adapter exposes the method (the SQLite adapter
+  // does; the in-memory and FlatFile adapters don't).
+  const COMPACT_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+  const COMPACT_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+  type Compactor = { compactCompletedMatches: (ms: number) => Promise<number> };
+  const compactable = (server as unknown as { db?: unknown }).db as
+    | Compactor
+    | undefined;
+  let compactionTimer: ReturnType<typeof setInterval> | undefined;
+  if (
+    compactable &&
+    typeof compactable.compactCompletedMatches === 'function'
+  ) {
+    compactionTimer = setInterval(() => {
+      void compactable.compactCompletedMatches(COMPACT_AGE_MS).catch((err) => {
+        console.warn(
+          '[compact] log compaction tick failed:',
+          err instanceof Error ? err.message : err,
+        );
+      });
+    }, COMPACT_INTERVAL_MS);
+    if (
+      typeof (compactionTimer as { unref?: () => void }).unref === 'function'
+    ) {
+      (compactionTimer as { unref: () => void }).unref();
+    }
+  }
 
   // 10.7 follow-up — mount auth routes on bgio's Koa app. bgio exposes
   // its app at server.app; we attach a small middleware that handles
@@ -113,7 +205,7 @@ export const createServer = (opts: CreateServerOptions = {}): CreatedServer => {
     return requestedPort;
   };
 
-  return { server, start, idleWatcher };
+  return { server, start, idleWatcher, botDriver };
 };
 
 // CLI entrypoint. We compare argv[1] to this module's path so the bootstrap
@@ -154,6 +246,21 @@ if (isDirectInvocation) {
     } catch (err) {
       console.warn(
         '[auth] SQLite accounts store init failed, keeping in-memory store:',
+        err instanceof Error ? err.message : err,
+      );
+    }
+    // Issue 007 — run history persists alongside accounts in SQLite so
+    // server restarts no longer wipe per-user fastest-win records.
+    try {
+      const sqlitePath = process.env.SQLITE_PATH;
+      setRunsStore(
+        createSqliteRunsStore(
+          sqlitePath !== undefined ? { path: sqlitePath } : {},
+        ),
+      );
+    } catch (err) {
+      console.warn(
+        '[runs] SQLite runs store init failed, keeping in-memory store:',
         err instanceof Error ? err.message : err,
       );
     }

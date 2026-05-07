@@ -13,9 +13,10 @@
 // construction time with a clear error rather than at typecheck.
 
 import { createRequire } from 'node:module';
-import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
-import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { existsSync, mkdirSync } from 'node:fs';
+import { dirname, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runMigrations } from '../storage/migrate.ts';
 import type {
   AccountsStore,
   AccountTokenRow,
@@ -75,15 +76,6 @@ const DEFAULT_MIGRATIONS_DIR = (() => {
   return resolve(here, '..', 'storage', 'migrations');
 })();
 
-/** Run all `*.sql` files in `migrationsDir` in numbered order against `db`.
- * Idempotent: every file uses `IF NOT EXISTS`. */
-const runMigrations = (db: BetterSqliteDatabase, migrationsDir: string): void => {
-  if (!existsSync(migrationsDir)) return;
-  const files = readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort();
-  for (const file of files) {
-    db.exec(readFileSync(join(migrationsDir, file), 'utf8'));
-  }
-};
 
 interface UserDbRow {
   id: string;
@@ -197,6 +189,9 @@ export const createSqliteAccountsStore = (
     backdateToken(token, ageMs) {
       const result = stmts.backdateToken.run(ageMs, ageMs, token);
       return result.changes > 0;
+    },
+    close() {
+      db.close();
     },
   };
 };

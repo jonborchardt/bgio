@@ -13,12 +13,40 @@
 // mode is active *and* the storage adapter is the persistent one
 // (10.4 SQLite). Hot-seat dev doesn't need it.
 //
-// Auth is the in-process Map-backed store from `server/auth/accounts.ts`
-// at the moment (the SQLite swap from 13.3 is still pending). When the
-// SQLite migration lands this file picks up the same DB transparently
-// because `accounts.ts` keeps the same public API.
+// Issue 049 — when the running server uses STORAGE_KIND=sqlite, the
+// in-memory accounts store this script defaults to is a different
+// process / table than the dev server, so the seeded users would
+// never appear in the live login flow. We mirror the bootstrap from
+// `server/index.ts`: read STORAGE_KIND, and if it's `sqlite` swap
+// the accounts module's backing store to a SQLite-backed instance
+// pointed at the same DB file the server uses.
 
-import { register } from '../server/auth/accounts.ts';
+import {
+  register,
+  setAccountsStore,
+} from '../server/auth/accounts.ts';
+import { createSqliteAccountsStore } from '../server/auth/sqliteAccountsStore.ts';
+
+const installSqliteIfRequested = (): void => {
+  const kind = process.env.STORAGE_KIND;
+  if (kind !== 'sqlite') return;
+  try {
+    const sqlitePath = process.env.SQLITE_PATH;
+    setAccountsStore(
+      createSqliteAccountsStore(
+        sqlitePath !== undefined ? { path: sqlitePath } : {},
+      ),
+    );
+    console.log(
+      `[dev-seed] using SQLite accounts store at ${sqlitePath ?? '<default>'}`,
+    );
+  } catch (err) {
+    console.warn(
+      '[dev-seed] SQLite accounts store init failed — keeping in-memory store:',
+      err instanceof Error ? err.message : err,
+    );
+  }
+};
 
 const DEV_ACCOUNTS: ReadonlyArray<{ username: string; password: string }> = [
   { username: 'alice', password: 'password' },
@@ -26,6 +54,7 @@ const DEV_ACCOUNTS: ReadonlyArray<{ username: string; password: string }> = [
 ];
 
 const seed = async (): Promise<void> => {
+  installSqliteIfRequested();
   for (const acct of DEV_ACCOUNTS) {
     try {
       await register(acct.username, acct.password);

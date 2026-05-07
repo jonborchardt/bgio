@@ -1,6 +1,6 @@
 // Shared "play one event card of <color>" factory for the four role
-// event-play moves: 04.4 chiefPlayGoldEvent, 05.4 sciencePlayBlueEvent,
-// 06.6 domesticPlayGreenEvent, 07.6 foreignPlayRedEvent.
+// event-play moves: chiefPlayGoldEvent, sciencePlayBlueEvent,
+// domesticPlayGreenEvent, defensePlay (red).
 //
 // Why a factory rather than four near-identical files: each only differs
 // in (role, color, flag key). All five pieces of logic are identical —
@@ -30,9 +30,10 @@ import { INVALID_MOVE } from 'boardgame.io/core';
 import type { SettlementState, Role } from '../types.ts';
 import { rolesAtSeat } from '../roles.ts';
 import { cycleAdvance, type EventColor } from './state.ts';
-import { dispatch } from './dispatcher.ts';
+import { dispatch, hasModifierActive } from './dispatcher.ts';
 import { fromBgio, type BgioRandomLike } from '../random.ts';
 import type { StageEvents, StageName } from '../phases/stages.ts';
+import { markUndoable } from '../undo.ts';
 
 // Type alias for the per-role flag keys on `_eventPlayedThisRound`.
 // Lifted from `SettlementState` so a typo here would be a compile error.
@@ -72,10 +73,20 @@ export const playEventStub = (
     // One event of this color per round.
     if (G._eventPlayedThisRound?.[flagKey] === true) return INVALID_MOVE;
 
+    // Issue 017 — `suppressEventsThisRound` modifier blocks every
+    // play-event move while active. Not consumed here: the round-end
+    // hook clears it, so the suppression covers the whole round.
+    if (hasModifierActive(G, 'suppressEventsThisRound')) return INVALID_MOVE;
+
     // Resolve the played card so we can hand it to the dispatcher.
     const card = hand.find((c) => c.id === cardID)!;
 
-    // All checks passed — bookkeeping.
+    // All checks passed — snapshot before any mutation so the dispatched
+    // effects (which can ripple through bank, modifiers, hands, …) roll
+    // back as one atomic unit.
+    markUndoable(G, `Play ${card.name}`, playerID);
+
+    // Bookkeeping.
     if (!G._eventPlayedThisRound) G._eventPlayedThisRound = {};
     G._eventPlayedThisRound[flagKey] = true;
 

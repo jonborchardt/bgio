@@ -1,114 +1,36 @@
-// 06.8 — Adjacency content loader.
+// Adjacency content loader.
 //
-// Mirrors the 01.2 pattern (see `./index.ts`): import the raw JSON, validate
-// it synchronously at module load, and export a frozen `ReadonlyArray` so
-// any accidental mutation in game logic crashes loudly.
-//
-// The loader cross-checks every `defID` (and every non-`'*'`
-// `whenAdjacentTo`) against `BUILDINGS` so we don't ship a rule pointing at
-// a typo'd or renamed building.
+// Validates the active deck's adjacency.json at module load and exports
+// a frozen ReadonlyArray. The validator + type live in
+// `./adjacencyValidator.ts` so the test fixture's adjacency shim can
+// reach the validator without bouncing through the test alias on this
+// file.
 
-import adjacencyRaw from './adjacency.json';
-import { BUILDINGS } from './index.ts';
-import { RESOURCES } from '../game/resources/types.ts';
-import type { ResourceBag } from '../game/resources/types.ts';
+import { pickFromGlob } from './deckSelection.ts';
+import { validateBuildings } from './schema.ts';
+import {
+  validateAdjacencyRules,
+  type AdjacencyRuleDef,
+} from './adjacencyValidator.ts';
 
-export interface AdjacencyRuleDef {
-  defID: string;
-  whenAdjacentTo: string | '*';
-  bonus: Partial<ResourceBag>;
-  flavor?: string;
-}
+export { validateAdjacencyRules };
+export type { AdjacencyRuleDef };
 
-const isPlainObject = (v: unknown): v is Record<string, unknown> =>
-  typeof v === 'object' && v !== null && !Array.isArray(v);
+const ADJACENCY_BY_DECK = import.meta.glob<unknown>(
+  '/card-decks/*/adjacency.json',
+  { eager: true, import: 'default' },
+);
+const BUILDINGS_BY_DECK = import.meta.glob<unknown>(
+  '/card-decks/*/buildings.json',
+  { eager: true, import: 'default' },
+);
+const adjacencyRaw = pickFromGlob(ADJACENCY_BY_DECK, 'adjacency.json');
+const buildingsRaw = pickFromGlob(BUILDINGS_BY_DECK, 'buildings.json');
 
-const VALID_RESOURCES: ReadonlySet<string> = new Set(RESOURCES);
-
-const validateBonus = (
-  raw: unknown,
-  index: number,
-): Partial<ResourceBag> => {
-  if (!isPlainObject(raw)) {
-    throw new Error(
-      `AdjacencyRuleDef[${index}]: field "bonus" must be an object, got ${typeof raw}`,
-    );
-  }
-  const out: Partial<ResourceBag> = {};
-  for (const [k, v] of Object.entries(raw)) {
-    if (!VALID_RESOURCES.has(k)) {
-      throw new Error(
-        `AdjacencyRuleDef[${index}]: unknown resource "${k}" in bonus (allowed: ${[...RESOURCES].join(', ')})`,
-      );
-    }
-    if (typeof v !== 'number' || Number.isNaN(v)) {
-      throw new Error(
-        `AdjacencyRuleDef[${index}]: bonus."${k}" must be a number, got ${typeof v}`,
-      );
-    }
-    (out as Record<string, number>)[k] = v;
-  }
-  return out;
-};
-
-export const validateAdjacencyRules = (
-  raw: unknown,
-  knownBuildings: ReadonlySet<string>,
-): AdjacencyRuleDef[] => {
-  if (!Array.isArray(raw)) {
-    throw new Error(
-      `AdjacencyRuleDef: expected an array, got ${typeof raw}`,
-    );
-  }
-  return raw.map((entry, i) => {
-    if (!isPlainObject(entry)) {
-      throw new Error(
-        `AdjacencyRuleDef[${i}]: expected an object, got ${typeof entry}`,
-      );
-    }
-
-    const defID = entry['defID'];
-    if (typeof defID !== 'string') {
-      throw new Error(
-        `AdjacencyRuleDef[${i}]: field "defID" must be a string, got ${typeof defID}`,
-      );
-    }
-    if (!knownBuildings.has(defID)) {
-      throw new Error(
-        `AdjacencyRuleDef[${i}]: defID "${defID}" does not match any building name in BUILDINGS`,
-      );
-    }
-
-    const whenAdjacentTo = entry['whenAdjacentTo'];
-    if (typeof whenAdjacentTo !== 'string') {
-      throw new Error(
-        `AdjacencyRuleDef[${i}]: field "whenAdjacentTo" must be a string, got ${typeof whenAdjacentTo}`,
-      );
-    }
-    if (whenAdjacentTo !== '*' && !knownBuildings.has(whenAdjacentTo)) {
-      throw new Error(
-        `AdjacencyRuleDef[${i}]: whenAdjacentTo "${whenAdjacentTo}" does not match any building name in BUILDINGS`,
-      );
-    }
-
-    const bonus = validateBonus(entry['bonus'], i);
-
-    const flavorRaw = entry['flavor'];
-    if (flavorRaw !== undefined && typeof flavorRaw !== 'string') {
-      throw new Error(
-        `AdjacencyRuleDef[${i}]: optional field "flavor" must be a string when present, got ${typeof flavorRaw}`,
-      );
-    }
-
-    const out: AdjacencyRuleDef = {
-      defID,
-      whenAdjacentTo,
-      bonus,
-    };
-    if (typeof flavorRaw === 'string') out.flavor = flavorRaw;
-    return out;
-  });
-};
+// Issue 015 — `index.ts` re-exports `ADJACENCY_RULES`, which would
+// create a load-time cycle if this file imported `BUILDINGS` from the
+// barrel. Reach for the same raw + validator the barrel uses.
+const BUILDINGS = validateBuildings(buildingsRaw);
 
 const deepFreezeArray = <T extends object>(arr: T[]): ReadonlyArray<T> => {
   for (const entry of arr) Object.freeze(entry);

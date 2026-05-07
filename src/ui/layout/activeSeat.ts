@@ -5,7 +5,7 @@
 // `Player ${ctx.currentPlayer + 1}'s turn`, but `ctx.currentPlayer`
 // is bgio's "default seat" — it advances after every pass-style
 // turn end and trails the actual active seat by an entire phase
-// once `setActivePlayers` is in play. After the foreign seat ends
+// once `setActivePlayers` is in play. After the defense seat ends
 // round 0 in our 4-player game, the engine transitions back to
 // `chiefPhase` for round 1; only the chief seat (Player 1) is
 // active, but `currentPlayer` is still '3' — so the header used to
@@ -21,6 +21,7 @@
 // or every seat in it is already done.
 
 import type { PlayerID, Role } from '../../game/types.ts';
+import { seatOfRole } from '../../game/roles.ts';
 
 export interface ActiveSeatInfo {
   seat: PlayerID;
@@ -46,6 +47,11 @@ const labelFor = (
 export function pickActiveSeat(args: {
   activePlayers: Record<PlayerID, string> | null | undefined;
   currentPlayer: PlayerID;
+  /** Current bgio phase. In `chiefPhase` every seat is parked in
+   *  `Stage.NULL` so non-chief seats can fire the side-channel
+   *  `requestHelp` move — the actual phase-driver is the seat holding
+   *  the chief role. Optional so pre-14.16 fixtures don't crash. */
+  phase?: string | null;
   roleAssignments: Record<PlayerID, Role[]>;
   /** `G.othersDone` — seats with `true` here have flipped done in
    *  the current `othersPhase` (14.2's per-role seatDone moves) but
@@ -58,13 +64,25 @@ export function pickActiveSeat(args: {
   const {
     activePlayers,
     currentPlayer,
+    phase,
     roleAssignments,
     othersDone,
     localSeat,
   } = args;
 
   let seat: PlayerID = currentPlayer;
-  if (activePlayers && Object.keys(activePlayers).length > 0) {
+  // chiefPhase: pin to the chief seat. bgio's default turn.order
+  // rotates `currentPlayer` across phase transitions, so by the time
+  // chiefPhase begins it can point at any seat — and the Stage.NULL
+  // parking on every seat means the activePlayers fallback would also
+  // mis-pick a non-chief.
+  if (phase === 'chiefPhase') {
+    try {
+      seat = seatOfRole(roleAssignments, 'chief');
+    } catch {
+      // fall through to activePlayers / currentPlayer
+    }
+  } else if (activePlayers && Object.keys(activePlayers).length > 0) {
     const candidates = Object.entries(activePlayers)
       .filter(([s, stage]) => stage !== 'done' && !(othersDone?.[s] === true))
       .map(([s]) => s)

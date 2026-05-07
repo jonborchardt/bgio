@@ -6,6 +6,9 @@
 // userID) is the most important contract — the bgio `endIf` hook can
 // be re-fired (e.g. on server restart replay) and we need a stable
 // view.
+//
+// 1.5 (D25): legacy `settlementsJoined` score field retired; runs only
+// carry `outcome` + `turns` now.
 
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -26,7 +29,6 @@ describe('runs.recordRun (10.7)', () => {
       matchID: 'm1',
       outcome: 'win',
       turns: 42,
-      settlementsJoined: 3,
     });
     expect(typeof rec.id).toBe('string');
     expect(rec.id.length).toBeGreaterThan(0);
@@ -41,14 +43,12 @@ describe('runs.recordRun (10.7)', () => {
       matchID: 'm1',
       outcome: 'win',
       turns: 42,
-      settlementsJoined: 3,
     });
     const second = await recordRun({
       userID: 'u1',
       matchID: 'm1',
       outcome: 'timeUp', // different fields ignored on the duplicate write
       turns: 999,
-      settlementsJoined: 0,
     });
     expect(second.id).toBe(first.id);
     expect(second.outcome).toBe('win');
@@ -61,21 +61,18 @@ describe('runs.recordRun (10.7)', () => {
       matchID: 'm1',
       outcome: 'win',
       turns: 10,
-      settlementsJoined: 0,
     });
     const b = await recordRun({
       userID: 'u1',
       matchID: 'm2',
       outcome: 'win',
       turns: 20,
-      settlementsJoined: 0,
     });
     const c = await recordRun({
       userID: 'u2',
       matchID: 'm1',
       outcome: 'win',
       turns: 30,
-      settlementsJoined: 0,
     });
     expect(new Set([a.id, b.id, c.id]).size).toBe(3);
   });
@@ -88,21 +85,18 @@ describe('runs.listRunsByUser (10.7)', () => {
       matchID: 'm1',
       outcome: 'win',
       turns: 10,
-      settlementsJoined: 0,
     });
     await recordRun({
       userID: 'u2',
       matchID: 'm1',
       outcome: 'win',
       turns: 12,
-      settlementsJoined: 0,
     });
     await recordRun({
       userID: 'u1',
       matchID: 'm2',
       outcome: 'timeUp',
       turns: 80,
-      settlementsJoined: 4,
     });
     const list = await listRunsByUser('u1');
     expect(list.length).toBe(2);
@@ -122,55 +116,49 @@ describe('runs.personalBest (10.7)', () => {
   it('returns nulls for a user with no runs', async () => {
     const best = await personalBest('u1');
     expect(best.fastestWinTurns).toBeNull();
-    expect(best.bestTimeUpSettlements).toBeNull();
+    expect(best.longestTimeUpTurns).toBeNull();
   });
 
-  it('reports the lowest turns across wins and the highest settlements across timeUps', async () => {
+  it('reports the lowest turns across wins and the highest turns across timeUps', async () => {
     await recordRun({
       userID: 'u1',
       matchID: 'm1',
       outcome: 'win',
       turns: 50,
-      settlementsJoined: 0,
     });
     await recordRun({
       userID: 'u1',
       matchID: 'm2',
       outcome: 'win',
       turns: 38,
-      settlementsJoined: 0,
     });
     await recordRun({
       userID: 'u1',
       matchID: 'm3',
       outcome: 'win',
       turns: 60,
-      settlementsJoined: 0,
     });
     await recordRun({
       userID: 'u1',
       matchID: 'm4',
       outcome: 'timeUp',
-      turns: 80,
-      settlementsJoined: 2,
+      turns: 60,
     });
     await recordRun({
       userID: 'u1',
       matchID: 'm5',
       outcome: 'timeUp',
       turns: 80,
-      settlementsJoined: 5,
     });
     await recordRun({
       userID: 'u1',
       matchID: 'm6',
       outcome: 'timeUp',
-      turns: 80,
-      settlementsJoined: 1,
+      turns: 50,
     });
     const best = await personalBest('u1');
     expect(best.fastestWinTurns).toBe(38);
-    expect(best.bestTimeUpSettlements).toBe(5);
+    expect(best.longestTimeUpTurns).toBe(80);
   });
 
   it('does not leak across users', async () => {
@@ -179,14 +167,12 @@ describe('runs.personalBest (10.7)', () => {
       matchID: 'm1',
       outcome: 'win',
       turns: 10,
-      settlementsJoined: 0,
     });
     await recordRun({
       userID: 'u2',
       matchID: 'm2',
       outcome: 'win',
       turns: 99,
-      settlementsJoined: 0,
     });
     const best = await personalBest('u2');
     expect(best.fastestWinTurns).toBe(99);

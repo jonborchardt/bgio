@@ -4,22 +4,29 @@ A four-role co-op-ish strategy game built on **[boardgame.io](https://boardgame.
 **React** + **TypeScript** + **Vite**, with a sibling **Koa** server under `server/` for
 networked play.
 
-> **Status: V1 engine + UI complete; hot-seat single-tab end-to-end playable.**
-> 490+ tests, typecheck + lint clean, Playwright smoke green. The hot-seat board ships
-> a seat-picker tab strip, per-role "End my turn" buttons, a `ctx.activePlayers`-driven
-> "Player N: role's turn" header, a phase hint, a game-over banner, a favicon, and a
-> per-event damage absorber UI for Foreign battles. Per-seat resources live on a player
-> mat (`in` / `out` / `stash`); the chief sweeps `out` into the bank at every chief
-> turn, drops resources into seats' `in`, and `in` empties into `stash` automatically
+> **Status: V1 engine + UI complete; defense redesign fully landed; hot-seat single-tab
+> end-to-end playable.** Typecheck + lint clean, Playwright smoke green. The hot-seat
+> board ships a seat picker (the local viewer drives any seat), per-role "End my turn"
+> buttons, an `activePlayers`-driven "It's your turn — Round N" header, a game-over
+> banner, and a unified **central board** that frames the global event track strip on
+> top of the village (domestic) grid; per-seat resources live on a player mat
+> (`in` / `out` / `stash`) with the chief sweeping `out` into the bank each chief turn,
+> dropping resources into seats' `in`, and `in` emptying into `stash` automatically
 > when a seat begins its turn. Domestic produce auto-fires at othersPhase entry. The
-> networked stack assembles end-to-end (lobby + accounts + chat + idle bot takeover)
-> but the live two-tab playtest hasn't been driven through yet.
+> defense role replaces the retired Foreign loop: the chief flips one track card per
+> round, threats walk a path into the village and are intercepted by units the Defense
+> seat recruited onto building tiles, and the village wins by surviving the terminal
+> **boss** card (its two thresholds — Science completions and the running-max bank
+> gold — each cancel one boss attack). The networked stack assembles end-to-end
+> (lobby + accounts + chat + idle bot takeover) but the live two-tab playtest hasn't
+> been driven through yet.
 
 ## Two ways to play
 
-- **Demo at the GitHub Pages URL** — hot-seat, single-tab, no save, no login. Pick a seat
-  from the tab strip and play all four roles from one browser; the bgio debug panel is
-  also mounted in dev (production build hides it). Round-loop reachable end-to-end.
+- **Demo at the GitHub Pages URL** — hot-seat, single-tab, no save, no login. Click a
+  seat tile on the center mat and play all four roles from one browser; the bgio debug
+  panel is also mounted in dev (production build hides it). Round-loop reachable
+  end-to-end.
 - **Full experience with accounts and run history** runs against the networked Render
   deploy. See [`server/README.md`](server/README.md) for env vars + Render setup.
 
@@ -70,15 +77,21 @@ Python 3 / make / a C++ toolchain. The Dockerfile installs them automatically.
 │   │   ├── roles.ts           # assignRoles / seatOfRole / rolesAtSeat
 │   │   ├── phases/            # chief / others / endOfRound / stages
 │   │   ├── resources/         # bag / bank / centerMat / playerMat / bankLog / moves / types
-│   │   ├── events/            # event deck, dispatcher, eventResolve
-│   │   ├── opponent/          # wander deck
+│   │   ├── events/            # per-color event decks, dispatcher, eventResolve
+│   │   ├── track.ts track/    # Global Event Track runtime + path / resolver / boss / centerBurn
 │   │   ├── tech/              # tech-card effects
+│   │   ├── requests/          # cross-seat help-request rows
 │   │   ├── ai/                # enumerate + per-role bot heuristics
-│   │   └── roles/{chief,science,domestic,foreign}/  # per-role moves
-│   ├── data/                  # JSON + typed loaders (BUILDINGS / UNITS / TECHNOLOGIES / EVENT_CARDS / WANDER_CARDS / ADJACENCY_RULES / SCIENCE_CARDS / battle / trade decks)
-│   ├── ui/                    # MUI panels + cards + chat + chrome
-│   │   ├── layout/            # StatusBar, SeatPicker, RolePanel, GameOverBanner, PhaseHint
-│   │   ├── chief/ science/ domestic/ foreign/   # per-role panels
+│   │   └── roles/{chief,science,domestic,defense}/  # per-role moves
+│   ├── cards/                 # card registry + cross-card relationship index
+│   ├── data/                  # typed loaders only — BUILDINGS / UNITS / TECHNOLOGIES / EVENT_CARDS / TRACK_CARDS / ADJACENCY_RULES (content lives under card-decks/)
+│   ├── ui/                    # MUI panels + cards + chrome
+│   │   ├── layout/            # RolePanel, GameOverBanner, PhaseHint, DevSidebar, …
+│   │   ├── chief/ science/ domestic/ defense/   # per-role panels
+│   │   ├── centralBoard/      # CentralBoard frame + ProgressBoxes (boss-threshold widgets)
+│   │   ├── track/             # TrackStrip, PathOverlay, BossReadout, ResolveStepBanner
+│   │   ├── center/            # CenterBurnBanner (vault-burn beat)
+│   │   ├── log/ requests/ relationships/ cardPreview/ matPreview/
 │   │   ├── cards/ resources/ mat/ deck/ hand/ chat/
 │   │   └── ...
 │   ├── lobby/                 # LobbyShell + SeatPicker + AuthForms + soloConfig + creds
@@ -97,11 +110,36 @@ Python 3 / make / a C++ toolchain. The Dockerfile installs them automatically.
 ├── tests-e2e/smoke.spec.ts    # Playwright
 ├── scripts/                   # dev-seed.ts, build-networked.mjs, free-ports.mjs
 ├── .github/workflows/         # ci.yml, deploy-pages.yml, deploy-server.yml
+├── card-decks/                # content. One folder per deck variant (00-initial = baseline; 06-merged-best = active default). Selected by deck.config.json + the VITE_DECK env override.
 ├── render.yaml                # Render blueprint (free-tier docker + persistent disk)
 ├── vite.config.ts             # Vite + Vitest config (port 5179 strict)
 ├── playwright.config.ts
 └── eslint.config.js           # bans Math.random in src/
 ```
+
+## Card decks
+
+Game content (buildings, units, technologies, events, track cards, adjacency
+rules) lives under [`card-decks/`](card-decks/). Each subfolder is a complete
+deck variant; the active deck is selected by
+[`card-decks/deck.config.json`](card-decks/deck.config.json) and can be
+overridden per-build with the `VITE_DECK` env var:
+
+```bash
+# permanent: edit card-decks/deck.config.json `active` field
+# per-build: VITE_DECK=06-merged-best npm run build
+# A/B by env: set VITE_DECK in .env.production / .env.staging
+```
+
+The default and currently shipping deck is **`06-merged-best`** (synergy +
+color-balanced library + formula-derived costs). The **`00-initial`** folder
+is a baseline snapshot of the live deck at the time the rewrite proposals
+were authored. Each `card-decks/<id>/REPORT.md` explains its design goal and
+the diff against the baseline. Tests run against a small fixture under
+[`tests/fixtures/deck/`](tests/fixtures/deck/) so test stability is
+decoupled from content edits — only [`tests/data/liveDeck.test.ts`](tests/data/liveDeck.test.ts)
+and [`tests/data/library-content-coverage.test.ts`](tests/data/library-content-coverage.test.ts)
+exercise the actually-shipped deck (via `?live` query suffix).
 
 ## Deploying
 

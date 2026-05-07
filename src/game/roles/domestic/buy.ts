@@ -22,6 +22,10 @@ import { canAfford } from '../../resources/bag.ts';
 import { payFromStash } from '../../resources/moves.ts';
 import { buildingCost } from '../../../data/index.ts';
 import { cellKey, isPlacementLegal } from './grid.ts';
+import { pushGraveyard } from '../../graveyard.ts';
+import { idForBuilding } from '../../../cards/registry.ts';
+import { markUndoable } from '../../undo.ts';
+import { clearRequestsForTarget } from '../../requests/clear.ts';
 
 export const domesticBuyBuilding: Move<SettlementState> = (
   { G, ctx, playerID },
@@ -70,11 +74,24 @@ export const domesticBuyBuilding: Move<SettlementState> = (
   // record the placed building. `payFromStash` would throw on underflow,
   // but we already checked `canAfford` above, so the throw path is dead
   // code under correct callers.
+  markUndoable(G, `Build ${cardName}`, playerID);
   payFromStash(G, playerID, cost);
   domestic.hand.splice(handIndex, 1);
+  // Defense redesign D15 — placed buildings ship with full HP. `maxHp`
+  // is read off the BuildingDef once at placement; subsequent reads come
+  // off the placed cell so a future upgrade that raises maxHp doesn't
+  // have to backfill on every consumer.
   domestic.grid[cellKey(x, y)] = {
     defID: cardName,
     upgrades: 0,
     worker: null,
+    hp: def.maxHp,
+    maxHp: def.maxHp,
   };
+  pushGraveyard(G, playerID, {
+    cardId: idForBuilding(def),
+    kind: 'building',
+    name: cardName,
+  });
+  clearRequestsForTarget(G, idForBuilding(def));
 };

@@ -3,7 +3,18 @@
 // Translates the human-readable `benefit` strings from buildings.json into a
 // typed `BenefitYield`: a partial `ResourceBag` for the pure-resource verbs
 // (food/production/science/gold) plus a list of structured `BenefitEffect`s
-// for the rest (combat modifiers, happiness, upkeep / unit-cost tweaks).
+// for the rest (combat modifiers, happiness).
+//
+// Defense redesign 1.4 (D14, D18):
+//   - `unit maintenance` (Walls −2, Tower −4, Garrison −3, Hospital Annex −1,
+//     Citadel −3, Fortress −3) is **retired** entirely — Defense has no
+//     upkeep loop in the new design.
+//   - `units cost N less` (Forge −1, Ironworks −1, Arsenal −1) is **retired**
+//     because recruiting / placing is now driven by Defense's own card
+//     economy. Phase 2.5 can re-introduce per-unit placement bonuses, but
+//     authored on the unit card (see D18) rather than the building.
+//   The corresponding building benefit strings have been rewritten in
+//   `buildings.json` so the parser doesn't see those tokens any more.
 //
 // Failure mode is loud: any token we can't match throws, so when content
 // adds a new verb we notice immediately rather than silently dropping it.
@@ -12,16 +23,14 @@ import type { ResourceBag } from '../../resources/types.ts';
 
 export interface BenefitYield {
   resources: Partial<ResourceBag>;
-  // Effects that aren't pure yields (modify combat, reduce upkeep, ...).
+  // Effects that aren't pure yields (modify combat, happiness, ...).
   effects: BenefitEffect[];
 }
 
 export type BenefitEffect =
   | { kind: 'attack'; amount: number }
   | { kind: 'defense'; amount: number }
-  | { kind: 'happiness'; amount: number }
-  | { kind: 'unitMaintenance'; amount: number } // negative = reduces upkeep
-  | { kind: 'unitCost'; amount: number };       // negative = cheaper units
+  | { kind: 'happiness'; amount: number };
 
 // Verbs that go straight into the resource bag. Kept separate from the
 // effect verbs so the lookup is explicit — content drift on either side
@@ -78,22 +87,6 @@ const parseToken = (token: string): { resource?: keyof ResourceBag; resourceAmou
       return { effect: { kind: 'defense', amount: n } };
     }
     if (noun === 'happiness') return { effect: { kind: 'happiness', amount: n } };
-  }
-
-  // "decrease unit maintenance by N" / "increase unit maintenance by N".
-  const upkeep = token.match(/^(decrease|increase)\s+unit\s+maintenance\s+by\s+(\d+)$/);
-  if (upkeep) {
-    const n = Number(upkeep[2]);
-    const sign = upkeep[1] === 'decrease' ? -1 : 1;
-    return { effect: { kind: 'unitMaintenance', amount: sign * n } };
-  }
-
-  // "units cost N less" / "units cost N more".
-  const unitCost = token.match(/^units\s+cost\s+(\d+)\s+(less|more)$/);
-  if (unitCost) {
-    const n = Number(unitCost[1]);
-    const sign = unitCost[2] === 'less' ? -1 : 1;
-    return { effect: { kind: 'unitCost', amount: sign * n } };
   }
 
   return {};

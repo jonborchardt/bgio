@@ -34,11 +34,24 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  webServer: {
-    command: 'npm run dev',
-    port: 5179,
-    reuseExistingServer: true,
-    timeout: 120_000,
-  },
+  // Issue 025 — boot both the Vite client (port 5179) and the bgio
+  // Koa server (port 8000) so the networked-smoke spec can hit
+  // `/auth/*` and `/games/settlement/*` directly via the request
+  // fixture. The hot-seat smoke only needs the client; running both
+  // adds ~3s of cold-start to CI for real networked-stack coverage.
+  webServer: [
+    {
+      command: 'npm run dev',
+      port: 5179,
+      reuseExistingServer: true,
+      timeout: 120_000,
+    },
+    {
+      command: 'npm run server:dev',
+      port: 8000,
+      reuseExistingServer: true,
+      timeout: 120_000,
+    },
+  ],
   reporter: [['list'], ['html', { open: 'never' }]],
 });

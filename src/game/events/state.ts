@@ -21,13 +21,13 @@
 //   chief    → gold
 //   science  → blue
 //   domestic → green
-//   foreign  → red
+//   defense  → red
 //
 // The round-end hook `events:reset-played-this-round` clears
 // `playedThisRound` so each seat is free to play one card of each color
 // again next round.
 
-import { EVENT_CARDS, type EventCardDef, type EventColor } from '../../data/events.ts';
+import { EVENT_CARDS, type EventCardDef, type EventColor } from '../../data/index.ts';
 import type { PlayerID, Role } from '../types.ts';
 import type { RandomAPI } from '../random.ts';
 import { registerRoundEndHook } from '../hooks.ts';
@@ -52,7 +52,7 @@ const ROLE_TO_COLOR: Record<Role, EventColor> = {
   chief: 'gold',
   science: 'blue',
   domestic: 'green',
-  foreign: 'red',
+  defense: 'red',
 };
 
 const ALL_COLORS: readonly EventColor[] = ['gold', 'blue', 'green', 'red'] as const;
@@ -70,7 +70,7 @@ const HAND_SIZE = 4;
  * here would indicate a misconfigured assignments table, not a normal game
  * state. Callers that *must* find a seat should treat `null` as fatal.
  */
-const seatHoldingColor = (
+export const seatHoldingColor = (
   assignments: Record<PlayerID, Role[]>,
   color: EventColor,
 ): PlayerID | null => {
