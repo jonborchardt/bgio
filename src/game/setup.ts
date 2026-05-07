@@ -91,15 +91,31 @@ export const setup = (
   // map (see types.ts).
   const mats = initialMats(roleAssignments);
 
-  // Fallback random for paths where bgio hasn't plugged in its plugin yet
-  // (e.g., direct unit tests of `setup`). Identity shuffle keeps the result
-  // deterministic — tests that need real randomness drive setup through a
-  // bgio Client.
-  const fallbackRandom: BgioRandomLike = {
-    Shuffle: <T>(arr: ReadonlyArray<T>): T[] => [...arr],
-    Number: () => 0,
-  };
-  const r = fromBgio(random ?? fallbackRandom);
+  // Issue 042 — bgio always supplies its random plugin in production.
+  // When it's missing we're either in a unit test that called `setup`
+  // directly OR something is broken in the plugin chain. In test
+  // builds we fall back to an identity shuffle for ergonomics; in
+  // production we throw loudly so a missing plugin doesn't silently
+  // deal cards in JSON order.
+  const isTestEnv =
+    typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
+  let r;
+  if (random !== undefined) {
+    r = fromBgio(random);
+  } else if (isTestEnv) {
+    const fallbackRandom: BgioRandomLike = {
+      Shuffle: <T>(arr: ReadonlyArray<T>): T[] => [...arr],
+      Number: () => 0,
+    };
+    r = fromBgio(fallbackRandom);
+  } else {
+    throw new Error(
+      "Settlement.setup: bgio's random plugin is missing. The engine " +
+        'requires `ctx.random` to deal decks deterministically. If you ' +
+        'are calling `setup()` from a unit test, set NODE_ENV=test or ' +
+        'pass an explicit `random` stub.',
+    );
+  }
 
   const science = setupScience();
   // Reserved for a future widening of `setupDomestic` — today the

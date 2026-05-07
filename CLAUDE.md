@@ -95,8 +95,14 @@ Tests under `tests/` mirror the `src/` shape, with shared factories in `tests/he
   for every domestic seat — produce is engine plumbing, not a player-driven button);
   `endOfRound` runs hooks + advances the round; `stages.ts` centralizes stage names.
 - `src/game/roles/{chief,science,domestic,defense}/` — each role owns its move
-  implementations and any role-local helpers. Cross-role coordination goes through
-  `hooks.ts`, not direct imports. Notable shared moves: `chief/distribute.ts` accepts
+  implementations and any role-local helpers. Cross-role coordination at
+  *runtime* goes through `hooks.ts` (round-end callbacks), not direct
+  imports. **Engine-static lookups** (issue 041) — pure data tables that
+  don't carry mutable state — are exempt: `track/boss.ts` reads
+  `library/debuff.ts`, and both `track/resolver.ts` and
+  `roles/defense/hooks.ts` read `roles/science/skills.ts`. These imports
+  are stable, side-effect-free, and lifting them through hooks would
+  add ceremony without changing the dependency graph. Notable shared moves: `chief/distribute.ts` accepts
   signed amounts (push bank→`mats[target].in` and pull-back `in`→bank during the chief
   phase); `chief/flipTrack.ts` flips the next track card at the chief→others phase
   boundary and runs the resolver; `domestic/repair.ts` is the spend sink that closes

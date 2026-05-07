@@ -59,7 +59,21 @@ export interface BankLogEntry {
   delta: Partial<ResourceBag>;
   /** Optional human-readable note (building name, target seat, card id, …). */
   detail?: string;
+  /** Issue 039 — entries from sources that don't actually move
+   *  resources through `G.bank` (notably `centerBurn`, which drains
+   *  per-seat stashes rather than the bank) carry this flag. The
+   *  audit-trail UI still surfaces them; `computeBankView`'s
+   *  round-split aggregation skips them so the chief's stash view
+   *  stays correct. */
+  nonBankFlow?: boolean;
 }
+
+/** Sources whose `appendBankLog` entries are informational only — the
+ *  tokens never passed through `G.bank`, so `computeBankView` must
+ *  skip them when splitting the round into income / stash. */
+const NON_BANK_FLOW_SOURCES: ReadonlySet<BankLogSource> = new Set<
+  BankLogSource
+>(['centerBurn']);
 
 /**
  * Push a signed bank delta onto `G.bankLog`, lazily initializing the slot.
@@ -102,6 +116,7 @@ export const appendBankLog = (
     source,
     delta: trimmed,
     ...(detail !== undefined ? { detail } : {}),
+    ...(NON_BANK_FLOW_SOURCES.has(source) ? { nonBankFlow: true } : {}),
   });
 };
 
@@ -132,6 +147,10 @@ export const computeBankView = (
   const netPartial: Partial<ResourceBag> = {};
   for (const e of log) {
     if (e.round !== round) continue;
+    // Issue 039 — skip audit-only entries (centerBurn, etc.) so the
+    // chief's stash view doesn't get charged for tokens that never
+    // passed through `G.bank`.
+    if (e.nonBankFlow === true) continue;
     for (const r of RESOURCES as ReadonlyArray<Resource>) {
       const v = e.delta[r];
       if (v === undefined || v === 0) continue;

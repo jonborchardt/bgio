@@ -197,17 +197,32 @@ export const playerViewFor = (
       domestic: 'green',
       defense: 'red',
     };
+    // Issue 040 — iterate every seat that holds cards in each color
+    // map and redact unless the *viewer* owns that role at that seat.
+    // Earlier this only redacted `seatOfRole(role)` per role, missing
+    // any extra seat entry in test fixtures or future N-seats-per-role
+    // configurations.
     const nextHands = { ...events.hands };
-    for (const role of ['chief', 'science', 'domestic', 'defense'] as Role[]) {
-      if (has(role)) continue;
-      const color = colorByRole[role];
-      const seat = trySeatOfRole(G.roleAssignments, role);
-      if (seat === null) continue;
+    for (const color of ['gold', 'blue', 'green', 'red'] as const) {
       const perColor = nextHands[color];
       if (!perColor) continue;
-      const arr = perColor[seat];
-      if (!Array.isArray(arr)) continue;
-      nextHands[color] = { ...perColor, [seat]: redactHand(arr) };
+      // Find the role whose color this is — a seat is "owned" by the
+      // viewer for redaction purposes when the viewer holds that role.
+      const role = (Object.keys(colorByRole) as Role[]).find(
+        (r) => colorByRole[r] === color,
+      );
+      const viewerOwnsThisColor = role !== undefined && has(role);
+      if (viewerOwnsThisColor) continue;
+      let next: Record<string, unknown[]> | undefined;
+      for (const seat of Object.keys(perColor)) {
+        const arr = perColor[seat];
+        if (!Array.isArray(arr)) continue;
+        if (next === undefined) next = { ...perColor };
+        next[seat] = redactHand(arr);
+      }
+      if (next !== undefined) {
+        nextHands[color] = next as typeof perColor;
+      }
     }
     events = { ...events, hands: nextHands };
   }

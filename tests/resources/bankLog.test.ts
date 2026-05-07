@@ -108,4 +108,21 @@ describe('computeBankView (issue 030)', () => {
     const view = computeBankView(G);
     expect(view.income.gold).toBe(3); // round 1's 4 doesn't count
   });
+
+  it('issue 039 — skips centerBurn entries (they did not move bank tokens)', () => {
+    const G = stateWithBank(10, 1);
+    appendBankLog(G, 'stipend', { gold: 3 });
+    // centerBurn is now flagged `nonBankFlow: true` automatically.
+    // The negative delta MUST NOT subtract from the chief's stash
+    // view — those tokens drained per-seat stashes, not the bank.
+    appendBankLog(G, 'centerBurn', { wood: -2, stone: -1 });
+    const view = computeBankView(G);
+    expect(view.income.gold).toBe(3);
+    // Stash = bank − round-net-flow; centerBurn must not affect that.
+    expect(view.stash.gold).toBe(7);
+    expect(view.stash.wood).toBe(0);
+    // The audit-only entry IS still on the log (so the chief tooltip
+    // can narrate the burn).
+    expect(G.bankLog?.some((e) => e.source === 'centerBurn')).toBe(true);
+  });
 });
