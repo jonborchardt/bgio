@@ -365,11 +365,22 @@ settings the first time.
 The networked build deploys to Render as a Docker web service via `render.yaml` and
 `.github/workflows/deploy-server.yml` (push-triggered build validation; Render auto-deploys
 from the repo). Free-tier sleeps after ~15 min idle; the 10.6 reconnect spinner covers the
-wake window. Persistent disk at `/data` holds the SQLite DB.
+wake window.
 
-**Pre-deploy on a fresh host:** `npm install` so `better-sqlite3` (native build),
-`@playwright/test`, `@vitest/coverage-v8`, and `concurrently` resolve. The Dockerfile already
-installs Python 3 / make / g++ for the SQLite native compile.
+**Storage state, current reality:** the free plan does not support persistent disks, so
+`render.yaml` sets `STORAGE_KIND=memory` and ships no `disk:` block. Every cold start
+(deploy, idle-recycle, manual restart) wipes accounts, matches, and run history. This is
+a stopgap for smoke-testing the networked path on free tier — fine for "does the lobby +
+transport work end-to-end", not fine for any persistent playtest. The four-line upgrade
+path to SQLite-on-persistent-disk (`plan: starter` + `STORAGE_KIND: sqlite` + `SQLITE_PATH`
++ restore the `disk:` block) is documented in the `render.yaml` header. Until that
+upgrade lands, **don't tell playtesters their accounts will persist** and don't write code
+that assumes durable server state.
+
+**Pre-deploy on a fresh host:** `npm install` so `better-sqlite3` (native build, used by
+local-dev and the future Starter-tier upgrade path), `@playwright/test`,
+`@vitest/coverage-v8`, and `concurrently` resolve. The Dockerfile already installs
+Python 3 / make / g++ for the SQLite native compile.
 
 ## Known V1 caveats / open follow-ups
 
@@ -416,14 +427,16 @@ installs Python 3 / make / g++ for the SQLite native compile.
 - **`__test*` moves** are gated behind `NODE_ENV=test` (review fix #1). Production builds
   ship `<role>SeatDone` moves (14.2) and `chiefEndPhase` (04.2) — no test scaffolding leaks
   into prod.
-- **Accounts persist to SQLite when `STORAGE_KIND=sqlite`** (the production default, set
-  in `render.yaml`). The accounts module reads / writes through an `AccountsStore` seam
-  (`server/auth/accountsStore.ts`); the SQLite implementation in
-  `server/auth/sqliteAccountsStore.ts` opens its own connection to the same DB file the
-  bgio match-storage adapter uses, so users + tokens survive container restarts. The
-  default at boot stays in-memory — `setAccountsStore(...)` is the one-line swap. The
-  `runs` history table from migration `002_users_and_runs.sql` is the remaining 10.7
-  follow-up; everything else under that plan has landed.
+- **Accounts persist to SQLite when `STORAGE_KIND=sqlite`.** The accounts module reads /
+  writes through an `AccountsStore` seam (`server/auth/accountsStore.ts`); the SQLite
+  implementation in `server/auth/sqliteAccountsStore.ts` opens its own connection to the
+  same DB file the bgio match-storage adapter uses, so users + tokens survive container
+  restarts. The default at boot stays in-memory — `setAccountsStore(...)` is the one-line
+  swap. The `runs` history table from migration `002_users_and_runs.sql` is the remaining
+  10.7 follow-up; everything else under that plan has landed. **Currently in production:**
+  `render.yaml` sets `STORAGE_KIND=memory` (free-tier limitation, see Deployment section),
+  so the deployed server runs the all-in-memory path; durability returns when the service
+  upgrades to Starter + SQLite.
 - **In-flight content gaps:** events migrated to typed `gainResource` shape (review fix
   ride-along). Tech / track / event content shipped via the deck-config rewrite —
   `06-merged-best` is the active default (synergy + color-balanced library +
@@ -435,4 +448,11 @@ installs Python 3 / make / g++ for the SQLite native compile.
   `VITE_CLIENT_MODE=networked` (or visit the dev URL), register two accounts via
   `<AuthForms>`, create a 2-player match in tab A, join from tab B, drive a round. The
   server runner switch (vite-node) cleared the original boot blocker; the live run is the
-  next validation step.
+  next validation step. The lobby cutover plan and the live-smoke checklist live under
+  `plans/lobby/` (orchestrator + four sub-plans).
+- **Free-tier in-memory storage in production.** `render.yaml`'s current
+  `STORAGE_KIND=memory` is a stopgap to land the networked playtest on Render's free
+  plan (no persistent disk available). All server state — accounts, matches, run history
+  — wipes on every cold start. The upgrade path to SQLite + persistent disk is a
+  four-line edit documented in the `render.yaml` header; flip when the playtest justifies
+  the $7/mo Starter cost.

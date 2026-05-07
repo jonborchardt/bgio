@@ -2,12 +2,14 @@
 //
 // Two modes:
 //   - 'hotseat'   — bgio's default `Local` transport, all seats from one tab.
-//                   The GH Pages build ships in this mode.
 //   - 'networked' — bgio's `SocketIO` transport pointed at the bgio server
 //                   from `server/index.ts`. Opt-in at build time via env.
 //
-// `App.tsx` calls `detectMode()` at module load. Anything stronger (per-room
-// switching, runtime toggles) belongs in 10.3 lobby work, not here.
+// The Pages build ships in 'networked' mode. Both transports are bundled
+// (Local arrives via `Client` from `boardgame.io/react` in App.tsx; SocketIO
+// is statically imported below), so a runtime URL-fragment override at
+// `#hotseat` flips a networked build to the hot-seat shell without a
+// rebuild — the prod escape hatch.
 
 import { createElement, type ComponentType } from 'react';
 import { Client } from 'boardgame.io/react';
@@ -37,9 +39,22 @@ const readEnv = (key: string): string | undefined => {
   return undefined;
 };
 
-/** Detect the build-time client mode. Defaults to hot-seat so the existing
- * GH Pages deployment keeps working with no env config. */
+/** Detect the client mode for this page load.
+ *
+ * Order of resolution:
+ *   1. URL fragment `#hotseat` → 'hotseat'. This is the prod escape
+ *      hatch: a networked Pages build still has the hot-seat shell
+ *      bundled, so `<pages-url>/#hotseat` mounts the local-only
+ *      single-tab board without a separate build.
+ *   2. Build-time `VITE_CLIENT_MODE=networked` → 'networked'.
+ *   3. Default → 'hotseat'. */
 export const detectMode = (): ClientMode => {
+  if (
+    typeof window !== 'undefined' &&
+    window.location.hash === '#hotseat'
+  ) {
+    return 'hotseat';
+  }
   const raw = readEnv('VITE_CLIENT_MODE');
   if (raw === 'networked') return 'networked';
   return 'hotseat';

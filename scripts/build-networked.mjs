@@ -5,8 +5,10 @@
 // in-process, then spawn `vite build` with stdio inherited.
 //
 // VITE_CLIENT_MODE flips the client transport (see src/clientMode.ts) to
-// SocketIO at the bgio server address. VITE_SERVER_URL defaults to localhost
-// for ad-hoc local builds; CI / Render set it to the real server URL.
+// SocketIO at the bgio server address. VITE_SERVER_URL defaults to the value
+// in /deploy.config.json#renderServerUrl (the canonical prod server URL);
+// an explicit env var overrides it so a developer can target a local server
+// with `VITE_SERVER_URL=http://localhost:8000 npm run build:networked`.
 //
 // Why not put this logic in `package.json` directly?
 // - `VAR=value cmd` doesn't work on Windows cmd.exe.
@@ -23,13 +25,18 @@ import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(here, '..');
+
+const deployConfigPath = resolve(repoRoot, 'deploy.config.json');
+const deployConfig = JSON.parse(readFileSync(deployConfigPath, 'utf8'));
 
 process.env.VITE_CLIENT_MODE = 'networked';
 process.env.VITE_SERVER_URL =
-  process.env.VITE_SERVER_URL ?? 'http://localhost:8000';
+  process.env.VITE_SERVER_URL ?? deployConfig.renderServerUrl;
 
-const here = dirname(fileURLToPath(import.meta.url));
 const require_ = createRequire(import.meta.url);
 
 // vite ships its CLI as `vite/bin/vite.js`. Its package.json declares the

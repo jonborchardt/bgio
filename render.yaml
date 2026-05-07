@@ -1,13 +1,22 @@
 # Render blueprint for the networked Settlement server.
 #
-# Provisions a single Docker web service backed by a 1 GB persistent disk
-# at /data, where SQLite stores both match state (bgio) and the accounts
-# table (`server/auth/sqliteAccountsStore.ts`). The service rebuilds from
+# Provisions a single Docker web service. The service rebuilds from
 # `server/Dockerfile` whenever `main` advances.
 #
-# Detach + reattach: deleting the service in Render and pointing at this
-# blueprint again rebuilds with the same env vars and disk mount; the
-# disk's contents survive only if `disk.name` matches.
+# Free-tier caveat (current state): Render's free plan does not
+# support persistent disks, so `STORAGE_KIND=memory` is set and the
+# `disk:` mount is omitted. Every cold start (deploy, idle-recycle
+# after ~15 min) wipes accounts, matches, and run history. Acceptable
+# only for smoke-testing the networked path.
+#
+# To upgrade to durable storage:
+#   1. Flip `plan: free` → `plan: starter` ($7/mo).
+#   2. Flip `STORAGE_KIND: memory` → `STORAGE_KIND: sqlite`.
+#   3. Add `SQLITE_PATH: /data/settlement.sqlite` env var.
+#   4. Restore the `disk:` block (name: data, mountPath: /data, sizeGB: 1).
+# That drops in SQLite-on-persistent-disk; accounts + matches survive
+# restarts. CLAUDE.md's deployment section already describes that end
+# state; the in-memory mode here is a temporary stopgap.
 
 services:
   - type: web
@@ -25,16 +34,17 @@ services:
         value: production
       - key: PORT
         value: "8000"
+      # Free-tier: in-memory storage. Wipes on every cold start. See
+      # the file header for the upgrade path to SQLite + persistent disk.
       - key: STORAGE_KIND
-        value: sqlite
-      - key: SQLITE_PATH
-        value: /data/settlement.sqlite
+        value: memory
+      # Issue 023 — Render terminates TLS at its edge; trust X-Forwarded-For
+      # so the auth rate-limit buckets by real client IP, not the proxy.
+      - key: TRUST_PROXY
+        value: "true"
       # CSV of allowed origins for the SocketIO transport + auth routes.
-      # Set this to the deployed Pages URL (and any preview URLs) once
-      # the client lands. Leave unset for a permissive dev default.
+      # The value here must be the bare *origin* of /deploy.config.json#pagesUrl
+      # (no path, no trailing slash). Add additional origins (custom domain,
+      # preview branches) as comma-separated entries.
       - key: ALLOWED_ORIGINS
-        sync: false
-    disk:
-      name: data
-      mountPath: /data
-      sizeGB: 1
+        value: https://jonborchardt.github.io
