@@ -113,6 +113,44 @@ describe('chiefBot (11.3)', () => {
     expect(a).toEqual(b);
   });
 
+  it('issue 036 — picks chiefTax when bank is low and a non-chief seat has hoarded a haul', () => {
+    const G = setupG(4);
+    // Bank gold below the threshold (4) so we drop into the tax path.
+    G.bank.gold = 1;
+    // Domestic seat (2) has a fat stash. Per stash-haul math:
+    // floor(stash / 2) summed across resources >= TAX_MIN_HAUL_THRESHOLD (3).
+    if (G.mats?.['2']) {
+      G.mats['2']!.stash = {
+        ...G.mats['2']!.stash,
+        gold: 6, // floor(6/2) = 3 → meets the haul threshold
+      };
+    }
+    expect(G.chief?.taxedThisRound).toBeFalsy();
+    const action = chiefBot.play({
+      G,
+      ctx: ctxFor('chiefPhase', 4),
+      playerID: '0',
+    });
+    expect(action).toEqual({ move: 'chiefTax', args: [] });
+  });
+
+  it('issue 036 — does NOT pick tax once already taxed this round', () => {
+    const G = setupG(4);
+    G.bank.gold = 1;
+    if (G.mats?.['2']) {
+      G.mats['2']!.stash = { ...G.mats['2']!.stash, gold: 6 };
+    }
+    if (G.chief) G.chief.taxedThisRound = true;
+    const action = chiefBot.play({
+      G,
+      ctx: ctxFor('chiefPhase', 4),
+      playerID: '0',
+    });
+    // Bank is empty-ish (≤ 0 after the bot would distribute), so we
+    // either flip or end. Either way, NOT chiefTax.
+    expect(action?.move).not.toBe('chiefTax');
+  });
+
   it('ends phase when no other seat shows demand (empty roles state)', () => {
     const G = setupG(4);
     G.bank.gold = 7;

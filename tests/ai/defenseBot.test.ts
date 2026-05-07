@@ -18,6 +18,14 @@ import type { ThreatCard } from '../../src/data/schema.ts';
 import { UNITS } from '../../src/data/index.ts';
 import { cellKey } from '../../src/game/roles/domestic/grid.ts';
 import { bagOf } from '../../src/game/resources/bag.ts';
+import { seatOfRole } from '../../src/game/roles.ts';
+
+// Issue 037 — derive the defense seat from `assignRoles` instead of
+// hard-coding `'3'`. Even though `assignRoles(4)` happens to put
+// defense at seat 3 today, a future re-shuffle would silently
+// misroute every test in this file otherwise.
+const defenseSeatOf = (G: SettlementState): string =>
+  seatOfRole(G.roleAssignments, 'defense');
 
 const ctxFor = (
   phase: string,
@@ -61,8 +69,8 @@ describe('enumerateDefense (defense redesign 2.5)', () => {
     const G = setupG(4);
     const cands = enumerateDefense(
       G,
-      ctxFor('othersPhase', { '3': 'defenseTurn' }, 4),
-      '3',
+      ctxFor('othersPhase', { [defenseSeatOf(G)]: 'defenseTurn' }, 4),
+      defenseSeatOf(G),
     );
     expect(cands.length).toBeGreaterThan(0);
     expect(cands[cands.length - 1]?.move).toBe('defenseSeatDone');
@@ -73,7 +81,7 @@ describe('enumerateDefense (defense redesign 2.5)', () => {
     const cands = enumerateDefense(
       G,
       ctxFor('chiefPhase', undefined, 4),
-      '3',
+      defenseSeatOf(G),
     );
     expect(cands).toHaveLength(0);
   });
@@ -81,7 +89,7 @@ describe('enumerateDefense (defense redesign 2.5)', () => {
   it('emits buy+place candidates for affordable units on placed tiles', () => {
     const G = setupG(4);
     // Seed defense's stash with enough gold to recruit a Scout (cost 2).
-    G.mats['3']!.stash = bagOf({ gold: 10 });
+    G.mats[defenseSeatOf(G)]!.stash = bagOf({ gold: 10 });
     // Place a building so there's a non-center tile to put a unit on.
     G.domestic!.grid[cellKey(1, 0)] = {
       defID: 'Granary',
@@ -93,8 +101,8 @@ describe('enumerateDefense (defense redesign 2.5)', () => {
 
     const cands = enumerateDefense(
       G,
-      ctxFor('othersPhase', { '3': 'defenseTurn' }, 4),
-      '3',
+      ctxFor('othersPhase', { [defenseSeatOf(G)]: 'defenseTurn' }, 4),
+      defenseSeatOf(G),
     );
     const buys = cands.filter((c) => c.move === 'defenseBuyAndPlace');
     expect(buys.length).toBeGreaterThan(0);
@@ -108,7 +116,7 @@ describe('enumerateDefense (defense redesign 2.5)', () => {
 
   it('prefers placements that cover the telegraphed next-threat path', () => {
     const G = setupG(4);
-    G.mats['3']!.stash = bagOf({ gold: 10 });
+    G.mats[defenseSeatOf(G)]!.stash = bagOf({ gold: 10 });
     // Two tiles: (1, 0) is on the column 0 path (north → center for
     // offset 0); (3, 3) is far away. With a Scout (range 1), only the
     // tile *adjacent to* the path covers it.
@@ -135,8 +143,8 @@ describe('enumerateDefense (defense redesign 2.5)', () => {
 
     const cands = enumerateDefense(
       G,
-      ctxFor('othersPhase', { '3': 'defenseTurn' }, 4),
-      '3',
+      ctxFor('othersPhase', { [defenseSeatOf(G)]: 'defenseTurn' }, 4),
+      defenseSeatOf(G),
     );
     const buys = cands.filter((c) => c.move === 'defenseBuyAndPlace');
     expect(buys.length).toBeGreaterThan(0);
@@ -156,7 +164,7 @@ describe('defenseBot.play (defense redesign 2.5)', () => {
     const action = defenseBot.play({
       G,
       ctx: ctxFor('chiefPhase', undefined, 4),
-      playerID: '3',
+      playerID: defenseSeatOf(G),
     });
     expect(action).toBeNull();
   });
@@ -174,19 +182,19 @@ describe('defenseBot.play (defense redesign 2.5)', () => {
   it('returns defenseSeatDone when the seat has nothing else to do', () => {
     const G = setupG(4);
     // Stash empty + no defenseHand → only seat-done remains.
-    G.mats['3']!.stash = bagOf({});
+    G.mats[defenseSeatOf(G)]!.stash = bagOf({});
     G.defense = { hand: [], inPlay: [] };
     const action = defenseBot.play({
       G,
-      ctx: ctxFor('othersPhase', { '3': 'defenseTurn' }, 4),
-      playerID: '3',
+      ctx: ctxFor('othersPhase', { [defenseSeatOf(G)]: 'defenseTurn' }, 4),
+      playerID: defenseSeatOf(G),
     });
     expect(action).toEqual({ move: 'defenseSeatDone', args: [] });
   });
 
   it('prefers buy+place over seat-done when a recruit is affordable', () => {
     const G = setupG(4);
-    G.mats['3']!.stash = bagOf({ gold: 10 });
+    G.mats[defenseSeatOf(G)]!.stash = bagOf({ gold: 10 });
     G.domestic!.grid[cellKey(1, 0)] = {
       defID: 'Granary',
       upgrades: 0,
@@ -196,8 +204,8 @@ describe('defenseBot.play (defense redesign 2.5)', () => {
     };
     const action = defenseBot.play({
       G,
-      ctx: ctxFor('othersPhase', { '3': 'defenseTurn' }, 4),
-      playerID: '3',
+      ctx: ctxFor('othersPhase', { [defenseSeatOf(G)]: 'defenseTurn' }, 4),
+      playerID: defenseSeatOf(G),
     });
     expect(action?.move).toBe('defenseBuyAndPlace');
   });
@@ -211,7 +219,7 @@ describe('defenseBot.play (defense redesign 2.5)', () => {
     // entry. We don't drive a full bgio client because round-progress
     // setup conflicts with vitest's parallel sandboxing on Windows.
     const G = setupG(4);
-    G.mats['3']!.stash = bagOf({ gold: 20 });
+    G.mats[defenseSeatOf(G)]!.stash = bagOf({ gold: 20 });
     G.domestic!.grid[cellKey(1, 0)] = {
       defID: 'Granary',
       upgrades: 0,
@@ -220,8 +228,8 @@ describe('defenseBot.play (defense redesign 2.5)', () => {
       maxHp: 1,
     };
 
-    const ctx = ctxFor('othersPhase', { '3': 'defenseTurn' }, 4);
-    const action = defenseBot.play({ G, ctx, playerID: '3' });
+    const ctx = ctxFor('othersPhase', { [defenseSeatOf(G)]: 'defenseTurn' }, 4);
+    const action = defenseBot.play({ G, ctx, playerID: defenseSeatOf(G) });
     expect(action?.move).toBe('defenseBuyAndPlace');
 
     const { defenseBuyAndPlace } = await import(
@@ -233,7 +241,7 @@ describe('defenseBot.play (defense redesign 2.5)', () => {
       c: string,
     ) => void;
     const [unitDefID, cellKeyArg] = action!.args as [string, string];
-    mv({ G, ctx, playerID: '3' }, unitDefID, cellKeyArg);
+    mv({ G, ctx, playerID: defenseSeatOf(G) }, unitDefID, cellKeyArg);
     expect(G.defense!.inPlay.length).toBeGreaterThan(0);
     expect(G.defense!.inPlay[0]?.defID).toBe(unitDefID);
     expect(G.defense!.inPlay[0]?.cellKey).toBe(cellKeyArg);

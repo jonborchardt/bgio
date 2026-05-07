@@ -102,6 +102,43 @@ const seatDemands = (
 
 const endPhase = (): BotAction => ({ move: 'chiefEndPhase', args: [] });
 
+// Issue 036 — Tax thresholds. Tax is the chief's primary lever
+// post-defense-redesign; a bot that never reaches for it understates
+// the chief's capability and biases win-rate measurements. We fire
+// Tax once per round when bank gold is low AND at least one
+// non-chief seat has hoarded enough that the haul (the floor-half
+// summed across seats) clears `TAX_MIN_HAUL_THRESHOLD`.
+const TAX_BANK_GOLD_THRESHOLD = 4;
+const TAX_MIN_HAUL_THRESHOLD = 3;
+
+const seatStashHaul = (G: SettlementState, seat: PlayerID): number => {
+  const stash = G.mats?.[seat]?.stash;
+  if (!stash) return 0;
+  let total = 0;
+  for (const r of Object.keys(stash)) {
+    const v = (stash as Record<string, number | undefined>)[r] ?? 0;
+    if (v > 1) total += Math.floor(v / 2);
+  }
+  return total;
+};
+
+const totalTaxableHaul = (G: SettlementState, chiefSeat: PlayerID): number => {
+  let total = 0;
+  for (const seat of Object.keys(G.roleAssignments)) {
+    if (seat === chiefSeat) continue;
+    if (rolesAtSeat(G.roleAssignments, seat).includes('chief')) continue;
+    total += seatStashHaul(G, seat);
+  }
+  return total;
+};
+
+const shouldTax = (G: SettlementState, chiefSeat: PlayerID): boolean => {
+  if (G.chief?.taxedThisRound === true) return false;
+  const bankGold = G.bank.gold ?? 0;
+  if (bankGold > TAX_BANK_GOLD_THRESHOLD) return false;
+  return totalTaxableHaul(G, chiefSeat) >= TAX_MIN_HAUL_THRESHOLD;
+};
+
 const play = (state: BotState): BotAction | null => {
   const { G, ctx, playerID } = state;
 
@@ -109,6 +146,12 @@ const play = (state: BotState): BotAction | null => {
   if (ctx.phase !== 'chiefPhase') return null;
   const chiefSeat = tryChiefSeat(G);
   if (chiefSeat === null || chiefSeat !== playerID) return null;
+
+  // Issue 036 — Tax first when the bank's bare and the room has
+  // hoarded enough to make the haul worthwhile.
+  if (shouldTax(G, chiefSeat)) {
+    return { move: 'chiefTax', args: [] };
+  }
 
   // Empty bank → nothing left to distribute. End the phase, but only if
   // the round's track flip has happened — otherwise flip first (D22).
