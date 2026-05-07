@@ -50,14 +50,14 @@ export function Hand<T extends { id: string } | { name: string }>({
         const isSelected = selectedID !== undefined && selectedID === id;
         const child = (
           <Box
-            sx={{
+            sx={(t) => ({
               scrollSnapAlign: 'start',
               transform: isSelected ? 'translateY(-0.25rem)' : 'none',
               filter: isSelected
-                ? 'drop-shadow(0 0.25rem 0.5rem rgba(0,0,0,0.4))'
+                ? `drop-shadow(0 0.25rem 0.5rem ${t.palette.appSurface.scrim40})`
                 : 'none',
               transition: 'transform 80ms ease-out',
-            }}
+            })}
           >
             {renderCard(card)}
           </Box>

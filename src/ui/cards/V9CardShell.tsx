@@ -26,6 +26,10 @@ import { ResourceText } from '../resources/ResourceText.tsx';
 
 const accent = (t: Theme, role: Role): string => t.palette.role[role].main;
 const accentLight = (t: Theme, role: Role): string => t.palette.role[role].light;
+const accentTint = (t: Theme, role: Role): string =>
+  t.palette.role[role].surfaceTint;
+const accentTintStrong = (t: Theme, role: Role): string =>
+  t.palette.role[role].surfaceTintStrong;
 
 const ROLE_LABEL_SHORT: Record<Role, string> = {
   chief: 'Chief',
@@ -41,9 +45,9 @@ function StatBox({ label, value }: { label: string; value: string }) {
         alignItems: 'center',
         px: 0.6,
         py: 0.3,
-        border: `1px solid ${t.palette.status.muted}66`,
+        border: `1px solid ${t.palette.status.mutedBorder}`,
         borderRadius: 0.5,
-        bgcolor: 'rgba(255,255,255,0.04)',
+        bgcolor: 'appSurface.overlay04',
         minWidth: 36,
       })}
     >
@@ -158,7 +162,7 @@ function RoleSection({
       <Box
         sx={(t) => ({
           borderLeft: `3px solid ${accent(t, section.role)}`,
-          bgcolor: `${accent(t, section.role)}14`,
+          bgcolor: accentTint(t, section.role),
           borderRadius: '0 4px 4px 0',
           px: 0.5,
           py: 0.2,
@@ -204,7 +208,7 @@ function RoleSection({
       <Box
         sx={(t) => ({
           borderLeft: `3px solid ${accent(t, section.role)}`,
-          bgcolor: `${accent(t, section.role)}1f`,
+          bgcolor: accentTintStrong(t, section.role),
           borderRadius: '0 4px 4px 0',
           px: 0.5,
           py: 0.2,
@@ -279,7 +283,7 @@ function RoleSection({
     <Box
       sx={(t) => ({
         borderLeft: `3px solid ${accent(t, section.role)}`,
-        bgcolor: `${accent(t, section.role)}1f`,
+        bgcolor: accentTintStrong(t, section.role),
         borderRadius: '0 4px 4px 0',
         px: 0.7,
         py: 0.3,
@@ -427,7 +431,7 @@ export function V9CardShell({
         height: h,
         bgcolor: t.palette.card.surface,
         color: t.palette.card.text,
-        border: `1px solid ${t.palette.status.muted}66`,
+        border: `1px solid ${t.palette.status.mutedBorder}`,
         borderRadius: 1,
         boxShadow: t.palette.shadow.card,
         overflow: 'hidden',

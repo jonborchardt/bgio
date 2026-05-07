@@ -19,7 +19,7 @@
 //   2. `colors` / per-domain groups (`resource`, `role`, `tier`,
 //      `eventColor`) — semantic tokens that resolve to ramp references.
 
-import { createTheme } from '@mui/material/styles';
+import { alpha, createTheme } from '@mui/material/styles';
 import type { PaletteColor } from '@mui/material/styles';
 import { RESOURCES } from './game/resources/types.ts';
 import type { Resource } from './game/resources/types.ts';
@@ -173,9 +173,14 @@ export const colors = {
   // HpPips color states (full / ≤50% / 1) on every damage-bearing
   // building tile. They also paint the per-tile damage / repair flash
   // when `BuildingTile` sees `hp` change between renders.
+  //
+  // Issue 010 — `mutedBorder` replaces the `${muted}66` hex-alpha
+  // concatenation that several card shells used; consumers pull the
+  // pre-baked rgba string instead of suffixing two hex digits.
   status: {
     active: ramps.sky[400],
     muted: ramps.slate[400],
+    mutedBorder: alpha(ramps.slate[400], 0.4),
     healthy: ramps.green[500],
     warning: ramps.yellow[500],
     critical: ramps.red[500],
@@ -183,9 +188,18 @@ export const colors = {
 
   // App-wide surface fallbacks. Used by CssBaseline (background.default)
   // and the centering wrapper in main.tsx.
+  //
+  // Issue 010 — `overlay04` / `overlay12` / `overlay40` are pre-baked
+  // white-on-dark tints for inset / hover / focus surfaces. Component
+  // code reads these from the palette instead of hand-rolling
+  // `rgba(255,255,255,0.04)`.
   surface: {
     base: ramps.slate[900],
     text: ramps.slate[50],
+    overlay04: alpha('#ffffff', 0.04),
+    overlay12: alpha('#ffffff', 0.12),
+    /** Black scrim used by the cell focus ring + hand drop shadow. */
+    scrim40: alpha('#000000', 0.4),
   },
 
   // Drop-shadow tokens. Component code reads these via
@@ -235,11 +249,24 @@ for (const r of RESOURCES) {
   }
 }
 
-const role: Record<Role, PaletteColor> = {
-  chief: pc(ramps.yellow),
-  science: pc(ramps.blueScience),
-  domestic: pc(ramps.green),
-  defense: pc(ramps.red),
+// Per-role accent. Issue 010 — `surfaceTint` and `surfaceTintStrong`
+// are pre-baked tints used by the V9 card shell's section panels and
+// other role-coloured surfaces, replacing the `${main}14` / `${main}1f`
+// hex-alpha concatenations call sites used to do.
+type RoleColor = PaletteColor & {
+  surfaceTint: string;
+  surfaceTintStrong: string;
+};
+const roleEntry = (r: Ramp4): RoleColor => ({
+  ...pc(r),
+  surfaceTint: alpha(r[500], 0.08), // ≈ hex `14`
+  surfaceTintStrong: alpha(r[500], 0.12), // ≈ hex `1f`
+});
+const role: Record<Role, RoleColor> = {
+  chief: roleEntry(ramps.yellow),
+  science: roleEntry(ramps.blueScience),
+  domestic: roleEntry(ramps.green),
+  defense: roleEntry(ramps.red),
 };
 
 const tier: Record<'beginner' | 'intermediate' | 'advanced', PaletteColor> = {
@@ -416,7 +443,7 @@ declare module '@mui/material/styles' {
     appSurface: typeof colors.surface;
     shadow: typeof colors.shadow;
     resource: Record<Resource, PaletteColor>;
-    role: Record<Role, PaletteColor>;
+    role: Record<Role, RoleColor>;
     tier: Record<'beginner' | 'intermediate' | 'advanced', PaletteColor>;
     eventColor: Record<EventColor, PaletteColor>;
     track: {
@@ -460,7 +487,7 @@ declare module '@mui/material/styles' {
     appSurface?: typeof colors.surface;
     shadow?: typeof colors.shadow;
     resource?: Record<Resource, PaletteColor>;
-    role?: Record<Role, PaletteColor>;
+    role?: Record<Role, RoleColor>;
     tier?: Record<'beginner' | 'intermediate' | 'advanced', PaletteColor>;
     eventColor?: Record<EventColor, PaletteColor>;
     track?: {

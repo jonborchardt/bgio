@@ -45,6 +45,42 @@ export default tseslint.config(
           message: 'Use the bgio random plugin (src/game/random.ts).',
         },
       ],
+      // Issue 010 — hard rule: no `#` hex literals or `rgba(...)`
+      // outside `theme.ts`. The override below carves out the theme
+      // file. Catches new hex-alpha concatenations
+      // (`${t.palette.role.x.main}1f`) and raw `rgba(0,0,0,0.4)` at
+      // the call site.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "Literal[value=/#[0-9a-fA-F]{3,8}\\b/], TemplateElement[value.cooked=/#[0-9a-fA-F]{3,8}\\b/], Literal[value=/rgba?\\s*\\(/], TemplateElement[value.cooked=/rgba?\\s*\\(/]",
+          message:
+            'Color literals must live in src/theme.ts. Reference them via t.palette.* tokens at call sites.',
+        },
+      ],
+    },
+  },
+  {
+    // theme.ts is the only place hex / rgba literals are allowed (it's
+    // the source of truth for all visual tokens).
+    files: ['src/theme.ts'],
+    rules: {
+      'no-restricted-syntax': 'off',
+    },
+  },
+  {
+    // Card-preview / debug pages set `window.location.hash = '#cards'`
+    // (URL fragments, not colors); the regex catches the literal so we
+    // disable the rule narrowly.
+    files: [
+      'src/ui/layout/DevSidebar.tsx',
+      'src/ui/cardPreview/**',
+      'src/ui/boardPreview/**',
+      'src/ui/matPreview/**',
+    ],
+    rules: {
+      'no-restricted-syntax': 'off',
     },
   },
   {

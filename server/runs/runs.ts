@@ -1,9 +1,11 @@
 // 10.7 — run history.
 //
 // Records the outcome of every game (win turns, time-up rounds taken)
-// keyed by user. The plan eventually persists this in SQLite alongside
-// `users` (per 13.3); V1 lives in memory for the same reason `accounts.ts`
-// does — keeps native deps out of the V1 boot story.
+// keyed by user. Issue 007 — storage now flows through a pluggable
+// `RunsStore` (`./runsStore.ts`); the in-memory implementation stays
+// the boot default so unit tests don't need a DB, and production swaps
+// in `createSqliteRunsStore(...)` from `server/index.ts` when
+// `STORAGE_KIND=sqlite`.
 //
 // Idempotency: the record key is `(matchID, userID)`. If `recordRun`
 // fires twice for the same pair (e.g. server restart replays the
@@ -14,7 +16,7 @@
 // HP-retained, units-alive) once Phase 2.7 wires the boss-resolution
 // score in; for now we only keep `outcome` + `turns`.
 
-import { randomUUID } from 'node:crypto';
+import { createMemoryRunsStore, type RunsStore } from './runsStore.ts';
 
 export interface RunRecord {
   id: string;
@@ -27,18 +29,13 @@ export interface RunRecord {
   createdAt: number;
 }
 
-const runs = new Map<string, RunRecord>();
-/** Index for fast `(matchID, userID)` idempotency checks. */
-const byPair = new Map<string, string>();
-/** Index `userID -> Set<runID>` for fast `listRunsByUser`. */
-const byUser = new Map<string, Set<string>>();
-/** Monotonic insertion counter used as a tiebreaker on `createdAt` so
- * back-to-back records (same millisecond) sort stably. */
-let insertionSeq = 0;
-const insertionOrder = new Map<string, number>();
+let store: RunsStore = createMemoryRunsStore();
 
-const pairKey = (matchID: string, userID: string): string =>
-  `${matchID} ${userID}`;
+/** Swap the backing store. Production wires a SQLite-backed store
+ * (`./sqliteRunsStore.ts`) at boot when `STORAGE_KIND=sqlite`. */
+export const setRunsStore = (next: RunsStore): void => {
+  store = next;
+};
 
 /** Insert (or look up the existing record for) a run.
  *
@@ -48,54 +45,12 @@ const pairKey = (matchID: string, userID: string): string =>
  * could deliver. */
 export const recordRun = async (
   rec: Omit<RunRecord, 'id' | 'createdAt'>,
-): Promise<RunRecord> => {
-  const key = pairKey(rec.matchID, rec.userID);
-  const existingID = byPair.get(key);
-  if (existingID) {
-    const existing = runs.get(existingID);
-    if (existing) return existing;
-  }
-  const created: RunRecord = {
-    id: randomUUID(),
-    userID: rec.userID,
-    matchID: rec.matchID,
-    outcome: rec.outcome,
-    turns: rec.turns,
-    createdAt: Date.now(),
-  };
-  runs.set(created.id, created);
-  byPair.set(key, created.id);
-  insertionOrder.set(created.id, ++insertionSeq);
-  let userSet = byUser.get(rec.userID);
-  if (!userSet) {
-    userSet = new Set<string>();
-    byUser.set(rec.userID, userSet);
-  }
-  userSet.add(created.id);
-  return created;
-};
+): Promise<RunRecord> => store.insertRun(rec);
 
 /** All runs for a user, newest first (by `createdAt`). */
 export const listRunsByUser = async (
   userID: string,
-): Promise<RunRecord[]> => {
-  const ids = byUser.get(userID);
-  if (!ids) return [];
-  const list: RunRecord[] = [];
-  for (const id of ids) {
-    const row = runs.get(id);
-    if (row) list.push(row);
-  }
-  list.sort((a, b) => {
-    if (b.createdAt !== a.createdAt) return b.createdAt - a.createdAt;
-    // Tiebreak on insertion order so two records made in the same
-    // millisecond sort newest-first deterministically.
-    const ia = insertionOrder.get(a.id) ?? 0;
-    const ib = insertionOrder.get(b.id) ?? 0;
-    return ib - ia;
-  });
-  return list;
-};
+): Promise<RunRecord[]> => store.listByUser(userID);
 
 /** Personal best summary used by the win screen (08.5 outcome) line
  * "fastest win: 42 turns — try to beat it".
@@ -132,9 +87,5 @@ export const personalBest = async (
 
 /** Test helper — wipe all run state. */
 export const __resetRunsForTest = (): void => {
-  runs.clear();
-  byPair.clear();
-  byUser.clear();
-  insertionOrder.clear();
-  insertionSeq = 0;
+  store.clear();
 };

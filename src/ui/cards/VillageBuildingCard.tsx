@@ -62,7 +62,7 @@ export function VillageBuildingCard({
         height: h,
         bgcolor: t.palette.card.surface,
         color: t.palette.card.text,
-        border: `1px solid ${t.palette.status.muted}66`,
+        border: `1px solid ${t.palette.status.mutedBorder}`,
         borderRadius: 1,
         boxShadow: t.palette.shadow.card,
         overflow: 'hidden',

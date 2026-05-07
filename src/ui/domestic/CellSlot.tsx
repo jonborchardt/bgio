@@ -328,7 +328,7 @@ export function CellSlot({
             height: '0.625rem',
             borderRadius: '50%',
             bgcolor: (t) => t.palette.resource.worker.main,
-            boxShadow: '0 0 0 2px rgba(0,0,0,0.4)',
+            boxShadow: (t) => `0 0 0 2px ${t.palette.appSurface.scrim40}`,
             zIndex: 3,
           }}
         />

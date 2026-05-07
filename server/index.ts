@@ -20,6 +20,8 @@ import { setAccountsStore } from './auth/accounts.ts';
 import { createSqliteAccountsStore } from './auth/sqliteAccountsStore.ts';
 import { authenticateCredentials } from './auth/authenticateCredentials.ts';
 import { makeBotDriver, type BotDriver } from './bots/botDriver.ts';
+import { setRunsStore } from './runs/runs.ts';
+import { createSqliteRunsStore } from './runs/sqliteRunsStore.ts';
 
 /** Result of `createServer` — exposes the bgio Server instance plus a
  * `port` Promise that resolves once the underlying Koa app is listening.
@@ -196,6 +198,21 @@ if (isDirectInvocation) {
     } catch (err) {
       console.warn(
         '[auth] SQLite accounts store init failed, keeping in-memory store:',
+        err instanceof Error ? err.message : err,
+      );
+    }
+    // Issue 007 — run history persists alongside accounts in SQLite so
+    // server restarts no longer wipe per-user fastest-win records.
+    try {
+      const sqlitePath = process.env.SQLITE_PATH;
+      setRunsStore(
+        createSqliteRunsStore(
+          sqlitePath !== undefined ? { path: sqlitePath } : {},
+        ),
+      );
+    } catch (err) {
+      console.warn(
+        '[runs] SQLite runs store init failed, keeping in-memory store:',
         err instanceof Error ? err.message : err,
       );
     }

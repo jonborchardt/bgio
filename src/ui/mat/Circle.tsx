@@ -231,8 +231,8 @@ function Slot({
         py: 0.5,
         borderLeft: `3px solid ${role ? t.palette.role[role].main : t.palette.status.muted}`,
         bgcolor: role
-          ? `${t.palette.role[role].main}1f`
-          : 'rgba(255,255,255,0.04)',
+          ? t.palette.role[role].surfaceTintStrong
+          : t.palette.appSurface.overlay04,
         borderRadius: '0 4px 4px 0',
         boxShadow: t.palette.shadow.embossInset,
         display: 'flex',

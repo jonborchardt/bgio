@@ -55,6 +55,10 @@ export interface AccountsStore {
    *  rotation / expiry branches in `verify` can be exercised
    *  deterministically. Returns false if the token is unknown. */
   backdateToken(token: string, ageMs: number): boolean;
+  /** Optional. SQLite-backed stores release the file handle here; the
+   *  memory store is a no-op. Tests call this so a follow-up
+   *  `rmSync(dir)` doesn't trip Windows file-locking. */
+  close?: () => void;
 }
 
 export const createMemoryAccountsStore = (): AccountsStore => {

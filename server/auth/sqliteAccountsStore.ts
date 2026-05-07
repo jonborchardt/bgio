@@ -198,5 +198,8 @@ export const createSqliteAccountsStore = (
       const result = stmts.backdateToken.run(ageMs, ageMs, token);
       return result.changes > 0;
     },
+    close() {
+      db.close();
+    },
   };
 };
