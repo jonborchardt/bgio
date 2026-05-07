@@ -38,7 +38,15 @@
     "rootDir": "..",
     "outDir": "./dist",
 
-    "types": []
+    // The server runs under `vite-node` (see CLAUDE.md "Server runner is
+    // vite-node, not tsx"), which provides Vite's runtime APIs —
+    // `import.meta.glob`, `import.meta.env`, etc. The data loaders under
+    // `src/data/*.ts` use `import.meta.glob` to discover JSON content;
+    // typing those calls requires `vite/client`. The app tsconfig picks
+    // it up implicitly via `src/vite-env.d.ts`, but the server include
+    // list doesn't pull that .d.ts in, so we declare the dependency
+    // explicitly here.
+    "types": ["vite/client"]
   },
   "include": [
     "index.ts",
@@ -48,8 +56,16 @@
     "runs/**/*.ts",
     "idle/**/*.ts",
     "bots/**/*.ts",
+    // src/game's transitive imports reach into src/cards (registry +
+    // relationship indexing) and src/data (typed JSON loaders). Both
+    // must be in the include list — TS6307 fires otherwise.
     "../src/game/**/*.ts",
     "../src/data/**/*.ts",
-    "../src/data/**/*.json"
+    "../src/data/**/*.json",
+    "../src/cards/**/*.ts",
+    // Active-deck selection at module load reads the project-level
+    // `card-decks/deck.config.json`. That file lives outside `src/`,
+    // so add the card-decks tree explicitly.
+    "../card-decks/**/*.json"
   ]
 }
