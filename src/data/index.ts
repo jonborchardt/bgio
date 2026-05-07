@@ -32,6 +32,15 @@ export type {
 } from './schema.ts';
 
 export { TRACK_CARDS } from './trackCards.ts';
+// Issue 015 — these were referenced from `events.ts` / `adjacency.ts`
+// directly by their three consumers (cards/registry.ts,
+// roles/domestic/adjacency.ts, cards/relationships.ts). Re-exporting
+// here lets every call site go through the data barrel, matching
+// CLAUDE.md's "imports always go through the loaders" rule.
+export { EVENT_CARDS } from './events.ts';
+export type { EventCardDef, EventColor } from './events.ts';
+export { ADJACENCY_RULES } from './adjacency.ts';
+export type { AdjacencyRuleDef } from './adjacency.ts';
 
 import type { BuildingDef as _BuildingDef, UnitDef as _UnitDef } from './schema.ts';
 import type { ResourceBag } from '../game/resources/types.ts';
@@ -80,15 +89,18 @@ export const TECHNOLOGIES: ReadonlyArray<TechnologyDef> = deepFreezeArray(
 // Verbs we know how to parse out of building `benefit` strings (and similar
 // tokens elsewhere). Referenced by 06.3 — keep this list in sync with the
 // parser there.
+//
+// Issue 013 — defense redesign 1.4 retired the `'unit maintenance'` and
+// `'defense'` verbs (D14 / D18). The list now reflects only the verbs the
+// parser still resolves; reintroducing either token requires re-wiring
+// the resolver first, so failing fast at the type level is the win here.
 export const BENEFIT_TOKENS = [
   'food',
   'production',
   'science',
   'gold',
   'attack',
-  'defense',
   'happiness',
-  'unit maintenance',
 ] as const;
 
 export type BenefitToken = (typeof BENEFIT_TOKENS)[number];

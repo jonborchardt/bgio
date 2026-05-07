@@ -11,7 +11,7 @@
 
 import { Box, Paper, Stack, Typography } from '@mui/material';
 import type { BuildingDef } from '../../data/schema.ts';
-import { ADJACENCY_RULES } from '../../data/adjacency.ts';
+import { ADJACENCY_RULES } from '../../data/index.ts';
 import { idForBuilding } from '../../cards/registry.ts';
 import { CARD_HEIGHT, CARD_WIDTH } from './sizes.ts';
 import { KindGlyph } from './kindGlyphs.tsx';

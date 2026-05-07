@@ -77,7 +77,6 @@ const buildState = (opts: {
       gold: opts.bankGold ?? 0,
       science: opts.bankScience ?? 0,
     }),
-    centerMat: {},
     roleAssignments,
     round: 1,
     bossResolved: false,

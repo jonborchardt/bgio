@@ -59,6 +59,30 @@ export default tseslint.config(
             'Color literals must live in src/theme.ts. Reference them via t.palette.* tokens at call sites.',
         },
       ],
+      // Issue 016 — every JSON file under `src/data/` must be reached
+      // through the `src/data/index.ts` barrel (the typed loader
+      // validates the shape and freezes the array). The carve-out
+      // below allows files INSIDE `src/data/` to do the raw imports.
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['*.json', '**/*.json'],
+              message:
+                'Import from src/data/index.ts (the typed loader) — never from a .json file directly.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // The data barrel itself must read the raw JSON in to feed the
+    // validators. Disable the loader-only rule for `src/data/**`.
+    files: ['src/data/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': 'off',
     },
   },
   {

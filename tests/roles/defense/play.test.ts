@@ -62,7 +62,6 @@ const baseState = (
 
   const state: SettlementState = {
     bank: bagOf({}),
-    centerMat: {},
     roleAssignments,
     round: 1,
     bossResolved: false,

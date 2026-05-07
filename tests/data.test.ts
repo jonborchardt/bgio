@@ -18,16 +18,14 @@ describe('data loaders', () => {
     expect(TECHNOLOGIES.length).toBeGreaterThan(0);
   });
 
-  it('exposes BENEFIT_TOKENS with the documented verbs', () => {
+  it('exposes BENEFIT_TOKENS with the documented verbs (issue 013 — defense/unit-maintenance retired)', () => {
     expect(BENEFIT_TOKENS).toEqual([
       'food',
       'production',
       'science',
       'gold',
       'attack',
-      'defense',
       'happiness',
-      'unit maintenance',
     ]);
   });
 

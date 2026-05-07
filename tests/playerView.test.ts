@@ -26,7 +26,6 @@ const buildState = (): SettlementState => {
   const roleAssignments = assignRoles(2);
   return {
     bank: initialBank(),
-    centerMat: {},
     roleAssignments,
     round: 1,
     bossResolved: false,
@@ -128,7 +127,6 @@ describe('playerView', () => {
     // The redactor must not throw and must not invent fields.
     const G: SettlementState = {
       bank: initialBank(),
-      centerMat: {},
       roleAssignments: assignRoles(2),
       round: 0,
       bossResolved: false,
@@ -191,7 +189,6 @@ describe('playerView — library deck redaction', () => {
 
     return {
       bank: initialBank(),
-      centerMat: {},
       roleAssignments,
       round: 1,
       bossResolved: false,
@@ -286,7 +283,6 @@ describe('playerView — library deck redaction', () => {
   it('no-ops cleanly when G.library is undefined', () => {
     const G: SettlementState = {
       bank: initialBank(),
-      centerMat: {},
       roleAssignments: assignRoles(2),
       round: 0,
       bossResolved: false,

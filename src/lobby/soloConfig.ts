@@ -91,7 +91,7 @@ const composeBotForSeat = (roles: Role[]): ComposedBot => {
  *
  * - Resolves `humanRole` to a seat via `seatOfRole(assignRoles(numPlayers), humanRole)`.
  * - For every *other* seat in the assignment, composes the per-role bots
- *   (chiefBot / scienceBot / domesticBot / foreignBot) that cover that
+ *   (chiefBot / scienceBot / domesticBot / defenseBot) that cover that
  *   seat's owned roles.
  * - 1-player solo: human owns all four roles, so the result is the empty map.
  * - 2-player solo: 2 seats, one of which is human and the other gets a

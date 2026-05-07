@@ -12,7 +12,6 @@ import type { ResourceBag, Role, SettlementState } from './types.ts';
 import { assignRoles } from './roles.ts';
 import { initialBank } from './resources/bank.ts';
 import type { BankLogEntry } from './resources/bankLog.ts';
-import { initialCenterMat } from './resources/centerMat.ts';
 import { initialMats } from './resources/playerMat.ts';
 import { setupScience } from './roles/science/setup.ts';
 import { setupDomestic } from './roles/domestic/grid.ts';
@@ -145,7 +144,6 @@ export const setup = (
     // (the boss's economy threshold counts the running max, not the
     // current value).
     economyHigh: startingBank.gold ?? 0,
-    centerMat: initialCenterMat(),
     roleAssignments,
     round: 0,
     // Defense redesign 1.5 (D25) — boss-resolved win flag. Stays `false`

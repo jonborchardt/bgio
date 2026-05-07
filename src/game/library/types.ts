@@ -20,7 +20,7 @@ import type {
   LibraryTier,
   LibraryColor,
 } from '../../data/schema.ts';
-import type { EventCardDef } from '../../data/events.ts';
+import type { EventCardDef } from '../../data/index.ts';
 
 export type LibraryCardKind = 'building' | 'unit' | 'tech' | 'event';
 

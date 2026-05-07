@@ -45,8 +45,8 @@ jobs:
       - name: Install
         run: npm ci
 
-      # Typecheck-only build for V1 — emit is handled at runtime by `tsx`,
-      # matching the server Dockerfile. Once we move to a compiled bundle
-      # this step can swap to a real build.
+      # Typecheck-only build for V1 — emit is handled at runtime by
+      # `vite-node`, matching the server Dockerfile. Once we move to a
+      # compiled bundle this step can swap to a real build.
       - name: Server typecheck
         run: npm run server:build

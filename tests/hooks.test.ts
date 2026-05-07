@@ -18,7 +18,6 @@ import { EMPTY_BAG } from '../src/game/resources/types.ts';
 
 const makeStubG = (): SettlementState => ({
   bank: { ...EMPTY_BAG },
-  centerMat: {},
   roleAssignments: { '0': ['chief'], '1': ['science'] },
   round: 0,
   bossResolved: false,

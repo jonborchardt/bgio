@@ -4,7 +4,7 @@
 // descriptor, so visuals stay decoupled from data.
 
 import type { BuildingDef, TechnologyDef, UnitDef } from '../../data/schema.ts';
-import { ADJACENCY_RULES } from '../../data/adjacency.ts';
+import { ADJACENCY_RULES } from '../../data/index.ts';
 import { findBuildingId, findTechId } from '../../cards/registry.ts';
 import type { Role } from '../../game/types.ts';
 import type { ResourceBag } from '../../game/resources/types.ts';

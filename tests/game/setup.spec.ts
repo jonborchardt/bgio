@@ -15,13 +15,12 @@ const setupFresh = (numPlayers: 1 | 2 | 3 | 4 = 4): SettlementState => {
 };
 
 describe('setup (1.4 / 1.5 — defense redesign)', () => {
-  it('center mat is empty (the retired trade slot has no replacement yet)', () => {
+  it('center-mat slot has been retired entirely (the legacy trade-request placeholder has no replacement)', () => {
     const G = setupFresh(4);
-    expect(G.centerMat).toEqual({});
-    // The legacy slot key (spelled here via concatenation so the gate grep
-    // for the literal token still returns clean) must not be revived.
-    const legacyKey = 'trade' + 'Request';
-    expect((G.centerMat as Record<string, unknown>)[legacyKey]).toBeUndefined();
+    // The pre-defense-redesign `centerMat` slot was a placeholder for
+    // the retired trade-request loop; issue 014 removed the empty
+    // interface. The global event track is now at `G.track`.
+    expect((G as unknown as Record<string, unknown>).centerMat).toBeUndefined();
   });
 
   it('defense slice exists with starter hand (militia) and empty inPlay (no battle/trade decks)', () => {

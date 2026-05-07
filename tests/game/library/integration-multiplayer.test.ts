@@ -66,7 +66,6 @@ const buildState = (numPlayers: 1 | 2 | 3 | 4): SettlementState => {
 
   return {
     bank: bagOf(hasMat ? {} : { wood: 50 }),
-    centerMat: {},
     roleAssignments,
     round: 1,
     bossResolved: false,

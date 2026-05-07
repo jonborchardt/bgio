@@ -1,3 +1,5 @@
+we are skipping 008 till later: 
+
 # Issue 008 — Library content over-shoots and is wildly skewed (282 vs 60 target)
 
 **Severity**: high

@@ -75,7 +75,6 @@ const build2pState = (
 
   return {
     bank: bagOf({}),
-    centerMat: {},
     roleAssignments,
     round: 1,
     bossResolved: false,

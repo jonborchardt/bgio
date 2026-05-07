@@ -9,7 +9,6 @@ import type { BankLogEntry } from './resources/bankLog.ts';
 // Type-only edge into `./resources/centerMat.ts`. That module imports
 // `PlayerID` / `Role` back from this file, but because both edges are
 // `import type`-only there is no runtime cycle — TypeScript erases them.
-import type { CenterMat } from './resources/centerMat.ts';
 // Per-seat player mat (in / out / stash). Same cycle-erasing trick.
 import type { PlayerMat } from './resources/playerMat.ts';
 // Type-only edge for the canonical TechnologyDef shape — referenced from
@@ -55,7 +54,6 @@ export type PlayerID = string;
 
 export type {
   ResourceBag,
-  CenterMat,
   PlayerMat,
   ScienceState,
   DefenseState,
@@ -82,7 +80,6 @@ export interface SettlementState {
   // simply by spending the gold afterwards. Optional so older fixtures
   // stay source-compatible.
   economyHigh?: number;
-  centerMat: CenterMat;
   roleAssignments: Record<PlayerID, Role[]>;
   round: number;
 

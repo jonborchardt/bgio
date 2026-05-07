@@ -25,9 +25,9 @@ import { RESOURCES } from '../game/resources/types.ts';
 //     resolver routes it. `durationRounds` is currently always 1; the field
 //     exists so a future "two-round storm" content card lands without a
 //     schema migration.
-//   - 'boss': the unique last card on the track. Three printed thresholds
-//     (science / economy / military) plus a `baseAttacks` count and a
-//     printed `attackPattern`. 2.7 implements the boss resolver.
+//   - 'boss': the unique last card on the track. Two printed thresholds
+//     (science / economy) plus a `baseAttacks` count and a printed
+//     `attackPattern`. 2.7 implements the boss resolver.
 export type Direction = 'N' | 'E' | 'S' | 'W';
 
 const DIRECTIONS: ReadonlySet<Direction> = new Set(['N', 'E', 'S', 'W']);

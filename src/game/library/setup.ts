@@ -16,8 +16,7 @@ import type { LibraryState } from './state.ts';
 import { emptyLibraryState } from './state.ts';
 import type { PlayerID } from '../types.ts';
 import type { RandomAPI } from '../random.ts';
-import { BUILDINGS, UNITS, TECHNOLOGIES } from '../../data/index.ts';
-import { EVENT_CARDS } from '../../data/events.ts';
+import { BUILDINGS, UNITS, TECHNOLOGIES, EVENT_CARDS } from '../../data/index.ts';
 
 const ROW_SIZE = 6;
 

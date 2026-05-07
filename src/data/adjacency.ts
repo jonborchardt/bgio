@@ -9,9 +9,17 @@
 // a typo'd or renamed building.
 
 import adjacencyRaw from './adjacency.json';
-import { BUILDINGS } from './index.ts';
+import buildingsRaw from './buildings.json';
+import { validateBuildings } from './schema.ts';
 import { RESOURCES } from '../game/resources/types.ts';
 import type { ResourceBag } from '../game/resources/types.ts';
+
+// Issue 015 — `index.ts` now re-exports `ADJACENCY_RULES`, which would
+// create a load-time cycle if this file kept importing `BUILDINGS`
+// from the barrel. We reach for the same raw + validator the barrel
+// uses; both files freeze and validate the same `buildings.json`, so
+// the duplicate work is one load-time pass — not a maintenance hazard.
+const BUILDINGS = validateBuildings(buildingsRaw);
 
 export interface AdjacencyRuleDef {
   defID: string;

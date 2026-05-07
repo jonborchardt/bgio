@@ -39,7 +39,6 @@ const stubG = (
   partial: Partial<SettlementState> = {},
 ): SettlementState => ({
   bank: { ...EMPTY_BAG },
-  centerMat: {},
   roleAssignments: { '0': ['chief'], '1': ['science'] },
   round: 0,
   bossResolved: false,

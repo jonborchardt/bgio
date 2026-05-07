@@ -76,7 +76,6 @@ export const totalResources = (G: SettlementState): number => {
     }
   };
 
-  visit(G.centerMat);
   visit(G.hands);
   visit(G.mats);
 

@@ -1,7 +1,7 @@
 // Generic snapshot-based undo for "play a card or recruit" moves.
 //
 // One snapshot slot lives on G (`_lastAction`). The undoable moves
-// (foreignRecruit, foreignReleaseUnit, domesticBuyBuilding, the four
+// (defenseBuyAndPlace, domesticBuyBuilding, the four
 // `<role>PlayTech` moves, the four `<role>PlayEvent` moves) deep-clone G
 // before they mutate it via `markUndoable`. The single `undoLast` move
 // restores from that clone.

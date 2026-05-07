@@ -16,7 +16,7 @@ import {
   findUnitId,
   idForBuilding,
 } from './registry.ts';
-import { ADJACENCY_RULES } from '../data/adjacency.ts';
+import { ADJACENCY_RULES } from '../data/index.ts';
 
 export type EdgeKind =
   /** A tech entry mentions a building it unlocks. */

@@ -32,7 +32,6 @@ const baseState = (): SettlementState => {
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
   return {
     bank: bagOf({}),
-    centerMat: {},
     roleAssignments,
     round: 1,
     bossResolved: false,

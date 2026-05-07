@@ -84,7 +84,7 @@ Python 3 / make / a C++ toolchain. The Dockerfile installs them automatically.
 │   │   ├── ai/                # enumerate + per-role bot heuristics
 │   │   └── roles/{chief,science,domestic,defense}/  # per-role moves
 │   ├── cards/                 # card registry + cross-card relationship index
-│   ├── data/                  # JSON + typed loaders (BUILDINGS / UNITS / TECHNOLOGIES / SCIENCE_CARDS / EVENT_CARDS / TRACK_CARDS / ADJACENCY_RULES)
+│   ├── data/                  # JSON + typed loaders (BUILDINGS / UNITS / TECHNOLOGIES / EVENT_CARDS / TRACK_CARDS / ADJACENCY_RULES)
 │   ├── ui/                    # MUI panels + cards + chrome
 │   │   ├── layout/            # RolePanel, GameOverBanner, PhaseHint, DevSidebar, …
 │   │   ├── chief/ science/ domestic/ defense/   # per-role panels

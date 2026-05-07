@@ -22,7 +22,6 @@ const build4pState = (
 
   return {
     bank: bagOf(bank),
-    centerMat: {},
     mats: initialMats(roleAssignments),
     roleAssignments,
     round: 1,

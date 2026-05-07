@@ -162,7 +162,6 @@ const build4pState = (
   lib.deck = [...deckCards];
   return {
     bank: bagOf({}),
-    centerMat: {},
     roleAssignments,
     round: 1,
     bossResolved: false,

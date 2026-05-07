@@ -1,3 +1,5 @@
+we are skipping 019 till later: 
+
 # Issue 019 — Only 3 of 132 techs have `onPlayEffects`; 0 carry passive/onAcquire effects
 
 **Severity**: medium

@@ -58,7 +58,6 @@ const FOUR_PLAYER_ASSIGNMENTS: Record<PlayerID, Role[]> = {
 // round-end hook against a realistic G shape.
 const wrapInG = (events: EventsState): SettlementState => ({
   bank: { ...EMPTY_BAG },
-  centerMat: {},
   roleAssignments: FOUR_PLAYER_ASSIGNMENTS,
   round: 0,
   bossResolved: false,

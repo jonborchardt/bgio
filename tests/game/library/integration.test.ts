@@ -103,7 +103,6 @@ const build4pState = (opts: BuildOpts = {}): SettlementState => {
 
   return {
     bank: bagOf({}),
-    centerMat: {},
     roleAssignments,
     round: 1,
     bossResolved: false,

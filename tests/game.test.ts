@@ -50,10 +50,10 @@ describe('test helpers', () => {
     expect(G.round).toBe(0);
     expect(Object.keys(G.hands).sort()).toEqual(['0', '1']);
     // Player mats: one per non-chief seat (2-player game → seat '1' is
-    // the only non-chief seat). centerMat is empty in 1.4 — Phase 2
-    // will repopulate it with the global event track.
+    // the only non-chief seat). The retired `centerMat` slot was the
+    // pre-defense-redesign trade-request placeholder; the global event
+    // track lives at `G.track` now.
     expect(Object.keys(G.mats).sort()).toEqual(['1']);
-    expect(G.centerMat).toEqual({});
   });
 
   it('runMoves with an unknown move leaves state unchanged', () => {

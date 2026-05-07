@@ -27,7 +27,7 @@
 // `playedThisRound` so each seat is free to play one card of each color
 // again next round.
 
-import { EVENT_CARDS, type EventCardDef, type EventColor } from '../../data/events.ts';
+import { EVENT_CARDS, type EventCardDef, type EventColor } from '../../data/index.ts';
 import type { PlayerID, Role } from '../types.ts';
 import type { RandomAPI } from '../random.ts';
 import { registerRoundEndHook } from '../hooks.ts';

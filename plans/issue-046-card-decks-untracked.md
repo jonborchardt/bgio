@@ -1,3 +1,5 @@
+we are skipping 046 till later: 
+
 # Issue 046 — `card-decks/` is untracked with no `.gitignore` entry
 
 **Severity**: low

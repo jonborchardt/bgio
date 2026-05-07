@@ -24,7 +24,7 @@ import type { PaletteColor } from '@mui/material/styles';
 import { RESOURCES } from './game/resources/types.ts';
 import type { Resource } from './game/resources/types.ts';
 import type { Role } from './game/types.ts';
-import type { EventColor } from './data/events.ts';
+import type { EventColor } from './data/index.ts';
 
 // ── ramps (raw palette grouped by hue) ────────────────────────────
 // Step numbers follow the existing 50 / 300 / 500 / 700 / 800 / 900

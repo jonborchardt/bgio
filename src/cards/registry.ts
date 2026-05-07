@@ -19,8 +19,8 @@ import type {
   UnitDef,
   TechnologyDef,
 } from '../data/schema.ts';
-import { EVENT_CARDS } from '../data/events.ts';
-import type { EventCardDef } from '../data/events.ts';
+import { EVENT_CARDS } from '../data/index.ts';
+import type { EventCardDef } from '../data/index.ts';
 
 export type CardKind =
   | 'building'

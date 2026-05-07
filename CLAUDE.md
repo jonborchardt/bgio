@@ -126,7 +126,14 @@ Tests under `tests/` mirror the `src/` shape, with shared factories in `tests/he
   central board, with Buy / Burn buttons gated to the science seat),
   `DiscountTableau` (the science seat's per-seat snowball view), and
   `LostIdeasPile` (the public burn-pile read-out with a click-through dialog).
-- `src/game/resources/{types,bag,bank,centerMat,playerMat,bankLog,moves}.ts` — resource
+- `src/game/requests/` — cross-seat help-request loop. The `requestHelp`
+  move (re-exported from `src/game/index.ts`) lets a non-chief seat ask
+  the chief for a specific resource bundle; `blockers.ts` decides which
+  moves are blocked while a request is open, `clear.ts` resolves them.
+  Live but lightly exercised in the V1 single-tab flow; the full loop
+  becomes important once the networked playtest puts four humans in
+  parallel stages.
+- `src/game/resources/{types,bag,bank,playerMat,bankLog,moves}.ts` — resource
   primitives. `playerMat.ts` defines the per-non-chief-seat `{ in, out, stash }` shape
   populated by `setup` (chief acts on `G.bank` directly and owns no mat). `bankLog.ts`
   is the audit trail: every mutation that touches `G.bank` calls `appendBankLog`, which
@@ -150,7 +157,10 @@ Tests under `tests/` mirror the `src/` shape, with shared factories in `tests/he
 - `src/ui/` — React components, MUI primitives only. Per-role panels live under
   `src/ui/{chief,science,domestic,defense}/`; the live Defense panel ships the unit
   hand, the in-play list, and the red-tech row. Shared chrome sits in
-  `src/ui/{layout,cards,resources,mat,deck,hand,chat}/`. Two table-shared frames
+  `src/ui/{layout,cards,resources,mat}/` (the older `deck/`, `hand/`, and
+  `chat/` directories were retired in the issue 021 dead-code sweep —
+  `chat/` was never wired, the others were superseded by domestic-side
+  hand/grid components). Two table-shared frames
   matter: `src/ui/centralBoard/CentralBoard.tsx` is the unified Paper that wraps the
   global event track strip on top and the village (domestic grid) below — it owns the
   outer frame, an optional `header` slot the parent fills with progress widgets

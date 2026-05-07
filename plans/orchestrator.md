@@ -56,7 +56,7 @@ unlock the rest of the server work.
 |---|---|---|
 | [010](issue-010-theme-tint-tokens-vs-hex-rgba-literals.md) | Hex-alpha + rgba literals violate "no hex outside theme.ts" hard rule | high |
 | [007](issue-007-runs-persistence-in-memory.md) | Run-history persistence still in-memory (migration 002 unwired) | high |
-| [008](issue-008-library-content-overshoots-target.md) | Library content over-shoots (282 cards vs 60 target) — boss debuff trivial | high |
+| we are skipping 008 till later: [008](issue-008-library-content-overshoots-target.md) | Library content over-shoots (282 cards vs 60 target) — boss debuff trivial | high |
 
 ### Tier 3 — Drift, dead code, schema cleanup
 
@@ -121,9 +121,9 @@ unused content. Address in a single sweep PR or split as needed.
 
 | # | Title | Sev |
 |---|---|---|
-| [019](issue-019-tech-content-onplay-effects-coverage.md) | Only 3 of 132 techs have `onPlayEffects` | medium |
-| [020](issue-020-events-library-tagging-coverage.md) | Only ~4 of 16 events carry library tagging | medium |
-| [017](issue-017-trackcards-no-modifier-cards.md) | `trackCards.json` ships zero `modifier` cards despite Rules.md describing the trio | medium |
+| we are skipping 019 till later: [019](issue-019-tech-content-onplay-effects-coverage.md) | Only 3 of 132 techs have `onPlayEffects` | medium |
+| we are skipping 020 till later: [020](issue-020-events-library-tagging-coverage.md) | Only ~4 of 16 events carry library tagging | medium |
+| we are skipping 017 till later: [017](issue-017-trackcards-no-modifier-cards.md) | `trackCards.json` ships zero `modifier` cards despite Rules.md describing the trio | medium |
 
 ### Tier 8 — UI perf + small ergonomics
 
@@ -138,7 +138,7 @@ unused content. Address in a single sweep PR or split as needed.
 | # | Title | Sev |
 |---|---|---|
 | [046](issue-046-card-decks-untracked.md) | `card-decks/` untracked with no `.gitignore` entry | low |
-| [047](issue-047-screenshots-at-repo-root.md) | Stale screenshots at repo root | low |
+| we are skipping 047 till later: [047](issue-047-screenshots-at-repo-root.md) | Stale screenshots at repo root | low |
 | [056](issue-056-misc-game-polish.md) | Misc game / engine polish (bundle of 11 small items) | low |
 | [057](issue-057-misc-ui-polish.md) | Misc UI polish (bundle of 8 small items) | low |
 | [058](issue-058-misc-tunable-and-balance.md) | Misc tunable / balance / Rules.md notes (bundle of 4 items) | low |

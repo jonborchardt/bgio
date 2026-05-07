@@ -27,7 +27,7 @@ import { cellKey } from './grid.ts';
 import type { ResourceBag } from '../../resources/types.ts';
 import { EMPTY_BAG } from '../../resources/types.ts';
 import { add } from '../../resources/bag.ts';
-import { ADJACENCY_RULES } from '../../../data/adjacency.ts';
+import { ADJACENCY_RULES } from '../../../data/index.ts';
 
 /** A single registered adjacency rule. */
 export interface AdjacencyRule {

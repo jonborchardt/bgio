@@ -43,7 +43,6 @@ import { endIf, onEnd } from './endConditions.ts';
 import { enumerate } from './ai/enumerate.ts';
 
 export type {
-  CenterMat,
   PlayerID,
   ResourceBag,
   Role,

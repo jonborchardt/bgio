@@ -4,7 +4,9 @@
 
 import type { TechnologyDef } from '../../../data/index.ts';
 
-export type ScienceColor = 'red' | 'gold' | 'green' | 'blue';
+// Issue 013 — `ScienceColor` was an unused duplicate of `LibraryColor`
+// from `src/data/schema.ts`. The type alias has been retired; consumers
+// import `LibraryColor` directly.
 
 export interface ScienceState {
   // The Science role's tech-card hand — populated by `scienceLibraryBuy`

@@ -60,7 +60,6 @@ const buildG = (
   for (const seat of Object.keys(roleAssignments)) hands[seat] = {};
   return {
     bank: { ...EMPTY_BAG },
-    centerMat: {},
     roleAssignments,
     round: 0,
     bossResolved: false,

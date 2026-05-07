@@ -1,6 +1,6 @@
 // Shared "play one event card of <color>" factory for the four role
-// event-play moves: 04.4 chiefPlayGoldEvent, 05.4 sciencePlayBlueEvent,
-// 06.6 domesticPlayGreenEvent, 07.6 foreignPlayRedEvent.
+// event-play moves: chiefPlayGoldEvent, sciencePlayBlueEvent,
+// domesticPlayGreenEvent, defensePlay (red).
 //
 // Why a factory rather than four near-identical files: each only differs
 // in (role, color, flag key). All five pieces of logic are identical —

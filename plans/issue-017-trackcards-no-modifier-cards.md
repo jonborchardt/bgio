@@ -1,3 +1,5 @@
+we are skipping 017 till later: 
+
 # Issue 017 — `trackCards.json` ships zero `modifier` cards despite Rules.md describing the trio
 
 **Severity**: medium

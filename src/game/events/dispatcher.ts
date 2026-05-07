@@ -21,7 +21,7 @@ import type { SettlementState, PlayerID } from '../types.ts';
 import type { RandomAPI } from '../random.ts';
 import type { EventCardDef, EventColor } from './state.ts';
 import type { EventEffect } from './effects.ts';
-import { EVENT_CARDS } from '../../data/events.ts';
+import { EVENT_CARDS } from '../../data/index.ts';
 import { RESOURCES, type ResourceBag } from '../resources/types.ts';
 import { appendBankLog } from '../resources/bankLog.ts';
 import { seatOfRole } from '../roles.ts';

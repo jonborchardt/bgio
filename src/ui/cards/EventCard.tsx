@@ -3,7 +3,7 @@
 // redaction stays honest. The `?` button is suppressed when face-down.
 
 import { Box, Stack, Typography } from '@mui/material';
-import type { EventCardDef } from '../../data/events.ts';
+import type { EventCardDef } from '../../data/index.ts';
 import { CardFrame } from './CardFrame.tsx';
 import type { CardSize } from './sizes.ts';
 import { idForEvent } from '../../cards/registry.ts';
