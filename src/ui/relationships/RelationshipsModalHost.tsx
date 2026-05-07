@@ -20,16 +20,13 @@ export function RelationshipsModalHost({
 }: RelationshipsModalHostProps) {
   const ctx = useCardInfo();
   if (!ctx) return null;
-  // Issue 028 — short-circuit when the modal is closed so a `G`
-  // identity churn (every bgio move emits a fresh tree) doesn't
-  // re-render the graph builder underneath. The previous render
-  // returned `<RelationshipsModal open={false} ... />` which let MUI's
-  // Dialog-mount-and-hide behavior keep the children in the React
-  // tree.
-  if (!ctx.isOpen) return null;
+  // Issue 028 — keep the modal mounted across open/close so MUI's
+  // Dialog fade-out transition can run; the graph-build cost is
+  // avoided inside `RelationshipsModal` itself, which short-circuits
+  // when `open === false`.
   return (
     <RelationshipsModal
-      open
+      open={ctx.isOpen}
       onClose={ctx.close}
       focusId={ctx.focusId}
       matchState={matchState}

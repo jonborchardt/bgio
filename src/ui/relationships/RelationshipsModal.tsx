@@ -16,7 +16,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   buildCardGraph,
   type MatchStateForGraph,
@@ -41,10 +41,18 @@ export function RelationshipsModal({
   matchState,
 }: RelationshipsModalProps) {
   const [variationId, setVariationId] = useState<string>(VARIATIONS[0].id);
-  const graph = useMemo(
-    () => buildCardGraph(matchState),
-    [matchState],
-  );
+  // Issue 028 — `matchState` (= `G`) gets a fresh identity on every
+  // bgio move (Immer produces new immutable trees), so a naive
+  // `useMemo([matchState])` rebuilds the graph after every move even
+  // when the modal is closed. Cache the last-built graph in a ref
+  // and only rebuild when the modal is open OR the cache is empty.
+  const graphCache = useRef<ReturnType<typeof buildCardGraph> | null>(null);
+  const graph = useMemo(() => {
+    if (!open && graphCache.current !== null) return graphCache.current;
+    const next = buildCardGraph(matchState);
+    graphCache.current = next;
+    return next;
+  }, [open, matchState]);
   const variation =
     VARIATIONS.find((v) => v.id === variationId) ?? VARIATIONS[0];
   const Component = variation.component;

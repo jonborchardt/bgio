@@ -36,6 +36,19 @@ import { Master } from 'boardgame.io/master';
 import { Settlement } from '../../src/game/index.ts';
 import { botCredentialsFor } from '../auth/authenticateCredentials.ts';
 
+/** The credentialed-MAKE_MOVE action shape bgio's Master expects.
+ *  Mirrors the exported `CredentialedActionShape.MakeMove` type but
+ *  spelled here so we don't depend on bgio's deep import path. */
+interface CredentialedMakeMove {
+  type: 'MAKE_MOVE';
+  payload: {
+    type: string;
+    args: unknown[];
+    playerID: string;
+    credentials: string;
+  };
+}
+
 /** Default poll cadence. Render's free tier is mostly idle; 1s is brisk
  * enough that a bot's turn doesn't visibly hang while not hammering the
  * storage adapter. */
@@ -180,22 +193,33 @@ export const makeBotDriver = ({
             if (typeof move !== 'string') break;
             const rawArgs = (raw as { args?: unknown }).args;
             const args = Array.isArray(rawArgs) ? rawArgs : [];
+            // bgio's `Async`/`Auth` types aren't exported from the
+            // public surface, so the constructor casts pass our local
+            // interfaces through `unknown as`. Each duck-types the
+            // shape Master actually consumes (fetch / setState /
+            // setMetadata for Async; authenticateCredentials for
+            // Auth) — runtime-checked when the master fires.
             const master = new Master(
               Settlement,
               db as unknown as ConstructorParameters<typeof Master>[1],
               makeTransportAPI(matchID, pubSub),
               auth as unknown as ConstructorParameters<typeof Master>[3],
             );
+            const action: CredentialedMakeMove = {
+              type: 'MAKE_MOVE',
+              payload: {
+                type: move,
+                args,
+                credentials: botCredentialsFor(playerID),
+                playerID,
+              },
+            };
             await master.onUpdate(
-              {
-                type: 'MAKE_MOVE',
-                payload: {
-                  type: move,
-                  args,
-                  credentials: botCredentialsFor(playerID),
-                  playerID,
-                },
-              } as unknown as Parameters<Master['onUpdate']>[0],
+              // The local `CredentialedMakeMove` literally matches
+              // `CredentialedActionShape.MakeMove`, but bgio's union
+              // `CredentialedActionShape.Any` resolves to a deep
+              // import; one cast keeps onUpdate's signature clean.
+              action as unknown as Parameters<Master['onUpdate']>[0],
               state._stateID,
               matchID,
               playerID,

@@ -143,6 +143,82 @@ describe('playerView', () => {
   });
 });
 
+// Issue 040 — events.hands[color] is `Record<seat, EventCardDef[]>`.
+// The acceptance criterion: even when multiple seats appear in a
+// color's map (test fixtures, future N-seats-per-role configs), every
+// seat the viewer doesn't own must be redacted. The pre-fix loop
+// only redacted `seatOfRole(role)`, so a stray extra seat under the
+// same color would leak its hand.
+describe('playerView — events.hands multi-seat redaction (issue 040)', () => {
+  const eventDef = (id: string) =>
+    ({ id, name: id, color: 'green', text: '' }) as unknown;
+
+  // 4-player layout: chief=0, science=1, domestic=2, defense=3 (per
+  // assignRoles). Viewer is seat 1 (chief in 4p? no — let's verify
+  // by deriving).
+  const buildState = (): SettlementState => {
+    const roleAssignments = assignRoles(4);
+    return {
+      bank: initialBank(),
+      roleAssignments,
+      round: 1,
+      bossResolved: false,
+      mats: {},
+      hands: { '0': {}, '1': {}, '2': {}, '3': {} },
+      events: {
+        decks: { gold: [], blue: [], green: [], red: [] },
+        hands: {
+          gold: {},
+          blue: {},
+          // Two seats stocked for the green color even though only
+          // one of them is the canonical domestic seat. The redactor
+          // must redact BOTH for a non-domestic viewer.
+          green: {
+            '0': [eventDef('g1')],
+            '2': [eventDef('g2'), eventDef('g3')],
+          },
+          red: {},
+        },
+        used: { gold: {}, blue: {}, green: {}, red: {} },
+        playedThisRound: {},
+      },
+    } as unknown as SettlementState;
+  };
+
+  it('non-domestic viewer redacts every seat in events.hands.green', () => {
+    const G = buildState();
+    // Pick a seat that does NOT hold domestic. In assignRoles(4),
+    // domestic is at seat '2'; seat '1' is science, never domestic.
+    const view = playerView(G, fakeCtx, '1');
+    const greenHands = view.events!.hands.green;
+    expect(Array.isArray(greenHands['0'])).toBe(true);
+    expect(Array.isArray(greenHands['2'])).toBe(true);
+    // Both arrays' contents are nulled (counts visible).
+    expect(greenHands['0']).toEqual([null]);
+    expect(greenHands['2']).toEqual([null, null]);
+  });
+
+  it('domestic viewer sees its own color (every seat in green) unredacted', () => {
+    const G = buildState();
+    // assignRoles(4): seat '2' holds domestic.
+    const view = playerView(G, fakeCtx, '2');
+    const greenHands = view.events!.hands.green;
+    // Both seats' arrays still carry their original (non-null) contents.
+    expect(greenHands['0']).toHaveLength(1);
+    expect((greenHands['0'] as unknown[])[0]).not.toBeNull();
+    expect(greenHands['2']).toHaveLength(2);
+    expect((greenHands['2'] as unknown[])[0]).not.toBeNull();
+  });
+
+  it('spectator redacts every seat in every color map', () => {
+    const G = buildState();
+    const view = playerView(G, fakeCtx, null);
+    const greenHands = view.events!.hands.green;
+    expect(greenHands['0']).toEqual([null]);
+    expect(greenHands['2']).toEqual([null, null]);
+  });
+});
+
 // SL fix-2 — `G.library.deck` is the tier-stacked draw pile. Length must
 // stay visible (the UI can show "N cards remaining"); the contents and
 // order of upcoming flips are hidden information at a real table. Row,

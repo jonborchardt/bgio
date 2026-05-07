@@ -5,7 +5,7 @@
 // new (Phase 2-ready) inPlay shape. 1.5 retires `settlementsJoined` and
 // adds the `bossResolved` placeholder.
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { setup } from '../../src/game/setup.ts';
 import type { SettlementState } from '../../src/game/types.ts';
 
@@ -95,5 +95,54 @@ describe('setup (1.4 / 1.5 — defense redesign)', () => {
     // Track is the replacement; smoke-check it landed.
     expect(G.track).toBeDefined();
     expect(G.track!.upcoming.length).toBeGreaterThan(0);
+  });
+});
+
+// Issue 042 — bgio always supplies its random plugin in production,
+// but the older code silently identity-shuffled when it was missing.
+// In test envs we keep the deterministic fallback for ergonomics; in
+// production the engine MUST throw so a missing-plugin regression
+// can't quietly deal cards in JSON order.
+describe('setup — random-plugin fallback (issue 042)', () => {
+  let originalNodeEnv: string | undefined;
+
+  beforeEach(() => {
+    originalNodeEnv = process.env.NODE_ENV;
+  });
+
+  afterEach(() => {
+    if (originalNodeEnv === undefined) {
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+  });
+
+  it('uses the deterministic identity-shuffle fallback when NODE_ENV=test', () => {
+    process.env.NODE_ENV = 'test';
+    const ctx = { numPlayers: 4 } as unknown as Parameters<typeof setup>[0]['ctx'];
+    expect(() => setup({ ctx })).not.toThrow();
+  });
+
+  it('throws when NODE_ENV is "production" and the random plugin is missing', () => {
+    process.env.NODE_ENV = 'production';
+    const ctx = { numPlayers: 4 } as unknown as Parameters<typeof setup>[0]['ctx'];
+    expect(() => setup({ ctx })).toThrow(/random plugin is missing/i);
+  });
+
+  it('throws when NODE_ENV is unset and the random plugin is missing', () => {
+    delete process.env.NODE_ENV;
+    const ctx = { numPlayers: 4 } as unknown as Parameters<typeof setup>[0]['ctx'];
+    expect(() => setup({ ctx })).toThrow(/random plugin is missing/i);
+  });
+
+  it('accepts an explicit random stub regardless of NODE_ENV', () => {
+    process.env.NODE_ENV = 'production';
+    const ctx = { numPlayers: 4 } as unknown as Parameters<typeof setup>[0]['ctx'];
+    const random = {
+      Shuffle: <T>(a: ReadonlyArray<T>): T[] => [...a],
+      Number: () => 0,
+    };
+    expect(() => setup({ ctx, random })).not.toThrow();
   });
 });
