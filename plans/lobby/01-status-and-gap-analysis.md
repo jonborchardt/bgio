@@ -15,17 +15,24 @@ The actually-missing pieces, in priority order:
 
 1. GitHub Pages publishes the **hot-seat** build, not the networked
    build pointed at the Render service URL. Plan 02.
-2. `ALLOWED_ORIGINS` on the Render service is `sync: false` and
+2. There is no checked-in source of truth for the Render service URL
+   or the canonical Pages URL. Plan 02 adds `deploy.config.json`.
+3. The bundle is built-time-pinned to one mode. The user wants prod
+   to support **both** modes via a runtime toggle (default networked,
+   `#hotseat` for hot-seat). Plan 02 adds the toggle in
+   `src/clientMode.ts` and statically imports both shells.
+4. `ALLOWED_ORIGINS` on the Render service is `sync: false` and
    (almost certainly) unset — so the lobby will fail CORS for every
    `fetch` from the deployed Pages URL. Plan 03.
-3. `TRUST_PROXY` is not set on Render at all. Without it, the auth
+5. `TRUST_PROXY` is not set on Render at all. Without it, the auth
    rate limiter sees Render's edge IP for every request and collapses
    into one bucket. Plan 03.
-4. No live test today proves three browser tabs across two networks
+6. No live test today proves three browser tabs across two networks
    can join the same match and finish a round end-to-end. Plan 04.
 
-That's it. Nothing in `src/game/`, `src/lobby/`, or `server/` itself
-needs to change for this rollout.
+That's it. Inside `src/game/`, `src/lobby/`, and `server/`, nothing
+needs to change. The only `src/` edit is the runtime mode toggle in
+`src/clientMode.ts`.
 
 ## What is already built (don't redo)
 
@@ -90,18 +97,29 @@ needs to change for this rollout.
 Numbered by which plan picks it up. Use this as the checklist for
 "are we done?".
 
-### Pages publishes the wrong build (plan 02)
+### Pages publishes the wrong build + no checked-in URL config (plan 02)
 
+- [ ] No `deploy.config.json` at the repo root. The Render service
+      URL and canonical Pages URL live nowhere checked in;
+      [scripts/build-networked.mjs](../../scripts/build-networked.mjs)
+      reads `VITE_SERVER_URL` from `process.env`, defaulting to
+      `http://localhost:8000` for local dev. Plan 02 adds the file
+      and reroutes the script through it.
 - [ ] [.github/workflows/deploy-pages.yml:39](../../.github/workflows/deploy-pages.yml)
-      runs `npm run build:hotseat`. For "users hit GitHub Pages and
-      matchmake on the server", it must run `build:networked` with
-      `VITE_SERVER_URL=<render-url>` baked in.
+      runs `npm run build:hotseat`. It must run `build:networked`,
+      and the script must pick up the Render URL from
+      `deploy.config.json` rather than expecting a repo-level
+      Actions variable.
 - [ ] The `getServerURL()` default in
       [src/clientMode.ts:50-52](../../src/clientMode.ts) is
-      `http://localhost:8000`. With the env baked in at build time
-      this isn't a problem — but the workflow must pass it through.
-- [ ] Hot-seat fate: pick one of {drop entirely, `#hotseat` route,
-      separate `hotseat-pages` branch}. Plan 02 covers each.
+      `http://localhost:8000`. With the URL baked in at build time
+      from the config file this isn't a problem — but the workflow
+      must run the build script (which will export
+      `VITE_SERVER_URL` from the config).
+- [ ] No runtime mode toggle. The user wants prod to ship both
+      modes (default networked; `#hotseat` for hot-seat). Plan 02
+      extends `detectMode()` and adjusts `App.tsx` to statically
+      import both shells.
 
 ### CORS + proxy env on Render (plan 03)
 

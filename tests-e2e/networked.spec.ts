@@ -24,8 +24,11 @@ test.describe('networked smoke (issue 025)', () => {
   test('auth register → login → verify round-trip', async ({ request }) => {
     // Date-derived username so the ESLint no-Math.random rule
     // (game-state determinism guard) isn't tripped — this test
-    // fixture isn't game state, but the rule is repo-wide.
-    const username = `e2e-${Date.now()}-${(Date.now() % 9973).toString(36)}`;
+    // fixture isn't game state, but the rule is repo-wide. Base-36
+    // keeps the username under the server's 20-char USERNAME_RE cap;
+    // the decimal form (`Date.now()`) on its own is 13 chars and the
+    // `e2e-…-…` decoration pushed past 20.
+    const username = `e2e-${Date.now().toString(36)}`;
     const password = 'good-password-1234';
 
     const reg = await request.post(`${SERVER}/auth/register`, {

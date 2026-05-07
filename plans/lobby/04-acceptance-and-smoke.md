@@ -35,7 +35,7 @@ Run all of these on the live Pages + Render combo. Each must pass.
 ### Cold open (new user, new device)
 
 1. Browser A (clean profile): visit
-   `https://YOUR-USER.github.io/<repo>/`.
+   `https://jonborchardt.github.io/bgio/`.
 2. Lobby renders → `<AuthForms>` shows.
 3. Register username `alice` / password `password1234`. Should
    land on the lobby with "no matches yet".
@@ -72,16 +72,23 @@ Run all of these on the live Pages + Render combo. Each must pass.
     user). Click "Watch" on the running match. Board renders
     read-only; moves from A or B appear in real time.
 
+### Hot-seat escape hatch (runtime toggle)
+
+13. Browser A: visit `https://jonborchardt.github.io/bgio/#hotseat`.
+    Hot-seat board mounts (no lobby, no auth). All four seats
+    drivable from one tab. Confirms the prod bundle ships both
+    transports and the runtime toggle works.
+
 ### Negative paths
 
-13. Browser A logs out (clear localStorage). Lobby auth gate
+14. Browser A logs out (clear localStorage). Lobby auth gate
     appears. Match is still alive on the server; Bob (browser B)
     is unaffected.
-14. Stop one of the bot seats (if any) — match continues.
-15. Start a fresh match against 3 bots with `alice` solo. Round
+15. Stop one of the bot seats (if any) — match continues.
+16. Start a fresh match against 3 bots with `alice` solo. Round
     advances without other humans.
 
-If all 15 pass, networked play is shippable.
+If all 16 pass, networked play is shippable.
 
 ### Quick CORS / proxy sanity (if anything in the manual smoke
 trips on auth)
@@ -117,7 +124,7 @@ after the manual gate passes once.
 
 ## Acceptance
 
-- All 15 manual smoke steps pass on the live Render + Pages.
+- All 16 manual smoke steps pass on the live Render + Pages.
 - A short note in the PR description (or a follow-up commit to
   CLAUDE.md) records the manual-smoke pass with the date so the
   "networked playtest is unverified end-to-end" caveat in

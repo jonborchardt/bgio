@@ -5,13 +5,14 @@ lobby)
 **Area**: server / config
 **Effort**: small
 **Status**: not started
-**Depends on**: knowing the GH Pages URL of record (input from
-plan 02)
+**Depends on**: plan 02 setting `pagesUrl` in `deploy.config.json`
+(this plan mirrors its origin into `render.yaml`)
 
 ## Files
-- [render.yaml](../../render.yaml) — adds `TRUST_PROXY=true`; flips
-  `ALLOWED_ORIGINS` from `sync: false` to a real value (or sets
-  the value in the Render dashboard and leaves `sync: false`).
+- [render.yaml](../../render.yaml) — flip `ALLOWED_ORIGINS` from
+  `sync: false` to a hardcoded value (the origin of
+  `pagesUrl`); add `TRUST_PROXY=true`. Add a comment cross-referencing
+  `deploy.config.json`.
 - [server/index.ts:89-99](../../server/index.ts) — reads
   `ALLOWED_ORIGINS` and forwards it to bgio's SocketIO transport.
   No code change.
@@ -28,15 +29,14 @@ plan 02)
 Two server-side env vars need to be set on Render before the live
 lobby works, and **neither is set today**:
 
-1. **`ALLOWED_ORIGINS` must include the Pages URL.** If it doesn't,
-   the browser silently refuses every cross-origin auth request and
-   SocketIO upgrade. The user sees "request failed: 0" in
-   `<AuthForms>` and a stuck "Loading…" in the lobby. The current
-   `render.yaml` declares this var with `sync: false` (intentional —
-   the value depends on the Pages URL of record, which wasn't known
-   when the blueprint shipped). When unset, the server falls back
-   to `http://localhost:5179` only, which rejects the deployed Pages
-   origin.
+1. **`ALLOWED_ORIGINS` must include the Pages origin.** If it
+   doesn't, the browser silently refuses every cross-origin auth
+   request and SocketIO upgrade. The user sees "request failed: 0"
+   in `<AuthForms>` and a stuck "Loading…" in the lobby. The
+   current `render.yaml` declares this var with `sync: false`
+   (intentional — the value depends on the Pages URL of record).
+   When unset, the server falls back to `http://localhost:5179`
+   only, which rejects the deployed Pages origin.
 
 2. **`TRUST_PROXY` must be `true`.** Render terminates TLS at its
    edge and the application sees `X-Forwarded-For`. The server
@@ -53,9 +53,9 @@ spam auth.
 
 ## Fix sketch
 
-Two equally-valid paths; pick one.
-
-### Path A — set both vars in `render.yaml` (declarative, recommended)
+Per the user's stance: Path A — commit both values to
+`render.yaml`. Neither is secret (the Pages origin is publicly
+visible; `TRUST_PROXY` is configuration, not credentials).
 
 Edit [render.yaml](../../render.yaml):
 
@@ -69,45 +69,31 @@ envVars:
     value: sqlite
   - key: SQLITE_PATH
     value: /data/settlement.sqlite
+  # Issue 023 — Render terminates TLS at its edge; trust X-Forwarded-For.
   - key: TRUST_PROXY
     value: "true"
+  # Origin of `pagesUrl` in /deploy.config.json. CSV for additional
+  # origins (custom domain, preview branch). Comma-separated.
   - key: ALLOWED_ORIGINS
-    value: https://YOUR-USER.github.io          # set to actual Pages URL
+    value: https://jonborchardt.github.io
 ```
-
-Render re-applies the blueprint on the next deploy. Both values
-are non-secret (the Pages URL is publicly visible; `TRUST_PROXY`
-is configuration, not credentials), so checking them in is fine.
 
 For multi-origin (preview branches, custom domain), comma-separate:
 
 ```yaml
   - key: ALLOWED_ORIGINS
-    value: https://YOUR-USER.github.io,https://settlement.example.com
+    value: https://jonborchardt.github.io,https://settlement.example.com
 ```
 
 The server's split-on-comma is at
 [server/index.ts:93](../../server/index.ts).
 
-### Path B — set in the Render dashboard, keep `sync: false`
-
-If for some reason we want the values managed in the Render UI
-(e.g., to rotate without a git commit), leave the `render.yaml`
-`sync: false` and add `TRUST_PROXY: sync: false` similarly:
-
-```yaml
-  - key: TRUST_PROXY
-    sync: false
-  - key: ALLOWED_ORIGINS
-    sync: false
-```
-
-Then set both via Render dashboard → Environment → Add. Less
-reproducible (a fresh blueprint apply forgets them) but lets a
-non-code-pushing collaborator change them.
-
-**Recommend Path A** unless there's a specific reason to keep
-either secret-ish. Both values are fine to commit.
+**Important detail**: `ALLOWED_ORIGINS` is the *origin*, not the
+full URL. The browser sends `Origin: https://jonborchardt.github.io`
+for any path under that domain — including `/bgio/`. So the value
+must be the bare origin (no path, no trailing slash). The `pagesUrl`
+in `deploy.config.json` may include the `/bgio/` path for
+documentation; this env var must not.
 
 ### There are currently no actual secrets
 
@@ -127,39 +113,42 @@ File / Secret env). At V1, **there are no secrets to wire.**
 
 ## Acceptance
 
-- Render dashboard → Environment shows `ALLOWED_ORIGINS` set to the
-  Pages URL and `TRUST_PROXY=true` (regardless of which path was
-  used).
-- After a redeploy, hitting the Pages URL → DevTools Network panel:
+- `render.yaml` shows the two new entries; the file diffs cleanly
+  on a `npm run lint`-equivalent check.
+- After Render's auto-redeploy on the merge, the dashboard →
+  Environment shows `ALLOWED_ORIGINS=https://jonborchardt.github.io`
+  and `TRUST_PROXY=true`.
+- Hitting the Pages URL → DevTools Network panel:
   - `OPTIONS https://settlement-server.onrender.com/auth/login`
     returns 204 with
-    `access-control-allow-origin: https://YOUR-USER.github.io`.
+    `access-control-allow-origin: https://jonborchardt.github.io`.
   - `POST` after that succeeds.
 - Render service logs show real client IPs for auth attempts (not
-  all the same `35.x.x.x` from Render's edge). Inspect a couple of
-  auth-attempt log lines to confirm.
+  all the same `35.x.x.x` from Render's edge).
 
 ## Risks / open questions
 
-- **Origin mismatch is silent.** If `ALLOWED_ORIGINS` and the Pages
-  URL drift (e.g., we add a custom domain and forget to add it to
-  the env) the lobby breaks. Plan 04's smoke is the only check.
+- **Origin mismatch is silent.** If `pagesUrl` in
+  `deploy.config.json` and `ALLOWED_ORIGINS` here drift (e.g., we
+  add a custom domain and forget to update both), the lobby
+  breaks for the new origin and there's no compile-time check.
+  Plan 04's smoke is the only catch. A small CI check would
+  enforce alignment; deferring as gold-plating for V1.
 - **Forgetting `TRUST_PROXY=true`.** Without it the rate limiter
   collapses every attacker into one bucket (issue 023's old bug).
-  The server log line `[auth] all requests bucket as <IP>` is the
-  tell — verify in the smoke.
+  Plan 04's smoke includes a check for real client IPs in logs.
 - **Custom domain later.** Adding a custom domain to Render would
   add a new origin that *also* needs to be in `ALLOWED_ORIGINS`.
-  Just remember to update both the env and the Pages build.
-- **`render.yaml` re-apply.** If we ever delete the Render service
-  and re-apply the blueprint, Path A keeps both vars; Path B loses
-  them and we'd hit the same broken-lobby-CORS state until they're
-  re-set.
+  Just remember to update both the env and the Pages config.
+- **`render.yaml` re-apply.** Path A's whole point is that a
+  fresh blueprint apply restores both vars. If we ever delete the
+  service and re-apply we'd want the values to come back, which
+  is exactly what committing them gets us.
 
 ## Related
 
-- 02 — sets `VITE_SERVER_URL` baked into Pages; the Pages URL
-  baked into `ALLOWED_ORIGINS` here is the matching half.
+- 02 — `pagesUrl` in `deploy.config.json` is the canonical
+  source for the origin baked in here.
 - 04 — smoke that catches a CORS / proxy mismatch.
 - 023 — the rate limit bug `TRUST_PROXY` mitigates.
 - 006 — the original CORS env wiring (closed in code; this is the

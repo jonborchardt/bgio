@@ -70,48 +70,56 @@ the smoke that proves it works.
 | 03 | [cors-and-env](03-cors-and-env.md) | `ALLOWED_ORIGINS` + `TRUST_PROXY` on Render |
 | 04 | [acceptance-and-smoke](04-acceptance-and-smoke.md) | Manual + automated smoke against live combo |
 
+## Decisions already locked
+
+These were the open stance questions; the user answered them, so
+they're documented here as load-bearing inputs to plans 02–04.
+
+- **Single source of truth for URLs:** a checked-in
+  `deploy.config.json` at the repo root, holding
+  `renderServerUrl` and `pagesUrl`. The build script reads it; the
+  `render.yaml` mirrors `pagesUrl`'s origin in `ALLOWED_ORIGINS` (with
+  a cross-reference comment). No GitHub Actions repo variables.
+- **Pages URL of record:** `https://jonborchardt.github.io/bgio/`
+  (origin: `https://jonborchardt.github.io`). Stored in
+  `deploy.config.json#pagesUrl`; the bare origin is what
+  `ALLOWED_ORIGINS` uses.
+- **Hot-seat in prod = yes.** The Pages bundle ships **both** modes.
+  Default visit (`/`) → networked lobby. Visiting
+  `/#hotseat` mounts the hot-seat shell regardless of build mode.
+  Implemented as a runtime toggle in [src/clientMode.ts](../../src/clientMode.ts);
+  the networked build statically imports both shells so both
+  transports end up in the bundle (~10–20 KB gzipped cost). Local dev
+  is unchanged — `npm run dev` still picks mode from
+  `VITE_CLIENT_MODE` at build time.
+- **Server env path:** Path A — both `ALLOWED_ORIGINS` and
+  `TRUST_PROXY=true` are committed in `render.yaml` (neither is a
+  secret).
+- **Pages workflow trigger:** ship 02 + 03 in one PR, push to `main`,
+  let the existing auto-deploy fly. No `workflow_dispatch` gating.
+
+The one open input that still needs your eyes: the **exact Render
+service URL.** `render.yaml` names the service `settlement-server`,
+so it's most likely `https://settlement-server.onrender.com`, but
+Render sometimes appends a hash. Before merging, verify from the
+Render dashboard and put the real value in `deploy.config.json#renderServerUrl`.
+
 ## Recommended order
 
-The minimum end-to-end shipping path is:
+The minimum end-to-end shipping path:
 
-1. **03 cors-and-env** first (or first-ish) — set `ALLOWED_ORIGINS`
-   and `TRUST_PROXY` on the Render service. If 02 lands before 03,
-   the live Pages site loads but every auth request fails CORS and
-   the lobby is stuck on "Loading…".
-2. **02 pages-publishes-networked-client** — the actual switch from
-   the hot-seat build to the networked build, with the Render URL
-   baked into the Pages bundle.
-3. **04 acceptance-and-smoke** — manual smoke (15 steps); automated
-   smoke deferred to issue 025.
-
-02 and 03 can land in parallel in the same PR; just don't merge 02
-*ahead* of 03.
-
-## Stance questions to confirm before implementing
-
-These are the load-bearing choices. Each later plan defaults to one
-answer but flags the alternative.
-
-- **Hot-seat fate.** When Pages flips to networked, what happens to
-  the hot-seat path? Default: ship just the networked build; no
-  hot-seat affordance on Pages. Alternatives: a `#hotseat` URL
-  fragment that mounts `<HotSeatShell>` regardless of `detectMode()`
-  (cheap), or a separate `hotseat-pages` branch (manual but zero
-  bundle-size impact). Plan 02 covers all three.
-- **Pages workflow trigger.** The current
-  [deploy-pages.yml](../../.github/workflows/deploy-pages.yml) auto-runs
-  on every push to `main`. Flipping the build script to
-  `build:networked` means the next push to `main` flips the live
-  Pages site — irreversible-ish (you can flip back, but the live URL
-  is broken in the meantime). Default: gate the new workflow on
-  `workflow_dispatch` only for the first run, smoke it, then re-enable
-  the push trigger. Alternative: just push and let it fly.
-- **Render service URL.** `render.yaml` names the service
-  `settlement-server`; the Render-issued URL is therefore something
-  like `https://settlement-server.onrender.com` or
-  `https://settlement-server-<hash>.onrender.com` depending on
-  account / region settings. The exact URL must be confirmed from
-  the Render dashboard before plans 02 and 03 can set their values.
+1. **02 + 03 land in one PR.** Plan 02 adds `deploy.config.json`,
+   wires `build-networked.mjs` to read it, flips
+   `deploy-pages.yml` to `build:networked`, adds the `#hotseat`
+   runtime toggle. Plan 03 adds `TRUST_PROXY=true` and the
+   `ALLOWED_ORIGINS` value to `render.yaml`.
+2. After merge, both `deploy-pages.yml` (auto-runs on push) and
+   Render's blueprint sync (auto-runs on push) re-roll. Pages
+   publishes the networked build; Render restarts with the new
+   env. The cutover is the merge.
+3. **04 acceptance-and-smoke** — manual smoke (15 steps + the
+   `#hotseat` step) on the live combo immediately after the
+   deploys land. Automated smoke deferred to issue 025.
 
 ## Out of scope here
 

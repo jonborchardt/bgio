@@ -3,9 +3,11 @@
 // The science seat's main lever is the Library: scan `G.library.row`,
 // pick the cheapest affordable card whose discount-tableau path actually
 // helps the seat (matching color), and route through
-// `scienceLibraryBuy`. Burns are deliberately omitted — the V1 boss
-// debuff is driven by *cards bought*, so a bot that burns volunteers
-// progress away from the win condition.
+// `scienceLibraryBuy`. When nothing is affordable, the bot falls back to
+// `scienceLibraryBurn` to clear the once-per-round burn requirement
+// (`scienceSeatDone` rejects until the burn latch is set), choosing the
+// highest-tier slot so the burned card is least likely to be researchable
+// anyway.
 //
 // We mirror `domesticBot`'s structure: a single move per call, returning
 // `null` when nothing legal exists (the composed bot then falls through
@@ -67,20 +69,36 @@ const play = (state: BotState): MoveCandidate | null => {
     });
   }
 
-  if (affordable.length === 0) return null;
+  if (affordable.length > 0) {
+    // Prefer cheaper buys; tie-break by tier ascending (build the discount
+    // ladder bottom-up) and then slot index for determinism.
+    affordable.sort((a, b) => {
+      if (a.costSum !== b.costSum) return a.costSum - b.costSum;
+      if (a.card.tier !== b.card.tier) return a.card.tier - b.card.tier;
+      return a.slotIndex - b.slotIndex;
+    });
+    return {
+      move: 'scienceLibraryBuy',
+      args: [affordable[0]!.slotIndex],
+    };
+  }
 
-  // Prefer cheaper buys; tie-break by tier ascending (build the discount
-  // ladder bottom-up) and then slot index for determinism.
-  affordable.sort((a, b) => {
-    if (a.costSum !== b.costSum) return a.costSum - b.costSum;
-    if (a.card.tier !== b.card.tier) return a.card.tier - b.card.tier;
-    return a.slotIndex - b.slotIndex;
-  });
-
-  return {
-    move: 'scienceLibraryBuy',
-    args: [affordable[0]!.slotIndex],
-  };
+  // Nothing affordable. Satisfy the once-per-round burn requirement so
+  // `scienceSeatDone` can fire afterwards. Pick the highest-tier
+  // remaining slot — the most expensive card is the least likely to be
+  // affordable on later turns either, so burning it costs the table the
+  // least. Tie-break by slot index for determinism.
+  if (G.science?.scienceBurnedThisRound === true) return null;
+  let pick: { slotIndex: number; tier: number } | null = null;
+  for (let slotIndex = 0; slotIndex < lib.row.length; slotIndex++) {
+    const card = lib.row[slotIndex];
+    if (card === null || card === undefined) continue;
+    if (pick === null || card.tier > pick.tier) {
+      pick = { slotIndex, tier: card.tier };
+    }
+  }
+  if (pick === null) return null;
+  return { move: 'scienceLibraryBurn', args: [pick.slotIndex] };
 };
 
 export const scienceBot: { play: (state: BotState) => MoveCandidate | null } = {
