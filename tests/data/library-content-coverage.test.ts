@@ -15,8 +15,13 @@
 // invariant.
 
 import { describe, expect, it } from 'vitest';
-import { BUILDINGS, UNITS, TECHNOLOGIES } from '../../src/data/index.ts';
-import { EVENT_CARDS } from '../../src/data/events.ts';
+// `?live` query suffix bypasses the test fixture alias (which is
+// anchored at `.ts$`) so this content-coverage test runs against the
+// actually-shipped deck — the fixture is intentionally too small to
+// satisfy the 5-per-bucket floor, and that's the right separation:
+// fixtures test mechanics, this test lints content.
+import { BUILDINGS, UNITS, TECHNOLOGIES } from '../../src/data/index.ts?live';
+import { EVENT_CARDS } from '../../src/data/events.ts?live';
 import type { LibraryColor, LibraryTier } from '../../src/data/schema.ts';
 
 const COLORS: ReadonlyArray<LibraryColor> = ['gold', 'blue', 'green', 'red'];

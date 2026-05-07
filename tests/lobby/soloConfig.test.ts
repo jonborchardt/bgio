@@ -85,7 +85,10 @@ describe('buildBotMap (11.7)', () => {
     expect(action?.move).toBe('defenseSeatDone');
   });
 
-  it.todo(
-    'wires the bot map into the network-mode Client (server-side runBot in 10.9)',
-  );
+  // Issue 003 closed the network-mode wiring it.todo: the server-side
+  // runBot path now lives in `server/bots/botDriver.ts` and is
+  // exercised end-to-end by `tests/server/botTakeover.test.ts` (a
+  // real createServer + match metadata + Master.onUpdate dispatch).
+  // The `buildBotMap` helper here is the in-process composition; the
+  // network wiring no longer goes through it.
 });

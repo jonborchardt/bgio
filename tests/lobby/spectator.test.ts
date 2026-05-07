@@ -33,14 +33,50 @@ describe('spectatorClient (10.8)', () => {
     ).not.toThrow();
   });
 
-  it.todo(
-    'a spectator Client receives state updates as moves are made on the server',
-  );
-  it.todo(
-    'a spectator Client cannot dispatch moves (server rejects)',
-  );
-  it.todo(
-    'playerView(G, ctx, null) redacts defense hand contents but keeps bank visible',
-  );
-  it.todo('spectator can leave and rejoin without affecting seat metadata');
+});
+
+describe('spectator behaviour (10.8 — pinned at the seam)', () => {
+  it('playerView(G, ctx, null) redacts defense hand contents but keeps bank visible', async () => {
+    const { playerViewFor } = await import('../../src/game/playerView.ts');
+    const { assignRoles } = await import('../../src/game/roles.ts');
+    const { initialBank } = await import('../../src/game/resources/bank.ts');
+    const G = {
+      bank: initialBank(),
+      roleAssignments: assignRoles(2),
+      round: 1,
+      bossResolved: false,
+      mats: {},
+      hands: {
+        '0': { domestic: ['A', 'B'] },
+        '1': { defense: ['x', 'y', 'z'] },
+      },
+    } as unknown as Parameters<typeof playerViewFor>[0];
+
+    const view = playerViewFor(G, {} as Parameters<typeof playerViewFor>[1], null);
+    // Defense hand on seat 1 is redacted (length kept, contents nulled).
+    const seat1 = view.hands['1'] as { defense: unknown[] };
+    expect(seat1.defense).toEqual([null, null, null]);
+    // Bank stays public.
+    expect(view.bank).toEqual(G.bank);
+  });
+
+  it('authenticateCredentials rejects a move attempted from a spectator-shaped seat (no creds, no isBot)', async () => {
+    const { authenticateCredentials } = await import(
+      '../../server/auth/authenticateCredentials.ts'
+    );
+    // A seat whose stored credentials exist (a real human is in seat 0)
+    // must not accept a move with the wrong/empty credential — that's
+    // the impersonation case the auth hook gates on.
+    const meta = { id: 0, credentials: 'real-token' };
+    expect(authenticateCredentials('', meta)).toBe(false);
+    expect(authenticateCredentials(undefined, meta)).toBe(false);
+    expect(authenticateCredentials('wrong-token', meta)).toBe(false);
+    // The legitimate human can still move.
+    expect(authenticateCredentials('real-token', meta)).toBe(true);
+  });
+
+  // Deferred: spectator state-update round-trip and leave/rejoin
+  // metadata persistence both require a live SocketIO connection.
+  // The end-to-end Playwright spec under tests-e2e/ is the right
+  // place; vitest jsdom doesn't carry a websocket polyfill.
 });

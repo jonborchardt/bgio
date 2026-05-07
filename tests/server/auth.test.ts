@@ -135,7 +135,62 @@ describe('accounts — integration (10.7)', () => {
     expect(verified.user?.id).toBe(created.id);
   });
 
-  it.todo(
-    'live auth endpoints round-trip through createServer (requires server-side wiring of /auth/* routes)',
-  );
+  it('live auth endpoints round-trip through a booted createServer', async () => {
+    // Tier 0 wired POST /auth/register, /auth/login, GET /auth/verify
+    // onto bgio's Koa app. We boot a real createServer, exercise all
+    // three over real HTTP, and assert the round-trip.
+    const { createServer } = await import('../../server/index.ts');
+    const created = createServer({ port: 0, storage: 'memory' });
+    const port = await created.start(0);
+    const base = `http://127.0.0.1:${port}`;
+    const cleanup = async () => {
+      created.botDriver.stop();
+      created.idleWatcher.stop();
+      const s = created.server as unknown as {
+        appServer?: { close?: (cb?: () => void) => void };
+        apiServer?: { close?: (cb?: () => void) => void };
+      };
+      await Promise.all([
+        new Promise<void>((r) =>
+          s.appServer?.close ? s.appServer.close(() => r()) : r(),
+        ),
+        new Promise<void>((r) =>
+          s.apiServer?.close ? s.apiServer.close(() => r()) : r(),
+        ),
+      ]);
+    };
+    try {
+      const reg = await fetch(`${base}/auth/register`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ username: 'live-bob', password: 'hunter2hunter2' }),
+      });
+      expect(reg.ok).toBe(true);
+
+      const log = await fetch(`${base}/auth/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ username: 'live-bob', password: 'hunter2hunter2' }),
+      });
+      expect(log.ok).toBe(true);
+      const { token } = (await log.json()) as { token: string };
+      expect(typeof token).toBe('string');
+      expect(token.length).toBeGreaterThan(0);
+
+      const ver = await fetch(`${base}/auth/verify`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      expect(ver.ok).toBe(true);
+      const verBody = (await ver.json()) as { user: { username: string } };
+      expect(verBody.user.username).toBe('live-bob');
+
+      // Bad token → 401.
+      const badVer = await fetch(`${base}/auth/verify`, {
+        headers: { Authorization: 'Bearer not-a-real-token' },
+      });
+      expect(badVer.status).toBe(401);
+    } finally {
+      await cleanup();
+    }
+  });
 });
