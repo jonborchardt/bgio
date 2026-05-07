@@ -48,6 +48,11 @@ export function DevSidebar({
     window.location.hash = '#mats';
     window.location.reload();
   };
+  const onOpenBoardPreview = () => {
+    if (typeof window === 'undefined') return;
+    window.location.hash = '#boards';
+    window.location.reload();
+  };
   if (!isDev) return null;
 
   if (!open) {
@@ -211,6 +216,15 @@ export function DevSidebar({
           sx={{ textTransform: 'none', justifyContent: 'flex-start' }}
         >
           Player-mat design preview
+        </Button>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={onOpenBoardPreview}
+          fullWidth
+          sx={{ textTransform: 'none', justifyContent: 'flex-start' }}
+        >
+          Gameboard layout preview
         </Button>
       </Stack>
     </Box>

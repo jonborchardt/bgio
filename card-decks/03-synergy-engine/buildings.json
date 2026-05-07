@@ -1,0 +1,39 @@
+[
+  { "name": "Granary", "cost": 8, "costBag": { "gold": 8 }, "benefit": "2 food", "note": "Food cellar. Pairs with Hunter, Forager. (Starter — no tech.)", "maxHp": 1, "tier": 1, "scienceColor": "green" },
+  { "name": "Trading Post", "cost": 6, "costBag": { "gold": 6 }, "benefit": "1 gold", "note": "Roadside stall. Pairs with Caravan Guard. (Starter — no tech.)", "maxHp": 1, "tier": 1, "scienceColor": "green" },
+  { "name": "Cellar", "cost": 5, "costBag": { "gold": 5 }, "benefit": "1 food", "note": "Cool root storage. Pairs with Smuggler (hides one unit). (Starter — no tech.)", "maxHp": 1, "tier": 1, "scienceColor": "green" },
+
+  { "name": "Hunter's Lodge", "cost": 11, "costBag": { "gold": 6, "wood": 3 }, "benefit": "1 food and 1 production", "note": "Requires Foraging. Hunter and Tracker tile.", "maxHp": 2, "tier": 1, "scienceColor": "green" },
+  { "name": "Watchtower", "cost": 13, "costBag": { "gold": 6, "wood": 2, "stone": 3 }, "benefit": "+1 defense and +1 happiness", "note": "Requires Town Watch. Optimal Watchman / Sentry tile.", "maxHp": 3, "tier": 2, "scienceColor": "green" },
+
+  { "name": "Mill", "cost": 14, "costBag": { "gold": 8, "wood": 4 }, "benefit": "2 food and 1 production", "note": "Requires Mill + Farming. Pairs with Miller (regen aura).", "maxHp": 2, "tier": 2, "scienceColor": "green" },
+  { "name": "Tavern", "cost": 14, "costBag": { "gold": 8, "wood": 3, "food": 2 }, "benefit": "+2 happiness", "note": "Requires Beer Brewing. Pairs with Brawler (cheap, gains hp here).", "maxHp": 2, "tier": 2, "scienceColor": "green" },
+  { "name": "Apothecary", "cost": 15, "costBag": { "gold": 9, "wood": 2, "food": 2 }, "benefit": "1 science and +1 happiness", "note": "Requires Chemistry. Pairs with Witch Doctor / Battle Medic.", "maxHp": 2, "tier": 2, "scienceColor": "green" },
+
+  { "name": "Library", "cost": 16, "costBag": { "gold": 10, "wood": 3, "stone": 1 }, "benefit": "2 science", "note": "Requires Reading. Pairs with Scholar (sci aura).", "maxHp": 2, "tier": 2, "scienceColor": "green" },
+  { "name": "Smithy", "cost": 18, "costBag": { "gold": 10, "wood": 2, "steel": 3 }, "benefit": "+1 attack and +1 defense", "note": "Requires Smithing. Pairs with Cutter, Sapper.", "maxHp": 3, "tier": 2, "scienceColor": "green" },
+  { "name": "Stables", "cost": 17, "costBag": { "gold": 10, "wood": 3, "food": 2 }, "benefit": "+1 attack and 1 horse", "note": "Requires Horseback Riding. Cavalry +1 range here.", "maxHp": 2, "tier": 2, "scienceColor": "green" },
+  { "name": "Pottery", "cost": 13, "costBag": { "gold": 8, "wood": 2, "production": 1 }, "benefit": "1 production and 1 gold", "note": "Requires Ceramics. Pairs with Potter (resource gen).", "maxHp": 2, "tier": 2, "scienceColor": "green" },
+
+  { "name": "Walls", "cost": 16, "costBag": { "gold": 8, "stone": 6 }, "benefit": "+1 defense", "note": "Requires Walls. Pikemen + Halberdiers gain firstStrike here.", "maxHp": 4, "tier": 2, "scienceColor": "green" },
+  { "name": "Forge", "cost": 20, "costBag": { "gold": 12, "wood": 2, "stone": 2, "steel": 3 }, "benefit": "+1 attack", "note": "Requires Smithing + Mining. Sapper / Berserker get +strength here.", "maxHp": 3, "tier": 2, "scienceColor": "green" },
+  { "name": "Quarry Camp", "cost": 17, "costBag": { "gold": 7, "wood": 2, "production": 3 }, "benefit": "2 production", "note": "Requires Mining. Pairs with Pioneer (production aura).", "maxHp": 2, "tier": 2, "scienceColor": "green" },
+  { "name": "Drill Yard", "cost": 22, "costBag": { "gold": 12, "stone": 4, "production": 2 }, "benefit": "+2 attack", "note": "Requires Tactics. Standard Bearer + Recruit Sergeant +strength here.", "maxHp": 3, "tier": 2, "scienceColor": "green" },
+
+  { "name": "Market", "cost": 22, "costBag": { "gold": 14, "wood": 3, "stone": 2 }, "benefit": "2 gold", "note": "Requires Markets. Caravan Guard +range here.", "maxHp": 3, "tier": 3, "scienceColor": "green" },
+  { "name": "Mint", "cost": 24, "costBag": { "gold": 14, "stone": 4, "steel": 2 }, "benefit": "3 gold", "note": "Requires Currency. Pairs with Treasurer (chief stipend +1).", "maxHp": 3, "tier": 3, "scienceColor": "green" },
+  { "name": "Workshop", "cost": 22, "costBag": { "gold": 12, "wood": 4, "stone": 3 }, "benefit": "2 production and 1 science", "note": "Requires Apprenticeship. Trebuchet / Onager +range here.", "maxHp": 3, "tier": 3, "scienceColor": "green" },
+
+  { "name": "Tower", "cost": 30, "costBag": { "gold": 16, "stone": 8, "production": 2 }, "benefit": "+2 defense", "note": "Requires Walls + Masonry. Watchman / Archer / Marksman +1-2 range here.", "maxHp": 4, "tier": 3, "scienceColor": "green" },
+  { "name": "Armory", "cost": 27, "costBag": { "gold": 16, "stone": 3, "steel": 4 }, "benefit": "+2 defense and +1 attack", "note": "Requires Armor. All non-cavalry units +1 hp here.", "maxHp": 4, "tier": 3, "scienceColor": "green" },
+  { "name": "Garrison", "cost": 28, "costBag": { "gold": 16, "stone": 4, "steel": 2 }, "benefit": "+2 defense and +1 happiness", "note": "Requires Logistics. Soldiers regen +1 here.", "maxHp": 4, "tier": 3, "scienceColor": "green" },
+  { "name": "Fortress", "cost": 50, "costBag": { "gold": 28, "stone": 14, "steel": 6 }, "benefit": "+4 defense", "note": "Requires Walls + Plate Armor. Army gets full first-strike here.", "maxHp": 4, "tier": 3, "scienceColor": "green" },
+  { "name": "Citadel", "cost": 50, "costBag": { "gold": 28, "stone": 12, "steel": 6 }, "benefit": "+3 defense and +1 attack", "note": "Requires Walls + Engineering. Strong all-around fort. Combat Engineer here grants +1 hp to adjacent buildings.", "maxHp": 4, "tier": 3, "scienceColor": "green" },
+
+  { "name": "Cathedral", "cost": 32, "costBag": { "gold": 18, "stone": 8, "production": 3 }, "benefit": "+4 happiness and 1 science", "note": "Requires Religion + Masonry. Paladin regen +2 here.", "maxHp": 3, "tier": 3, "scienceColor": "green" },
+  { "name": "School", "cost": 36, "costBag": { "gold": 22, "wood": 5, "stone": 3, "science": 4 }, "benefit": "3 science and +1 happiness", "note": "Requires Pedagogy + Library. Scholar / Witch Doctor +sci aura here.", "maxHp": 3, "tier": 3, "scienceColor": "green" },
+  { "name": "Counting House", "cost": 28, "costBag": { "gold": 16, "stone": 4, "science": 2 }, "benefit": "3 gold and 1 science", "note": "Requires Banking. Trader on this tile yields gold per round.", "maxHp": 3, "tier": 3, "scienceColor": "green" },
+  { "name": "Aqueduct", "cost": 35, "costBag": { "gold": 20, "stone": 8, "production": 3 }, "benefit": "2 food and +2 happiness", "note": "Requires Plumbing + Bridges. Adjacent buildings regen +1 each round.", "maxHp": 3, "tier": 3, "scienceColor": "green" },
+  { "name": "Ironworks", "cost": 36, "costBag": { "gold": 18, "wood": 3, "stone": 3, "steel": 6 }, "benefit": "3 production and +1 attack", "note": "Requires Smelting + Smithing. Sapper / Saboteur +2 strength here.", "maxHp": 3, "tier": 3, "scienceColor": "green" },
+  { "name": "Palace", "cost": 50, "costBag": { "gold": 30, "stone": 8, "wood": 4, "production": 4 }, "benefit": "+3 happiness and 4 gold", "note": "Requires Leadership + Architecture. Royal Guard +2 strength here.", "maxHp": 4, "tier": 3, "scienceColor": "green" }
+]

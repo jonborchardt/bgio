@@ -1,0 +1,35 @@
+[
+  { "name": "Granary", "cost": 6, "costBag": { "gold": 6 }, "benefit": "2 food", "note": "Stores grain for the lean weeks. (Starter — no tech required.)", "maxHp": 1, "tier": 1, "scienceColor": "green" },
+  { "name": "Trading Post", "cost": 6, "costBag": { "gold": 6 }, "benefit": "1 gold", "note": "Roadside stall. (Starter — no tech required.)", "maxHp": 1, "tier": 1, "scienceColor": "green" },
+  { "name": "Hunter's Lodge", "cost": 10, "costBag": { "gold": 6, "wood": 2 }, "benefit": "1 food and 1 production", "note": "Requires Foraging. Game and pelts.", "maxHp": 2, "tier": 1, "scienceColor": "green" },
+  { "name": "Watchtower", "cost": 12, "costBag": { "gold": 6, "wood": 2, "stone": 2 }, "benefit": "+1 defense and +1 happiness", "note": "Requires Town Watch. Visible safety calms the settlement.", "maxHp": 3, "tier": 2, "scienceColor": "green" },
+
+  { "name": "Mill", "cost": 14, "costBag": { "gold": 8, "wood": 4, "stone": 1 }, "benefit": "2 food and 1 production", "note": "Requires Mill + Farming. Grinds grain and saws lumber off the same wheel.", "maxHp": 2, "tier": 2, "scienceColor": "green" },
+  { "name": "Tavern", "cost": 13, "costBag": { "gold": 8, "wood": 3, "food": 1 }, "benefit": "+2 happiness and 1 gold", "note": "Requires Beer Brewing. Cheap drink, loud songs.", "maxHp": 2, "tier": 2, "scienceColor": "green" },
+  { "name": "Library", "cost": 15, "costBag": { "gold": 9, "wood": 3, "stone": 2 }, "benefit": "2 science", "note": "Requires Reading. Shelf, ledger, lamp.", "maxHp": 2, "tier": 2, "scienceColor": "green" },
+  { "name": "Pottery", "cost": 13, "costBag": { "gold": 8, "wood": 2, "production": 1 }, "benefit": "1 production and 1 gold", "note": "Requires Ceramics. Pots for storage, jugs for sale.", "maxHp": 2, "tier": 2, "scienceColor": "green" },
+  { "name": "Smokehouse", "cost": 12, "costBag": { "gold": 7, "wood": 3, "food": 1 }, "benefit": "1 food and +1 happiness", "note": "Requires Cooking. Cured meat keeps spirits up through winter.", "maxHp": 2, "tier": 2, "scienceColor": "green" },
+  { "name": "Stables", "cost": 16, "costBag": { "gold": 9, "wood": 3, "food": 2 }, "benefit": "+1 attack and 1 horse", "note": "Requires Horseback Riding. Mounts ready when needed.", "maxHp": 2, "tier": 2, "scienceColor": "green" },
+  { "name": "Walls", "cost": 16, "costBag": { "gold": 8, "stone": 6 }, "benefit": "+1 defense", "note": "Requires Walls. Stout earthworks rimming the village.", "maxHp": 4, "tier": 2, "scienceColor": "green" },
+  { "name": "Forge", "cost": 18, "costBag": { "gold": 10, "wood": 2, "stone": 2, "steel": 2 }, "benefit": "+1 attack and 1 production", "note": "Requires Smithing. The soldiers thank the forgemen.", "maxHp": 3, "tier": 2, "scienceColor": "green" },
+  { "name": "Quarry Camp", "cost": 14, "costBag": { "gold": 7, "wood": 2, "production": 2 }, "benefit": "2 production", "note": "Requires Mining. Stone hauled out daily.", "maxHp": 2, "tier": 2, "scienceColor": "green" },
+  { "name": "Apothecary", "cost": 14, "costBag": { "gold": 8, "wood": 2, "food": 2 }, "benefit": "1 science and 1 happiness", "note": "Requires Chemistry. Tinctures the priests would frown at.", "maxHp": 2, "tier": 2, "scienceColor": "green" },
+
+  { "name": "Market", "cost": 22, "costBag": { "gold": 14, "wood": 3, "stone": 2 }, "benefit": "2 gold", "note": "Requires Markets. The day the merchants open is the day the streets fill.", "maxHp": 3, "tier": 3, "scienceColor": "green" },
+  { "name": "Mint", "cost": 24, "costBag": { "gold": 14, "stone": 4, "steel": 2 }, "benefit": "3 gold", "note": "Requires Currency. Stamps a coin you can trust.", "maxHp": 3, "tier": 3, "scienceColor": "green" },
+  { "name": "Workshop", "cost": 22, "costBag": { "gold": 12, "wood": 4, "stone": 3 }, "benefit": "2 production and 1 science", "note": "Requires Apprenticeship. Tools beget tools.", "maxHp": 3, "tier": 3, "scienceColor": "green" },
+  { "name": "Armory", "cost": 26, "costBag": { "gold": 14, "stone": 4, "steel": 4 }, "benefit": "+2 defense and +1 attack", "note": "Requires Armor. Racks of plate and shield.", "maxHp": 4, "tier": 3, "scienceColor": "green" },
+  { "name": "Barracks", "cost": 22, "costBag": { "gold": 12, "wood": 4, "stone": 3 }, "benefit": "+2 attack", "note": "Requires Tactics. Drill ground and a roof for the spears.", "maxHp": 3, "tier": 3, "scienceColor": "green" },
+  { "name": "Garrison", "cost": 26, "costBag": { "gold": 14, "stone": 6, "steel": 2 }, "benefit": "+2 defense and +1 happiness", "note": "Requires Logistics. Beds, mess, drill — all under one roof.", "maxHp": 4, "tier": 3, "scienceColor": "green" },
+  { "name": "Aqueduct", "cost": 28, "costBag": { "gold": 14, "stone": 8, "production": 4 }, "benefit": "2 food and +2 happiness", "note": "Requires Plumbing. Clean water at every fountain.", "maxHp": 3, "tier": 3, "scienceColor": "green" },
+  { "name": "Print Shop", "cost": 24, "costBag": { "gold": 14, "wood": 3, "steel": 2, "production": 2 }, "benefit": "2 science and 1 gold", "note": "Requires Printing. Pamphlets, ledgers, broadsheets.", "maxHp": 3, "tier": 3, "scienceColor": "green" },
+  { "name": "Counting House", "cost": 28, "costBag": { "gold": 16, "stone": 4, "science": 2 }, "benefit": "3 gold and 1 science", "note": "Requires Banking. Ledgers thick enough to stop a knife.", "maxHp": 3, "tier": 3, "scienceColor": "green" },
+  { "name": "Cathedral", "cost": 32, "costBag": { "gold": 18, "stone": 8, "production": 3 }, "benefit": "+4 happiness and 1 science", "note": "Requires Religion + Masonry. Stained glass, taller than memory.", "maxHp": 3, "tier": 3, "scienceColor": "green" },
+  { "name": "School", "cost": 36, "costBag": { "gold": 20, "wood": 5, "stone": 3, "science": 4 }, "benefit": "3 science and +1 happiness", "note": "Requires Pedagogy + Library. Where the next generation overtakes the last.", "maxHp": 3, "tier": 3, "scienceColor": "green" },
+
+  { "name": "Tower", "cost": 30, "costBag": { "gold": 16, "stone": 8, "production": 2 }, "benefit": "+2 defense", "note": "Requires Walls + Masonry. Tall enough to see the whole valley.", "maxHp": 4, "tier": 3, "scienceColor": "green" },
+  { "name": "Fortress", "cost": 50, "costBag": { "gold": 26, "stone": 14, "steel": 6 }, "benefit": "+4 defense", "note": "Requires Walls + Plate Armor. A keep thick enough to last a siege.", "maxHp": 4, "tier": 3, "scienceColor": "green" },
+  { "name": "Ironworks", "cost": 32, "costBag": { "gold": 16, "wood": 4, "stone": 4, "steel": 4 }, "benefit": "3 production and +1 attack", "note": "Requires Smelting. Bigger billets, bigger blades.", "maxHp": 3, "tier": 3, "scienceColor": "green" },
+  { "name": "Palace", "cost": 50, "costBag": { "gold": 30, "stone": 8, "wood": 4, "production": 4 }, "benefit": "+3 happiness and 4 gold", "note": "Requires Leadership + Architecture. The chief's actual house.", "maxHp": 4, "tier": 3, "scienceColor": "green" },
+  { "name": "Citadel", "cost": 50, "costBag": { "gold": 26, "stone": 12, "steel": 6 }, "benefit": "+3 defense and +1 attack", "note": "Requires Walls + Engineering. Headquarters on a hill.", "maxHp": 4, "tier": 3, "scienceColor": "green" }
+]

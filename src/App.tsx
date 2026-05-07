@@ -19,6 +19,7 @@ import { SeatPickerContext } from './ui/layout/SeatPickerContext.ts';
 import { CardInfoProvider } from './ui/cards/CardInfoContext.tsx';
 import { CardPreviewPage } from './ui/cardPreview/CardPreviewPage.tsx';
 import { MatPreviewPage } from './ui/matPreview/MatPreviewPage.tsx';
+import { BoardPreviewPage } from './ui/boardPreview/BoardPreviewPage.tsx';
 import { FuzzPage } from './fuzz/FuzzPage.tsx';
 import type { PlayerID } from './game/index.ts';
 
@@ -236,6 +237,9 @@ const AppShell: ComponentType = () => {
     }
     if (window.location.hash === '#mats') {
       return <MatPreviewPage />;
+    }
+    if (window.location.hash === '#boards') {
+      return <BoardPreviewPage />;
     }
     const isDev =
       (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true;
