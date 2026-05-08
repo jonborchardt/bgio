@@ -166,13 +166,27 @@ const enumerateScience = (
   // Library moves: one buy candidate per affordable face-up slot, one
   // burn candidate per non-null slot. The move bodies re-validate cost,
   // stage, and seat.
+  //
+  // Burn suppression: once `scienceBurnedThisRound` is true, the seat
+  // has already satisfied the once-per-round burn requirement. Emitting
+  // more burn candidates lets the bot driver's enumerate-random
+  // fallback dispatch additional burns by chance — every face-up slot
+  // produces a candidate, so the random pick stays heavily
+  // burn-weighted even after the first burn. Suppressing them here
+  // collapses the post-burn candidate list to "buy / event / tech /
+  // seatDone / pass", which is the actual remaining decision space.
+  // The smart scienceBot already returns scienceSeatDone after the
+  // first burn; this guard makes the enumerate fallback agree.
   const library = G.library;
+  const alreadyBurned = science.scienceBurnedThisRound === true;
   if (library !== undefined) {
     const tableau = library.discountTableaus[playerID] ?? [];
     for (let slot = 0; slot < library.row.length; slot += 1) {
       const card = library.row[slot];
       if (card === null || card === undefined) continue;
-      out.push({ move: 'scienceLibraryBurn', args: [slot] });
+      if (!alreadyBurned) {
+        out.push({ move: 'scienceLibraryBurn', args: [slot] });
+      }
       if (stash === undefined) continue;
       const cost = effectiveResearchCost(card, tableau);
       if (canAfford(stash, cost)) {

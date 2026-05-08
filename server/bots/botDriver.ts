@@ -315,9 +315,25 @@ export const makeBotDriver = ({
           // the dispatch loop below can drive them. Idempotent.
           await markSoloBotSeats(server, matchID, state, metadata);
 
+          // othersPhase parks every non-chief seat in its role-stage
+          // (scienceTurn / domesticTurn / defenseTurn) until ALL seats
+          // have flipped `G.othersDone[seat] = true`. Individual seats
+          // don't leave the stage on their own — they wait for the
+          // last seat to declare done so phase.endIf transitions the
+          // phase. For bots this means: after dispatching seatDone,
+          // the seat is still listed in `ctx.activePlayers` even
+          // though it has nothing more to do. We must not re-dispatch
+          // for a seat that's flipped its done flag, or we burn ticks
+          // on no-op moves (or worse, dispatch a stray buy / event
+          // play after the bot already declared done).
+          const othersDone =
+            (state.G as { othersDone?: Record<string, boolean> }).othersDone ??
+            {};
+
           const seats = seatsActive(state);
           for (const playerID of seats) {
             if (metadata.players[playerID]?.isBot !== true) continue;
+            if (othersDone[playerID] === true) continue;
 
             // Smart-bot path: ask the per-role heuristic bot for this
             // seat first. If it returns null (no preferred move at this
