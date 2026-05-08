@@ -61,10 +61,24 @@ describe('domesticBot (11.5)', () => {
       maxHp: 1,
     };
     G.domestic!.producedThisRound = false;
-    // Empty wallet → no buy is possible either. Bot should emit
-    // domesticSeatDone (not domesticProduce — auto-produce owns that;
-    // and not null — null hands the seat to the bot driver's
-    // enumerate-random fallback which spams INVALID buy candidates).
+    // Empty wallet → no buy is possible. The bot's first call surfaces
+    // the shortfall as a `requestHelp` so the chief sees what it's
+    // trying to build; once that ask is on G.requests the next call
+    // falls through to domesticSeatDone (NOT domesticProduce — auto-
+    // produce owns that — and NOT null, which would hand the seat to
+    // the bot driver's enumerate-random fallback).
+    G.requests = [
+      ...G.domestic!.hand.map((b) => ({
+        id: `2|0|building:${b.name}`,
+        fromSeat: '2',
+        fromRole: 'domestic' as const,
+        toSeat: '0',
+        targetId: `building:${b.name}`,
+        targetLabel: b.name,
+        need: { kind: 'resources' as const, bag: {} },
+        round: G.round,
+      })),
+    ];
     const action = domesticBot.play({
       G,
       ctx: ctxFor('othersPhase', { '2': 'domesticTurn' }, 4),
@@ -74,10 +88,35 @@ describe('domesticBot (11.5)', () => {
     expect(action?.move).toBe('domesticSeatDone');
   });
 
-  it('emits domesticSeatDone when nothing is affordable', () => {
+  it('asks the chief for help when nothing is affordable', () => {
     const G = setupG(4);
     // Empty grid, empty wallet → no produce (empty grid), no buy.
-    // Bot should declare the turn done so the round advances.
+    // Bot should surface the shortfall as a `requestHelp` so the
+    // chief sees what it's trying to build.
+    const action = domesticBot.play({
+      G,
+      ctx: ctxFor('othersPhase', { '2': 'domesticTurn' }, 4),
+      playerID: '2',
+    });
+    expect(action).not.toBeNull();
+    expect(action?.move).toBe('requestHelp');
+  });
+
+  it('emits domesticSeatDone after the help request is outstanding', () => {
+    const G = setupG(4);
+    // Pre-seed a help request for every hand card so the dedupe in
+    // `buildHelpRequestCandidate` suppresses re-asks and the bot falls
+    // through to seatDone.
+    G.requests = G.domestic!.hand.map((b) => ({
+      id: `2|0|building:${b.name}`,
+      fromSeat: '2',
+      fromRole: 'domestic' as const,
+      toSeat: '0',
+      targetId: `building:${b.name}`,
+      targetLabel: b.name,
+      need: { kind: 'resources' as const, bag: {} },
+      round: G.round,
+    }));
     const action = domesticBot.play({
       G,
       ctx: ctxFor('othersPhase', { '2': 'domesticTurn' }, 4),

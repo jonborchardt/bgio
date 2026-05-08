@@ -81,8 +81,14 @@ describe('buildBotMap (11.7)', () => {
     const action = seatBot!({ G, ctx, playerID: '1' });
     expect(action).not.toBeNull();
     // The first non-null candidate must come from defenseBot since
-    // seat 1 is in defenseTurn, not domesticTurn.
-    expect(action?.move).toBe('defenseSeatDone');
+    // seat 1 is in defenseTurn, not domesticTurn. The bot's first
+    // move with an empty stash is the seat's `requestHelp` (so the
+    // chief sees what it's recruiting); a fully-funded seat would
+    // open with `defenseBuyAndPlace`. Either is a defense-bot
+    // candidate.
+    const move = action?.move ?? '';
+    expect(['defenseSeatDone', 'defenseBuyAndPlace', 'defensePlay', 'requestHelp'])
+      .toContain(move);
   });
 
   // Issue 003 closed the network-mode wiring it.todo: the server-side

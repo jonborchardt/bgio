@@ -181,7 +181,9 @@ describe('defenseBot.play (defense redesign 2.5)', () => {
 
   it('returns defenseSeatDone when the seat has nothing else to do', () => {
     const G = setupG(4);
-    // Stash empty + no defenseHand → only seat-done remains.
+    // Stash empty + no defenseHand → only seat-done remains. With an
+    // empty hand there's nothing to ask the chief for either, so the
+    // bot falls straight through to seat-done.
     G.mats[defenseSeatOf(G)]!.stash = bagOf({});
     G.defense = { hand: [], inPlay: [] };
     const action = defenseBot.play({
@@ -190,6 +192,20 @@ describe('defenseBot.play (defense redesign 2.5)', () => {
       playerID: defenseSeatOf(G),
     });
     expect(action).toEqual({ move: 'defenseSeatDone', args: [] });
+  });
+
+  it('asks the chief for help when nothing in hand is affordable', () => {
+    const G = setupG(4);
+    // Empty stash but the starter hand is non-empty → bot surfaces the
+    // shortfall as a `requestHelp` so the chief sees what it's
+    // recruiting and can route bank resources.
+    G.mats[defenseSeatOf(G)]!.stash = bagOf({});
+    const action = defenseBot.play({
+      G,
+      ctx: ctxFor('othersPhase', { [defenseSeatOf(G)]: 'defenseTurn' }, 4),
+      playerID: defenseSeatOf(G),
+    });
+    expect(action?.move).toBe('requestHelp');
   });
 
   it('prefers buy+place over seat-done when a recruit is affordable', () => {

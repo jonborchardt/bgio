@@ -34,6 +34,16 @@
 // past those silently rather than emitting an empty step.
 //
 // Pure presentational; no bgio plumbing here.
+//
+// Dedupe rationale: `pushTrace` is called from a `useEffect` whose
+// dependency is `G.track.lastResolve`. Networked play re-serializes
+// the entire game state on every server push, which means the
+// `lastResolve` *reference* changes even when the underlying trace
+// hasn't moved on. Without content-based dedupe, every bot move
+// after a flip would re-push the same trace, restarting playback at
+// step 0/N — the user would click "Finish" and immediately see
+// "Continue" again. We compute a stable identity from the trace's
+// own primitive fields and dedupe on that string.
 
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -45,6 +55,27 @@ import {
   type ResolveAnimationContextValue,
 } from './resolveAnimation.ts';
 import { decomposeTrace, type ResolveStep } from './resolveSteps.ts';
+
+/**
+ * Build a content-based identity for a `ResolveTrace`. Two traces with
+ * identical content collide — and that's exactly what we want: from the
+ * UI's perspective they describe the same resolve, so dedupe should
+ * suppress the duplicate. The reverse risk (two genuinely-distinct
+ * resolves colliding) is benign here too: the second flip writes a new
+ * trace into `G.track.traces`, which the watcher pushes through this
+ * function on the next state arrival; if the contents are byte-for-byte
+ * the same as the previous, suppressing the playback is the correct
+ * behavior (nothing changed for the player to react to).
+ */
+const traceIdentity = (t: ResolveTrace): string => {
+  const path = t.pathTiles.map((c) => `${c.x},${c.y}`).join('|');
+  const firing = t.firingUnitIDs.join('|');
+  const impacts = t.impactTiles.join('|');
+  const burn = t.centerBurned ?? 0;
+  const burnSrc = t.centerBurnSource ?? '';
+  const burnRound = t.centerBurnRound ?? 0;
+  return `${t.outcome}::${path}::${firing}::${impacts}::${burn}::${burnSrc}::${burnRound}`;
+};
 
 export interface ResolveAnimationProviderProps {
   children: ReactNode;
@@ -79,10 +110,13 @@ export function ResolveAnimationProvider({
   // don't trigger a render just for pushing — the visible-state change
   // is driven by `setPlayback`.
   const queueRef = useRef<ResolveTrace[]>([]);
-  // Identity-dedupe: tests / strict-mode double-renders re-fire the
-  // `useEffect` watching `lastResolve`, which would otherwise enqueue
-  // the same trace twice.
-  const lastPushedRef = useRef<ResolveTrace | null>(null);
+  // Identity-dedupe: networked state pushes re-serialize G on every
+  // bot move, so the `lastResolve` reference is fresh on each render
+  // even when the trace's content hasn't moved on. We dedupe by a
+  // content-derived key so the watcher's `useEffect` re-fires don't
+  // restart playback at step 0/N after the user already clicked
+  // through to Finish.
+  const lastPushedKeyRef = useRef<string | null>(null);
   // Active timeout handle so cleanup can cancel a pending advance when
   // the provider unmounts mid-animation or the user clicks Continue.
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -153,8 +187,9 @@ export function ResolveAnimationProvider({
   const pushTrace = useCallback(
     (trace: ResolveTrace) => {
       if (trace.outcome === 'noop') return;
-      if (lastPushedRef.current === trace) return;
-      lastPushedRef.current = trace;
+      const key = traceIdentity(trace);
+      if (lastPushedKeyRef.current === key) return;
+      lastPushedKeyRef.current = key;
       // Kick the queue immediately when idle. If the trace produces
       // zero steps (defensive — `noop` is filtered above) we fall
       // through to the enqueue branch so the queue's drain logic can

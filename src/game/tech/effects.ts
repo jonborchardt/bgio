@@ -66,14 +66,29 @@ export const applyUnlockCard = (
     const def = buildingByName.get(ref.toLowerCase());
     if (def === undefined) return false;
     if (G.domestic === undefined) return false;
-    if (G.domestic.hand.some((b) => b.name === def.name)) return false;
+    // The optimistic client predictively runs the move against its
+    // redacted snapshot of G — and `playerView` replaces the contents
+    // of every hand it doesn't own with `null` placeholders to leak
+    // only count, not contents. A non-domestic seat (e.g. the chief
+    // playing a tech that unlocks a building) sees `domestic.hand` as
+    // a `null[]`, so a naive `b.name` access crashes. Skip nulls
+    // during the duplicate check; the server side runs against the
+    // authoritative state and never sees nulls. The push is safe
+    // either way because the redacted client doesn't ship the result
+    // back — bgio reconciles against the server's authoritative move
+    // outcome.
+    if (G.domestic.hand.some((b) => b !== null && b !== undefined && b.name === def.name)) {
+      return false;
+    }
     G.domestic.hand.push(def);
     return true;
   }
   const def = unitByName.get(ref.toLowerCase());
   if (def === undefined) return false;
   if (G.defense === undefined) return false;
-  if (G.defense.hand.some((u) => u.name === def.name)) return false;
+  if (G.defense.hand.some((u) => u !== null && u !== undefined && u.name === def.name)) {
+    return false;
+  }
   G.defense.hand.push(def);
   return true;
 };
