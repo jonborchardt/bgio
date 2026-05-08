@@ -119,6 +119,10 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD wget -qO- http://127.0.0.1:8000/games || exit 1
 
-# Call vite-node directly (resolved at build time so every restart skips
-# npx's per-invocation lookup tax).
-CMD ["node", "/app/node_modules/vite-node/dist/cli.js", "server/start.ts"]
+# Call vite-node's bin shim directly. The path is the `bin` entry in
+# vite-node's package.json (./vite-node.mjs at the package root), not
+# the dist/cli output — the shim is the documented public entry, and
+# pointing at dist/cli.* couples us to vite-node's internal layout.
+# Invoking through `node` (rather than the .bin/ shim symlink) skips
+# npx-equivalent path lookup on every container start.
+CMD ["node", "/app/node_modules/vite-node/vite-node.mjs", "server/start.ts"]
