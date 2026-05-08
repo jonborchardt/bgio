@@ -61,25 +61,30 @@ describe('domesticBot (11.5)', () => {
       maxHp: 1,
     };
     G.domestic!.producedThisRound = false;
-    // Empty wallet → no buy is possible either. Bot should return null
-    // rather than dispatching domesticProduce.
+    // Empty wallet → no buy is possible either. Bot should emit
+    // domesticSeatDone (not domesticProduce — auto-produce owns that;
+    // and not null — null hands the seat to the bot driver's
+    // enumerate-random fallback which spams INVALID buy candidates).
     const action = domesticBot.play({
       G,
       ctx: ctxFor('othersPhase', { '2': 'domesticTurn' }, 4),
       playerID: '2',
     });
-    expect(action).toBeNull();
+    expect(action).not.toBeNull();
+    expect(action?.move).toBe('domesticSeatDone');
   });
 
-  it('returns null when nothing is affordable', () => {
+  it('emits domesticSeatDone when nothing is affordable', () => {
     const G = setupG(4);
     // Empty grid, empty wallet → no produce (empty grid), no buy.
+    // Bot should declare the turn done so the round advances.
     const action = domesticBot.play({
       G,
       ctx: ctxFor('othersPhase', { '2': 'domesticTurn' }, 4),
       playerID: '2',
     });
-    expect(action).toBeNull();
+    expect(action).not.toBeNull();
+    expect(action?.move).toBe('domesticSeatDone');
   });
 
   it('buys the cheapest affordable building when something fits', () => {

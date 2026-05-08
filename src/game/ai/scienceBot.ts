@@ -7,11 +7,16 @@
 // `scienceLibraryBurn` to clear the once-per-round burn requirement
 // (`scienceSeatDone` rejects until the burn latch is set), choosing the
 // highest-tier slot so the burned card is least likely to be researchable
-// anyway.
+// anyway. After the burn (or when there's nothing left to burn), emit
+// `scienceSeatDone` so the round advances cleanly.
 //
-// We mirror `domesticBot`'s structure: a single move per call, returning
-// `null` when nothing legal exists (the composed bot then falls through
-// to the next role or to the harness's seat-done flow).
+// Returning null in-stage is forbidden — the bot driver falls back to
+// enumerate's uniform-random pick, and enumerate emits one burn
+// candidate per face-up slot. With N burn candidates and ~1 seatDone,
+// the random pick keeps burning until rng eventually lands on seatDone.
+// The fix: never return null while still in `scienceTurn`; emit
+// `scienceSeatDone` instead. Out-of-stage / wrong-role calls still
+// return null.
 
 import type { Ctx } from 'boardgame.io';
 import type { PlayerID, SettlementState } from '../types.ts';
@@ -44,14 +49,22 @@ interface CandidateBuy {
   costSum: number;
 }
 
+const seatDone = (): MoveCandidate => ({
+  move: 'scienceSeatDone',
+  args: [],
+});
+
 const play = (state: BotState): MoveCandidate | null => {
   const { G, ctx, playerID } = state;
 
+  // Out-of-stage / wrong-role: return null so callers know we're idle.
   if (ctx.activePlayers?.[playerID] !== 'scienceTurn') return null;
   if (!rolesAtSeat(G.roleAssignments, playerID).includes('science')) return null;
 
   const lib = G.library;
-  if (lib === undefined) return null;
+  // No library at all — `scienceSeatDone` accepts when library is
+  // undefined, so declare done rather than dropping out.
+  if (lib === undefined) return seatDone();
 
   const tableau = lib.discountTableaus[playerID] ?? [];
 
@@ -83,12 +96,15 @@ const play = (state: BotState): MoveCandidate | null => {
     };
   }
 
-  // Nothing affordable. Satisfy the once-per-round burn requirement so
-  // `scienceSeatDone` can fire afterwards. Pick the highest-tier
-  // remaining slot — the most expensive card is the least likely to be
-  // affordable on later turns either, so burning it costs the table the
-  // least. Tie-break by slot index for determinism.
-  if (G.science?.scienceBurnedThisRound === true) return null;
+  // Nothing affordable. If we already burned this round, declare the
+  // turn done — the seat-done move accepts because the burn latch is
+  // set.
+  if (G.science?.scienceBurnedThisRound === true) return seatDone();
+
+  // Not yet burned this round. Burn the highest-tier remaining slot —
+  // the most expensive card is the least likely to be affordable on
+  // later turns either, so burning it costs the table the least.
+  // Tie-break by slot index for determinism.
   let pick: { slotIndex: number; tier: number } | null = null;
   for (let slotIndex = 0; slotIndex < lib.row.length; slotIndex++) {
     const card = lib.row[slotIndex];
@@ -97,7 +113,8 @@ const play = (state: BotState): MoveCandidate | null => {
       pick = { slotIndex, tier: card.tier };
     }
   }
-  if (pick === null) return null;
+  // Row is empty — `scienceSeatDone` accepts when no card is face-up.
+  if (pick === null) return seatDone();
   return { move: 'scienceLibraryBurn', args: [pick.slotIndex] };
 };
 
