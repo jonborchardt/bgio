@@ -16,6 +16,7 @@ import { Client } from 'boardgame.io/react';
 import { SocketIO } from 'boardgame.io/multiplayer';
 import { Settlement } from './game/index.ts';
 import { SettlementBoard } from './Board.tsx';
+import { ConnectionShell } from './lobby/ConnectionShell.tsx';
 
 export type ClientMode = 'hotseat' | 'networked';
 
@@ -92,6 +93,11 @@ export const networkedClientFactory = (
     numPlayers: 4,
     multiplayer: SocketIO({ server: getServerURL() }),
     debug: false,
+    // Replace bgio's default `<div>connecting...</div>` with a real
+    // recovery UI. After ~3s on this loading screen the user gets
+    // "Retry now" + "Back to lobby" buttons. See plan 02 in
+    // plans/networked-finish/02-connection-recovery.md.
+    loading: ConnectionShell,
   }) as unknown as ComponentType<{
     matchID?: string;
     playerID?: string | null;
