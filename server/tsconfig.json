@@ -56,6 +56,7 @@
     "runs/**/*.ts",
     "idle/**/*.ts",
     "bots/**/*.ts",
+    "lobby/**/*.ts",
     // src/game's transitive imports reach into src/cards (registry +
     // relationship indexing) and src/data (typed JSON loaders). Both
     // must be in the include list — TS6307 fires otherwise.
