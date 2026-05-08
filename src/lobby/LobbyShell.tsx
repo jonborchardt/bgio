@@ -28,6 +28,7 @@ import {
 } from '@mui/material';
 import { lobby } from './lobbyClient.ts';
 import type { SettlementSetupData } from './lobbyClient.ts';
+import { verify } from './authClient.ts';
 import { SeatPicker } from './SeatPicker.tsx';
 import { AuthForms } from './AuthForms.tsx';
 import { CreateMatchForm, type CreateMatchConfig } from './CreateMatchForm.tsx';
@@ -69,6 +70,15 @@ const saveAuth = (state: AuthState): void => {
     window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(state));
   } catch {
     // Quota / storage errors are non-fatal; the user can re-login.
+  }
+};
+
+const clearAuth = (): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(AUTH_STORAGE_KEY);
+  } catch {
+    // Non-fatal.
   }
 };
 
@@ -132,6 +142,36 @@ export function LobbyShell({
   useEffect(() => {
     if (auth) void refresh();
   }, [auth, refresh]);
+
+  // Stale-token probe (plan 01). At mount with a persisted auth token,
+  // hit `/auth/verify` once to confirm the server still knows the user.
+  // If it returns null (401 → bgio's `verify()` translates to null),
+  // the server lost our account — typically a Render free-tier cold
+  // start that wiped the in-memory accounts store. Drop the auth and
+  // bounce to <AuthForms> instead of letting the lobby look authed
+  // while every subsequent action 401s.
+  useEffect(() => {
+    if (!auth) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const fresh = await verify(auth.token);
+        if (cancelled) return;
+        if (!fresh) {
+          clearAuth();
+          setAuth(null);
+        }
+      } catch {
+        // verify() throws on non-401 errors (network down, 500). Don't
+        // clear the local auth on a transient failure — the user can
+        // retry by reloading. clearAuth happens only on confirmed-stale.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Only probe on initial mount per auth state — not on every render.
+  }, [auth]);
 
   const onCreate = useCallback(
     async (cfg: CreateMatchConfig) => {
