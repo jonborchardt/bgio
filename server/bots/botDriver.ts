@@ -39,6 +39,7 @@ import type { Role } from '../../src/game/types.ts';
 import { botCredentialsFor } from '../auth/authenticateCredentials.ts';
 import {
   grantBotControl,
+  revokeBotControl,
   type BgioServerLike as TakeoverBgioServerLike,
 } from '../idle/seatTakeover.ts';
 
@@ -153,15 +154,22 @@ const makeTransportAPI = (matchID: string, pubSub: PubSubLike | undefined) => ({
  * The lobby's CreateMatchForm posts `setupData: { soloMode, humanRole }`
  * which `src/game/setup.ts` copies into `state.G._setup`. This helper
  * reads that flag and, for every non-human seat in the canonical role
- * assignment, calls `grantBotControl` so the dispatch loop below picks
- * the seat up. `grantBotControl` is idempotent (early-returns when the
- * seat is already flagged) so re-running this every tick is cheap.
+ * assignment:
+ *   - If no human has joined the seat (`name` undefined), mark it as a
+ *     bot so the dispatch loop below picks it up.
+ *   - If a human HAS joined the seat (e.g., a friend grabbed a slot in
+ *     a "solo" match anyway), revoke any prior bot flag so the seat
+ *     goes back to the human. Without this, the auth hook only accepts
+ *     the synthetic `bot:<seat>` credential when isBot=true and the
+ *     joining human stalls forever on bgio's "connecting…" screen.
+ * `grantBotControl` / `revokeBotControl` are both idempotent, so
+ * re-running this every tick is cheap.
  *
  * Why here and not at match-create time: bgio's `Server` doesn't expose
  * a hook on the create-match REST endpoint that lets us mutate metadata
  * post-create. Doing it from the bot driver's poll uses infrastructure
- * we already have (db.fetch + grantBotControl) and self-heals if the
- * metadata is ever stomped — the next tick re-flags the seats. */
+ * we already have (db.fetch + grant/revokeBotControl) and self-heals
+ * if the metadata is ever stomped — the next tick re-flags the seats. */
 const markSoloBotSeats = async (
   server: BgioServerLike,
   matchID: string,
@@ -177,25 +185,34 @@ const markSoloBotSeats = async (
   if (numPlayers < 1 || numPlayers > 4) return;
   const assignments = assignRoles(numPlayers as 1 | 2 | 3 | 4);
   const humanSeat = seatOfRole(assignments, setup.humanRole);
+  // The two BgioServerLike interfaces describe non-overlapping slices
+  // of the same runtime object (botDriver wants `db.fetch` +
+  // `db.listMatches`; seatTakeover wants `db.fetch` + `db.setMetadata`).
+  // The actual server has all four; the cast bridges the two narrow
+  // views.
+  const takeoverServer = server as unknown as TakeoverBgioServerLike;
   for (const seat of Object.keys(assignments)) {
     if (seat === humanSeat) continue;
-    if (metadata.players[seat]?.isBot === true) continue;
-    await grantBotControl(
-      // The two BgioServerLike interfaces describe non-overlapping
-      // slices of the same runtime object (botDriver wants `db.fetch`
-      // + `db.listMatches`; seatTakeover wants `db.fetch` +
-      // `db.setMetadata`). The actual server has all four; the cast
-      // bridges the two narrow views.
-      server as unknown as TakeoverBgioServerLike,
-      matchID,
-      seat,
-    );
-    // Also update the local copy so the dispatch loop below sees the
-    // fresh flag without a second fetch in this tick.
-    metadata.players[seat] = {
-      ...(metadata.players[seat] ?? {}),
-      isBot: true,
-    };
+    const player = metadata.players[seat];
+    // bgio's `joinMatch` REST sets `name` (and `credentials`) on the
+    // player entry — `name` being defined is the canonical "a human
+    // has occupied this seat" signal that's also visible in the
+    // listMatches payload (credentials are stripped from the public
+    // listing).
+    const humanJoined = typeof player?.name === 'string';
+    if (humanJoined) {
+      if (player?.isBot === true) {
+        // Stale bot flag from a prior tick. Hand the seat back so the
+        // human's auth check (which only accepts a synthetic
+        // `bot:<seat>` credential when isBot=true) starts passing.
+        await revokeBotControl(takeoverServer, matchID, seat);
+        metadata.players[seat] = { ...(player ?? {}), isBot: false };
+      }
+      continue;
+    }
+    if (player?.isBot === true) continue;
+    await grantBotControl(takeoverServer, matchID, seat);
+    metadata.players[seat] = { ...(player ?? {}), isBot: true };
   }
 };
 
