@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ComponentType } from 'react';
-import { CircularProgress, Stack, Typography } from '@mui/material';
+import { Box, Button, CircularProgress, Stack, Typography } from '@mui/material';
 import { Client } from 'boardgame.io/react';
 import { Settlement } from './game/index.ts';
 import { SettlementBoard } from './Board.tsx';
@@ -162,9 +162,10 @@ const NetworkedShell = () => {
     setMatch({ matchID, playerID, credentials });
   };
 
-  // If the user clears their session (e.g. via a future "leave match"
-  // button), we drop the persisted creds. Hooked here for symmetry with
-  // saveCreds; no UI yet exposes it.
+  // When `match` flips back to null (the "Leave match" button below),
+  // drop the persisted creds so a refresh doesn't re-mount the dead
+  // session. The hook stays separate from the click handler so it also
+  // covers any future code path that clears the match state.
   useEffect(() => {
     if (match === null) {
       clearCreds();
@@ -180,7 +181,20 @@ const NetworkedShell = () => {
         </Stack>
       );
     }
-    return <NetworkedApp />;
+    // The bgio Client owns its own render tree; we render a sibling
+    // header above it so the escape hatch is always reachable. Leaving
+    // a match abandons the seat — the idleWatcher will mark it as a
+    // bot, other players continue without us.
+    return (
+      <Stack spacing={1}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', px: 1 }}>
+          <Button size="small" variant="outlined" onClick={() => setMatch(null)}>
+            Leave match
+          </Button>
+        </Box>
+        <NetworkedApp />
+      </Stack>
+    );
   }
 
   return <LobbyShell onSelect={onSelect} />;
