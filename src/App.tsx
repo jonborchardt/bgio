@@ -124,12 +124,6 @@ const NetworkedShell = () => {
     return null;
   });
 
-  // 10.6 server-down spinner. V1 is intentionally minimal: when we have
-  // creds but haven't mounted yet we just show "Connecting…". The full
-  // retry-with-backoff loop lands in plan 02 (connection-recovery) under
-  // plans/networked-finish/.
-  const [connecting] = useState(false);
-
   // Stale-creds probe (plan 01). When we restore from localStorage at
   // mount, the persisted (matchID, playerID, credentials) triple may
   // refer to a match the server no longer knows about — Render's free
@@ -242,18 +236,12 @@ const NetworkedShell = () => {
   }
 
   if (NetworkedApp) {
-    if (connecting) {
-      return (
-        <Stack spacing={1} sx={{ alignItems: 'center' }}>
-          <CircularProgress size={20} />
-          <Typography variant="body2">Connecting…</Typography>
-        </Stack>
-      );
-    }
     // The bgio Client owns its own render tree; we render a sibling
     // header above it so the escape hatch is always reachable. Leaving
     // a match abandons the seat — the idleWatcher will mark it as a
-    // bot, other players continue without us.
+    // bot, other players continue without us. Connection-failure UI
+    // (the "Retry now" / "Back to lobby" recovery) lives inside the
+    // bgio Client's `loading` slot — see ConnectionShell.
     return (
       <Stack spacing={1}>
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', px: 1 }}>
