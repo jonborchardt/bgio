@@ -12,10 +12,12 @@ import { describe, expect, it } from 'vitest';
 import type { Ctx } from 'boardgame.io';
 import { scienceBot } from '../../src/game/ai/scienceBot.ts';
 import { scienceLibraryBurn } from '../../src/game/roles/science/libraryBurn.ts';
+import { requestHelp } from '../../src/game/requests/move.ts';
 import { setup } from '../../src/game/setup.ts';
 import type { SettlementState } from '../../src/game/types.ts';
 import { seatOfRole } from '../../src/game/roles.ts';
 import { RESOURCES } from '../../src/game/resources/types.ts';
+import type { RequestHelpPayload } from '../../src/game/requests/move.ts';
 
 const setupG = (numPlayers: number): SettlementState =>
   setup(
@@ -50,6 +52,13 @@ const applyMove = (
       slot: number,
     ) => unknown;
     fn({ G, ctx, playerID: seat }, slot);
+  } else if (move.move === 'requestHelp') {
+    const payload = move.args[0] as RequestHelpPayload;
+    const fn = requestHelp as unknown as (
+      args: { G: SettlementState; ctx: Ctx; playerID: string | undefined },
+      p: RequestHelpPayload,
+    ) => unknown;
+    fn({ G, ctx, playerID: seat }, payload);
   } else if (move.move === 'scienceSeatDone') {
     // Don't actually apply — we just want to know the bot stopped
     // burning. seatDone is the terminal signal.
@@ -85,12 +94,14 @@ describe('scienceBot full-loop simulation', () => {
       if (action.move === 'scienceSeatDone') break;
     }
 
-    // Expected sequence: one burn, then seatDone.
-    // Bug sequence (the live one): burn, burn, burn, ..., (eventually
-    // seatDone after row drains).
-    expect(movesPlayed[0]).toBe('scienceLibraryBurn');
-    expect(movesPlayed[1]).toBe('scienceSeatDone');
-    expect(movesPlayed.length).toBe(2);
+    // Expected sequence: one requestHelp (so chief sees what the bot's
+    // trying to buy), then one burn, then seatDone.
+    // Bug sequence (the live one before the loop fix): burn, burn,
+    // burn, ..., (eventually seatDone after row drains).
+    expect(movesPlayed[0]).toBe('requestHelp');
+    expect(movesPlayed[1]).toBe('scienceLibraryBurn');
+    expect(movesPlayed[2]).toBe('scienceSeatDone');
+    expect(movesPlayed.length).toBe(3);
   });
 
   it('verifies scienceBurnedThisRound is set true after the burn move runs', () => {
@@ -103,6 +114,11 @@ describe('scienceBot full-loop simulation', () => {
     const ctx = ctxFor(seat);
 
     expect(G.science?.scienceBurnedThisRound).not.toBe(true);
+    // First call is the help request (so the chief sees the ask);
+    // apply it so the dedupe path frees the bot to move on.
+    const ask = scienceBot.play({ G, ctx, playerID: seat });
+    expect(ask?.move).toBe('requestHelp');
+    applyMove(ask!, G, seat, ctx);
     const action = scienceBot.play({ G, ctx, playerID: seat });
     expect(action?.move).toBe('scienceLibraryBurn');
     applyMove(action!, G, seat, ctx);

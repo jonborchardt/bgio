@@ -44,7 +44,7 @@ describe('scienceBot.play', () => {
     ).toBeNull();
   });
 
-  it('falls back to burn when nothing is affordable so seatDone can fire', () => {
+  it('asks the chief for help when nothing is affordable, then burns', () => {
     const G = setupG(4);
     const seat = seatOfRole(G.roleAssignments, 'science');
     // Drain the seat's stash so nothing in the row is reachable.
@@ -53,7 +53,36 @@ describe('scienceBot.play', () => {
     }
     // Drain bank too in case the science seat shares with chief.
     for (const r of RESOURCES) G.bank[r] = 0;
-    const action = scienceBot.play({
+    // First call surfaces the shortfall as a `requestHelp` so the
+    // chief sees what the bot is trying to buy.
+    const first = scienceBot.play({
+      G,
+      ctx: ctxFor('othersPhase', { [seat]: 'scienceTurn' }, 4),
+      playerID: seat,
+    });
+    expect(first).not.toBeNull();
+    expect(first?.move).toBe('requestHelp');
+    // Apply the request to G so the dedupe path inside the helper sees
+    // an outstanding ask and the bot moves on to the burn / seatDone
+    // sequence on the next call.
+    if (G.requests === undefined) G.requests = [];
+    const payload = first?.args[0] as {
+      fromRole: 'science';
+      targetId: string;
+      targetLabel: string;
+      slices: Array<{ toSeat: string; need: { kind: 'resources'; bag: Record<string, number> } }>;
+    };
+    G.requests.push({
+      id: `${seat}|${payload.slices[0]!.toSeat}|${payload.targetId}`,
+      fromSeat: seat,
+      fromRole: 'science',
+      toSeat: payload.slices[0]!.toSeat,
+      targetId: payload.targetId,
+      targetLabel: payload.targetLabel,
+      need: payload.slices[0]!.need,
+      round: G.round,
+    });
+    const second = scienceBot.play({
       G,
       ctx: ctxFor('othersPhase', { [seat]: 'scienceTurn' }, 4),
       playerID: seat,
@@ -63,9 +92,9 @@ describe('scienceBot.play', () => {
     // The chosen slot is the highest-tier card in the row — burning the
     // most expensive (least likely to be affordable later) costs the
     // table the least.
-    expect(action).not.toBeNull();
-    expect(action?.move).toBe('scienceLibraryBurn');
-    const slotIndex = action?.args[0] as number;
+    expect(second).not.toBeNull();
+    expect(second?.move).toBe('scienceLibraryBurn');
+    const slotIndex = second?.args[0] as number;
     const lib = G.library!;
     const burned = lib.row[slotIndex];
     expect(burned).not.toBeNull();
@@ -73,7 +102,7 @@ describe('scienceBot.play', () => {
     expect(burned!.tier).toBe(maxTier);
   });
 
-  it('emits scienceSeatDone after the burn latch is already set', () => {
+  it('emits scienceSeatDone after the burn latch is set and the help request is outstanding', () => {
     // Plan: don't return null in-stage. The bot driver's enumerate
     // fallback fans out N burn candidates per face-up slot; with N=6
     // and ~1 seatDone the random pick keeps burning. The smart bot
@@ -85,6 +114,51 @@ describe('scienceBot.play', () => {
     }
     for (const r of RESOURCES) G.bank[r] = 0;
     if (G.science !== undefined) G.science.scienceBurnedThisRound = true;
+    // Pre-seed a request so the bot's requestHelp dedupe skips and we
+    // can assert on the seatDone fall-through. Without this the bot
+    // would (correctly) emit the help request first.
+    const lib = G.library!;
+    const firstCard = lib.row.find((c) => c !== null);
+    if (firstCard !== null && firstCard !== undefined) {
+      const def = firstCard.def as { name?: string; id?: string };
+      const handle = def.name ?? def.id ?? 'unknown';
+      const targetId = `library:${firstCard.kind}:${handle}`;
+      G.requests = [
+        {
+          id: `${seat}|0|${targetId}`,
+          fromSeat: seat,
+          fromRole: 'science',
+          toSeat: '0',
+          targetId,
+          targetLabel: handle,
+          need: { kind: 'resources', bag: {} },
+          round: G.round,
+        },
+      ];
+    }
+    // The dedupe in `buildHelpRequestCandidate` keys on
+    // (fromSeat, targetId), so an outstanding row for the cheapest slot
+    // is enough to suppress the ask. We pre-seeded the first non-null
+    // slot above; the bot's pick (cheapest by costSum) is the same slot
+    // when costs are equal — pre-seed every slot to be safe.
+    const allRequests: typeof G.requests = [];
+    for (const card of lib.row) {
+      if (card === null) continue;
+      const def = card.def as { name?: string; id?: string };
+      const handle = def.name ?? def.id ?? 'unknown';
+      const targetId = `library:${card.kind}:${handle}`;
+      allRequests.push({
+        id: `${seat}|0|${targetId}`,
+        fromSeat: seat,
+        fromRole: 'science',
+        toSeat: '0',
+        targetId,
+        targetLabel: handle,
+        need: { kind: 'resources', bag: {} },
+        round: G.round,
+      });
+    }
+    G.requests = allRequests;
     const action = scienceBot.play({
       G,
       ctx: ctxFor('othersPhase', { [seat]: 'scienceTurn' }, 4),

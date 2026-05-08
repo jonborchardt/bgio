@@ -31,6 +31,8 @@ import type { BuildingDef } from '../../data/schema.ts';
 import { buildingCost } from '../../data/index.ts';
 import { RESOURCES } from '../resources/types.ts';
 import type { MoveCandidate } from './enumerate.ts';
+import { buildHelpRequestCandidate } from './botRequests.ts';
+import { idForBuilding } from '../../cards/registry.ts';
 
 export type BotAction = MoveCandidate;
 
@@ -181,9 +183,28 @@ const play = (state: BotState): BotAction | null => {
     }
   }
 
-  // Nothing affordable. Declare the turn done — without this, the bot
-  // driver's enumerate fallback picks uniformly across hand × placement
-  // candidates and burns ticks on guaranteed-INVALID buys.
+  // Nothing affordable — surface the shortfall as a `requestHelp` so the
+  // chief sees what we're trying to build and can route bank resources.
+  // We pick the cheapest unaffordable hand card (already first in the
+  // sorted hand) as the canonical ask. The helper dedupes per (seat,
+  // targetId) so this returns null on subsequent play() calls.
+  if (sortedHand.length > 0) {
+    const ask = sortedHand[0]!;
+    const help = buildHelpRequestCandidate({
+      G,
+      fromSeat: playerID,
+      fromRole: 'domestic',
+      targetId: idForBuilding(ask),
+      targetLabel: ask.name,
+      cost: buildingCost(ask),
+    });
+    if (help !== null) return help;
+  }
+
+  // Nothing left to ask for either. Declare the turn done — without
+  // this, the bot driver's enumerate fallback picks uniformly across
+  // hand × placement candidates and burns ticks on guaranteed-INVALID
+  // buys.
   return seatDone();
 };
 

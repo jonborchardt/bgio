@@ -27,6 +27,7 @@ import { RESOURCES } from '../resources/types.ts';
 import type { ResourceBag } from '../resources/types.ts';
 import type { MoveCandidate } from './enumerate.ts';
 import type { LibraryCard } from '../library/types.ts';
+import { buildHelpRequestCandidate } from './botRequests.ts';
 
 interface BotState {
   G: SettlementState;
@@ -48,6 +49,21 @@ interface CandidateBuy {
   cost: ResourceBag;
   costSum: number;
 }
+
+/** Stable id for a Library slot's card, used as the requestHelp target.
+ *  Mirrors the `${kind}:${name}` convention from `src/cards/registry.ts`
+ *  with a `library:` prefix so the chief panel can tell at a glance the
+ *  ask is about a Library buy rather than a tech-card play. */
+const libraryTargetId = (card: LibraryCard): string => {
+  const def = card.def as { name?: string; id?: string };
+  const handle = def.name ?? def.id ?? 'unknown';
+  return `library:${card.kind}:${handle}`;
+};
+
+const libraryTargetLabel = (card: LibraryCard): string => {
+  const def = card.def as { name?: string; id?: string };
+  return def.name ?? def.id ?? 'Library card';
+};
 
 const seatDone = (): MoveCandidate => ({
   move: 'scienceSeatDone',
@@ -96,9 +112,35 @@ const play = (state: BotState): MoveCandidate | null => {
     };
   }
 
-  // Nothing affordable. If we already burned this round, declare the
-  // turn done — the seat-done move accepts because the burn latch is
-  // set.
+  // Nothing affordable — surface the shortfall as a `requestHelp` so the
+  // chief sees what we're trying to buy and can route bank resources.
+  // We pick the cheapest unaffordable slot (by total resource sum) as
+  // the canonical ask; the helper dedupes per (seat, targetId) so this
+  // returns null on subsequent play() calls within the same turn.
+  let askPick: CandidateBuy | null = null;
+  for (let slotIndex = 0; slotIndex < lib.row.length; slotIndex++) {
+    const card = lib.row[slotIndex];
+    if (card === null || card === undefined) continue;
+    const cost = effectiveResearchCost(card, tableau);
+    const costSum = sumCost(cost);
+    if (askPick === null || costSum < askPick.costSum) {
+      askPick = { slotIndex, card, cost, costSum };
+    }
+  }
+  if (askPick !== null) {
+    const help = buildHelpRequestCandidate({
+      G,
+      fromSeat: playerID,
+      fromRole: 'science',
+      targetId: libraryTargetId(askPick.card),
+      targetLabel: libraryTargetLabel(askPick.card),
+      cost: askPick.cost,
+    });
+    if (help !== null) return help;
+  }
+
+  // If we already burned this round, declare the turn done — the seat-
+  // done move accepts because the burn latch is set.
   if (G.science?.scienceBurnedThisRound === true) return seatDone();
 
   // Not yet burned this round. Burn the highest-tier remaining slot —
