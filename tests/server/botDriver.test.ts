@@ -8,6 +8,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import { makeBotDriver } from '../../server/bots/botDriver.ts';
+import { scienceBot } from '../../src/game/ai/scienceBot.ts';
 
 describe('makeBotDriver', () => {
   it('start/stop are idempotent', () => {
@@ -243,6 +244,94 @@ describe('makeBotDriver', () => {
     // Seats 2 and 3 still have nobody — bot flag stays.
     expect(players['2']?.isBot).toBe(true);
     expect(players['3']?.isBot).toBe(true);
+  });
+
+  it("smart-bot dispatch: consults the per-role bot before enumerate", async () => {
+    // The bug: bot driver picks uniformly at random across enumerate's
+    // candidate list. For a science seat with N library cards that's
+    // N burn candidates vs ~1 seatDone, so the bot just burns the
+    // whole row before randomly picking seatDone. Fix: ask the smart
+    // per-role bot first; fall back to enumerate only if it returns
+    // null.
+    //
+    // We verify the smart-bot path by spying on scienceBot.play. When
+    // it returns a non-null candidate, the driver should dispatch
+    // THAT move and NOT consult pickIndex (which only fires on the
+    // enumerate fallback path).
+    const playSpy = vi
+      .spyOn(scienceBot, 'play')
+      .mockReturnValue({ move: 'scienceLibraryBuy', args: [3] });
+    const pickIndex = vi.fn().mockReturnValue(0);
+
+    const fetched = vi.fn().mockResolvedValue({
+      state: {
+        G: {
+          // assignRoles(2) puts science at seat 1 in 2p — the seat
+          // we're testing. The smart-bot helper reads roleAssignments
+          // via rolesAtSeat.
+          roleAssignments: { '0': ['chief'], '1': ['science'] },
+        },
+        ctx: {
+          phase: 'othersPhase',
+          currentPlayer: '1',
+          activePlayers: { '1': 'scienceTurn' },
+        },
+        _stateID: 0,
+      },
+      metadata: {
+        players: { '0': { id: 0 }, '1': { id: 1, isBot: true } },
+      },
+    });
+    const driver = makeBotDriver({
+      server: {
+        db: {
+          listMatches: () => ['m1'],
+          fetch: fetched,
+        } as unknown as Parameters<typeof makeBotDriver>[0]['server']['db'],
+      },
+      pickIndex,
+    });
+    await driver.__tickNow();
+    expect(playSpy).toHaveBeenCalled();
+    // pickIndex must NOT fire — the smart bot's move pre-empts the
+    // enumerate-random fallback.
+    expect(pickIndex).not.toHaveBeenCalled();
+    playSpy.mockRestore();
+  });
+
+  it("smart-bot dispatch: falls back to enumerate when the smart bot returns null", async () => {
+    const playSpy = vi.spyOn(scienceBot, 'play').mockReturnValue(null);
+    const pickIndex = vi.fn().mockReturnValue(0);
+
+    const fetched = vi.fn().mockResolvedValue({
+      state: {
+        G: { roleAssignments: { '0': ['chief'], '1': ['science'] } },
+        ctx: {
+          phase: 'othersPhase',
+          currentPlayer: '1',
+          activePlayers: { '1': 'scienceTurn' },
+        },
+        _stateID: 0,
+      },
+      metadata: {
+        players: { '0': { id: 0 }, '1': { id: 1, isBot: true } },
+      },
+    });
+    const driver = makeBotDriver({
+      server: {
+        db: {
+          listMatches: () => ['m1'],
+          fetch: fetched,
+        } as unknown as Parameters<typeof makeBotDriver>[0]['server']['db'],
+      },
+      pickIndex,
+    });
+    await driver.__tickNow();
+    expect(playSpy).toHaveBeenCalled();
+    // Smart bot returned null → enumerate-random fallback fires →
+    // pickIndex was consulted on the candidate list.
+    expect(pickIndex).toHaveBeenCalled();
+    playSpy.mockRestore();
   });
 
   it("solo mode: no-op when soloMode flag is absent", async () => {

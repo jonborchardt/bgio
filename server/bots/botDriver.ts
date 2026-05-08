@@ -33,15 +33,45 @@
 
 import { randomInt } from 'node:crypto';
 import { Master } from 'boardgame.io/master';
+import type { Ctx } from 'boardgame.io';
 import { Settlement } from '../../src/game/index.ts';
-import { assignRoles, seatOfRole } from '../../src/game/roles.ts';
-import type { Role } from '../../src/game/types.ts';
+import {
+  assignRoles,
+  rolesAtSeat,
+  seatOfRole,
+} from '../../src/game/roles.ts';
+import type { Role, SettlementState } from '../../src/game/types.ts';
+import { chiefBot } from '../../src/game/ai/chiefBot.ts';
+import { scienceBot } from '../../src/game/ai/scienceBot.ts';
+import { domesticBot } from '../../src/game/ai/domesticBot.ts';
+import { defenseBot } from '../../src/game/ai/defenseBot.ts';
+import type { MoveCandidate } from '../../src/game/ai/enumerate.ts';
 import { botCredentialsFor } from '../auth/authenticateCredentials.ts';
 import {
   grantBotControl,
   revokeBotControl,
   type BgioServerLike as TakeoverBgioServerLike,
 } from '../idle/seatTakeover.ts';
+
+/** Per-role smart bots. Each `play()` returns at most one MoveCandidate
+ * for the seat-on-stage state, or null when the bot has nothing it
+ * wants to do. The composed dispatch below tries every role at the
+ * seat in turn (1p / 2p variants stack roles per seat). */
+const ROLE_BOTS: Record<
+  Role,
+  {
+    play: (state: {
+      G: SettlementState;
+      ctx: Ctx;
+      playerID: string;
+    }) => MoveCandidate | null;
+  }
+> = {
+  chief: chiefBot,
+  science: scienceBot,
+  domestic: domesticBot,
+  defense: defenseBot,
+};
 
 /** The credentialed-MAKE_MOVE action shape bgio's Master expects.
  *  Mirrors the exported `CredentialedActionShape.MakeMove` type but
@@ -125,6 +155,42 @@ export interface MakeBotDriverOptions {
 
 const isObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null;
+
+/** Ask the smart per-role bots whether they want to play a move at this
+ * seat-state. Returns the first non-null MoveCandidate from any role
+ * the seat owns (1p / 2p variants stack multiple roles per seat).
+ *
+ * The smart bots encode production-sensible heuristics — "burn at most
+ * once per round, prefer cheap buys" for science; "distribute toward
+ * highest demand, end phase when bank is dry" for chief; etc. They're
+ * what makes a bot match playable; the enumerate-random fallback below
+ * is only there to avoid a stuck seat if the smart bot returns null
+ * unexpectedly. */
+const pickSmartBotMove = (
+  G: SettlementState,
+  ctx: Ctx,
+  playerID: string,
+): MoveCandidate | null => {
+  let roles: readonly Role[];
+  try {
+    roles = rolesAtSeat(G.roleAssignments, playerID);
+  } catch {
+    return null;
+  }
+  for (const role of roles) {
+    const bot = ROLE_BOTS[role];
+    if (!bot) continue;
+    try {
+      const action = bot.play({ G, ctx, playerID });
+      if (action !== null) return action;
+    } catch {
+      // A throwing per-role bot must not stall the driver. Fall through
+      // to the next role; if all fail, the enumerate-random fallback
+      // still produces a candidate.
+    }
+  }
+  return null;
+};
 
 const seatsActive = (state: BgioState): string[] => {
   const ap = state.ctx.activePlayers;
@@ -253,17 +319,27 @@ export const makeBotDriver = ({
           for (const playerID of seats) {
             if (metadata.players[playerID]?.isBot !== true) continue;
 
+            // Smart-bot path: ask the per-role heuristic bot for this
+            // seat first. If it returns null (no preferred move at this
+            // state), fall back to enumerate's random pick. Without
+            // this, the driver picks uniformly across enumerate's
+            // candidate list — for a science seat with N face-up
+            // library cards that's N burn candidates vs ~1 seatDone,
+            // so the bot burns the whole row before randomly picking
+            // seatDone.
             const enumerate = Settlement.ai?.enumerate;
             if (typeof enumerate !== 'function') break;
 
-            const candidates = enumerate(
-              state.G as Parameters<typeof enumerate>[0],
-              state.ctx as Parameters<typeof enumerate>[1],
-              playerID,
-            );
-            if (!Array.isArray(candidates) || candidates.length === 0) break;
-
-            const raw = candidates[pickIndex(candidates.length)];
+            const G = state.G as SettlementState;
+            const ctx = state.ctx as unknown as Ctx;
+            let raw: unknown = pickSmartBotMove(G, ctx, playerID);
+            if (raw === null) {
+              const candidates = enumerate(G, ctx, playerID);
+              if (!Array.isArray(candidates) || candidates.length === 0) {
+                break;
+              }
+              raw = candidates[pickIndex(candidates.length)];
+            }
             // bgio's enumerate union covers move / event / pre-built actions.
             // We only handle the `{ move, args? }` shape — everything else
             // falls through to the next tick.
