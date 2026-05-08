@@ -8,7 +8,12 @@
 //      grid that includes the proposed placement. Pick the cell with
 //      the maximum total adjacency bonus (sum of all resource amounts);
 //      ties broken by topmost-leftmost cell coordinate.
-//   2. Else: return null.
+//   2. Else: emit `domesticSeatDone` so the round advances. Returning
+//      null in-stage would hand the seat to the bot driver's
+//      enumerate-random fallback, which fans out hand × placement-cell
+//      candidates that are guaranteed INVALID_MOVE — the bot would
+//      burn ticks bouncing off them before rng eventually picks
+//      seatDone. Out-of-stage / wrong-role calls still return null.
 //
 // The bot deliberately ignores upgrades for V1.
 
@@ -132,19 +137,26 @@ const bestCellFor = (
   return best;
 };
 
+const seatDone = (): BotAction => ({ move: 'domesticSeatDone', args: [] });
+
 const play = (state: BotState): BotAction | null => {
   const { G, ctx, playerID } = state;
 
+  // Out-of-stage / wrong-role: return null so callers know we're idle.
   if (ctx.activePlayers?.[playerID] !== 'domesticTurn') return null;
   if (!rolesAtSeat(G.roleAssignments, playerID).includes('domestic')) {
     return null;
   }
 
+  // Defensive corruption-style guards: if domestic state is missing
+  // (shouldn't happen in production but a test harness might construct
+  // a partial state), declare the turn done rather than dropping out
+  // and letting the bot driver's enumerate fallback spam invalid-move
+  // candidates.
   const domestic = G.domestic;
-  if (domestic === undefined) return null;
-
+  if (domestic === undefined) return seatDone();
   const stash = G.mats?.[playerID]?.stash;
-  if (stash === undefined) return null;
+  if (stash === undefined) return seatDone();
 
   // Sort hand by gold cost ascending; tie-break by name for determinism.
   // Defensive filter: redacted views can leave null entries in hands
@@ -169,7 +181,10 @@ const play = (state: BotState): BotAction | null => {
     }
   }
 
-  return null;
+  // Nothing affordable. Declare the turn done — without this, the bot
+  // driver's enumerate fallback picks uniformly across hand × placement
+  // candidates and burns ticks on guaranteed-INVALID buys.
+  return seatDone();
 };
 
 export const domesticBot: { play: (state: BotState) => BotAction | null } = {

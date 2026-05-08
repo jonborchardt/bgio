@@ -73,7 +73,11 @@ describe('scienceBot.play', () => {
     expect(burned!.tier).toBe(maxTier);
   });
 
-  it('returns null after the burn latch is already set', () => {
+  it('emits scienceSeatDone after the burn latch is already set', () => {
+    // Plan: don't return null in-stage. The bot driver's enumerate
+    // fallback fans out N burn candidates per face-up slot; with N=6
+    // and ~1 seatDone the random pick keeps burning. The smart bot
+    // declares the turn done instead so the round advances.
     const G = setupG(4);
     const seat = seatOfRole(G.roleAssignments, 'science');
     if (G.mats[seat]) {
@@ -81,13 +85,13 @@ describe('scienceBot.play', () => {
     }
     for (const r of RESOURCES) G.bank[r] = 0;
     if (G.science !== undefined) G.science.scienceBurnedThisRound = true;
-    expect(
-      scienceBot.play({
-        G,
-        ctx: ctxFor('othersPhase', { [seat]: 'scienceTurn' }, 4),
-        playerID: seat,
-      }),
-    ).toBeNull();
+    const action = scienceBot.play({
+      G,
+      ctx: ctxFor('othersPhase', { [seat]: 'scienceTurn' }, 4),
+      playerID: seat,
+    });
+    expect(action).not.toBeNull();
+    expect(action?.move).toBe('scienceSeatDone');
   });
 
   it('picks the cheapest affordable buy when multiple options exist', () => {
