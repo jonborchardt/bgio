@@ -9,6 +9,7 @@ import {
   networkedClientFactory,
 } from './clientMode.ts';
 import { LobbyShell } from './lobby/LobbyShell.tsx';
+import { lobby } from './lobby/lobbyClient.ts';
 import {
   clearCreds,
   loadCreds,
@@ -124,23 +125,78 @@ const NetworkedShell = () => {
   });
 
   // 10.6 server-down spinner. V1 is intentionally minimal: when we have
-  // creds but haven't mounted yet we just show "Connecting…". The plan
-  // calls for a retry-with-backoff loop at intervals of 1s, 2s, 5s, 15s,
-  // 30s, 60s with a manual "retry now" button — implementing that lives
-  // alongside the real probe endpoint, which we haven't wired yet
-  // (Settlement's GET /games/:name/:matchID is the bgio default; bolting
-  // in fetch + AbortController + retry timers belongs in a follow-up).
-  // The it.todo at the bottom of credentials.test.ts pins the work.
+  // creds but haven't mounted yet we just show "Connecting…". The full
+  // retry-with-backoff loop lands in plan 02 (connection-recovery) under
+  // plans/networked-finish/.
   const [connecting] = useState(false);
+
+  // Stale-creds probe (plan 01). When we restore from localStorage at
+  // mount, the persisted (matchID, playerID, credentials) triple may
+  // refer to a match the server no longer knows about — Render's free
+  // tier wipes the in-memory store on every cold start, and a leaked
+  // session token is invisible to the user. Hit `getMatch` once before
+  // mounting bgio's Client; if the server doesn't recognize the match
+  // (or our seat isn't there), drop the persisted creds and bounce to
+  // the lobby instead of stalling forever on bgio's "connecting…"
+  // loading state. New joins (onSelect → setMatch) skip the probe — we
+  // just got the match from the join REST so it definitely exists.
+  type ProbeStatus = 'idle' | 'probing' | 'done';
+  const [probeStatus, setProbeStatus] = useState<ProbeStatus>(() =>
+    // Only probe on initial mount with restored creds; query-string
+    // overrides (developer flow) and fresh joins skip the round trip.
+    loadCreds() !== null ? 'probing' : 'done',
+  );
+
+  useEffect(() => {
+    if (probeStatus !== 'probing') return;
+    if (!match) {
+      setProbeStatus('done');
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const result = await lobby.getMatch('settlement', match.matchID);
+        if (cancelled) return;
+        if (!result || !Array.isArray(result.players)) {
+          throw new Error('match has no players');
+        }
+        // Spectators (playerID === null) only need the match to exist.
+        if (match.playerID !== null) {
+          const seat = result.players.find(
+            (p) => String(p.id) === match.playerID,
+          );
+          // The seat must still carry our name. After a server cold
+          // start, the player slot is recycled to `{ id: N }` with no
+          // name and no credentials — that's our "session is dead"
+          // signal. (Credentials are stripped from the public listing
+          // so we can't compare them directly.)
+          if (!seat || typeof seat.name !== 'string' || seat.name === '') {
+            throw new Error('seat is empty');
+          }
+        }
+        setProbeStatus('done');
+      } catch {
+        if (cancelled) return;
+        clearCreds();
+        setMatch(null);
+        setProbeStatus('done');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [probeStatus, match]);
 
   const NetworkedApp = useMemo<ComponentType | null>(() => {
     if (!match) return null;
+    if (probeStatus === 'probing') return null;
     return networkedClientFactory(
       match.matchID,
       match.playerID,
       match.credentials,
     );
-  }, [match]);
+  }, [match, probeStatus]);
 
   // When the lobby reports a successful join, persist + switch.
   // Spectator joins (10.8) come in with playerID === null and
@@ -171,6 +227,19 @@ const NetworkedShell = () => {
       clearCreds();
     }
   }, [match]);
+
+  if (probeStatus === 'probing') {
+    // The brief window between mount-with-restored-creds and the
+    // probe's outcome. Without this, the bgio Client mounts before
+    // the probe finishes and a dead session shows the
+    // "connecting…" hang for the full retry window.
+    return (
+      <Stack spacing={1} sx={{ alignItems: 'center', p: 2 }}>
+        <CircularProgress size={20} />
+        <Typography variant="body2">Resuming session…</Typography>
+      </Stack>
+    );
+  }
 
   if (NetworkedApp) {
     if (connecting) {
