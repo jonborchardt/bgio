@@ -28,6 +28,7 @@ import {
 } from '@mui/material';
 import { lobby } from './lobbyClient.ts';
 import type { SettlementSetupData } from './lobbyClient.ts';
+import { fillBots } from './fillBotsClient.ts';
 import { SeatPicker } from './SeatPicker.tsx';
 import { AuthForms } from './AuthForms.tsx';
 import { CreateMatchForm, type CreateMatchConfig } from './CreateMatchForm.tsx';
@@ -183,6 +184,23 @@ export function LobbyShell({
     [onSelect],
   );
 
+  // Plan 04 — fill empty seats with bots. Only the match owner (seat 0
+  // holder, gated by the server) sees this button; the route returns
+  // 403 to anyone else.
+  const onFillBots = useCallback(
+    async (matchID: string) => {
+      if (!auth) return;
+      setError(null);
+      try {
+        await fillBots(matchID, auth.token);
+        await refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    },
+    [auth, refresh],
+  );
+
   // Auth gate (10.7): until a token is in `auth`, render the login UI.
   // Placed AFTER hooks so the hook order stays stable across renders
   // (rules-of-hooks).
@@ -276,6 +294,10 @@ export function LobbyShell({
               const filled = m.players.filter((p) => p.name).length;
               const total = m.players.length;
               const isSelected = selected === m.matchID;
+              const ownsSeat0 =
+                m.players[0]?.name !== undefined &&
+                m.players[0]?.name === auth.user.username;
+              const hasEmpty = filled < total;
               return (
                 <Stack
                   key={m.matchID}
@@ -295,6 +317,15 @@ export function LobbyShell({
                     <Box component="span">{m.matchID}</Box>
                     <Box component="span">{`${filled}/${total} joined`}</Box>
                   </Button>
+                  {ownsSeat0 && hasEmpty ? (
+                    <Button
+                      variant="outlined"
+                      onClick={() => onFillBots(m.matchID)}
+                      aria-label={`Fill empty seats with bots in match ${m.matchID}`}
+                    >
+                      Fill bots
+                    </Button>
+                  ) : null}
                   <Button
                     variant="outlined"
                     onClick={() => onWatch(m.matchID)}

@@ -16,6 +16,7 @@ import { Settlement } from '../src/game/index.ts';
 import { makeStorage, type StorageKind } from './storage/index.ts';
 import { makeIdleWatcher, type IdleWatcher } from './idle/idleWatcher.ts';
 import { mountAuthRoutes } from './auth/routes.ts';
+import { mountFillBotsRoute } from './lobby/fillBots.ts';
 import { setAccountsStore } from './auth/accounts.ts';
 import { createSqliteAccountsStore } from './auth/sqliteAccountsStore.ts';
 import { authenticateCredentials } from './auth/authenticateCredentials.ts';
@@ -187,6 +188,13 @@ export const createServer = (opts: CreateServerOptions = {}): CreatedServer => {
     .app;
   if (koa && typeof koa.use === 'function') {
     mountAuthRoutes(koa as Parameters<typeof mountAuthRoutes>[0]);
+    // Plan 04 — POST /lobby/match/:matchID/fillBots. Lets a match's
+    // owner flip every still-empty seat to a bot before the rest of
+    // the seats are filled by humans.
+    mountFillBotsRoute(
+      koa as Parameters<typeof mountFillBotsRoute>[0],
+      server as unknown as Parameters<typeof mountFillBotsRoute>[1],
+    );
   }
 
   const start = async (port?: number): Promise<number> => {
