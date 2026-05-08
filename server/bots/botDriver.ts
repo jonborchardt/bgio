@@ -34,7 +34,13 @@
 import { randomInt } from 'node:crypto';
 import { Master } from 'boardgame.io/master';
 import { Settlement } from '../../src/game/index.ts';
+import { assignRoles, seatOfRole } from '../../src/game/roles.ts';
+import type { Role } from '../../src/game/types.ts';
 import { botCredentialsFor } from '../auth/authenticateCredentials.ts';
+import {
+  grantBotControl,
+  type BgioServerLike as TakeoverBgioServerLike,
+} from '../idle/seatTakeover.ts';
 
 /** The credentialed-MAKE_MOVE action shape bgio's Master expects.
  *  Mirrors the exported `CredentialedActionShape.MakeMove` type but
@@ -141,6 +147,58 @@ const makeTransportAPI = (matchID: string, pubSub: PubSubLike | undefined) => ({
   },
 });
 
+/** Solo-mode wiring (issue: solo matches hung silently because nothing
+ * marked the non-human seats as bots).
+ *
+ * The lobby's CreateMatchForm posts `setupData: { soloMode, humanRole }`
+ * which `src/game/setup.ts` copies into `state.G._setup`. This helper
+ * reads that flag and, for every non-human seat in the canonical role
+ * assignment, calls `grantBotControl` so the dispatch loop below picks
+ * the seat up. `grantBotControl` is idempotent (early-returns when the
+ * seat is already flagged) so re-running this every tick is cheap.
+ *
+ * Why here and not at match-create time: bgio's `Server` doesn't expose
+ * a hook on the create-match REST endpoint that lets us mutate metadata
+ * post-create. Doing it from the bot driver's poll uses infrastructure
+ * we already have (db.fetch + grantBotControl) and self-heals if the
+ * metadata is ever stomped — the next tick re-flags the seats. */
+const markSoloBotSeats = async (
+  server: BgioServerLike,
+  matchID: string,
+  state: BgioState,
+  metadata: BgioMatchMetadata,
+): Promise<void> => {
+  const setup = (state.G as { _setup?: { soloMode?: boolean; humanRole?: Role } })
+    ._setup;
+  if (setup?.soloMode !== true) return;
+  if (setup.humanRole === undefined) return;
+  if (!metadata.players) return;
+  const numPlayers = Object.keys(metadata.players).length;
+  if (numPlayers < 1 || numPlayers > 4) return;
+  const assignments = assignRoles(numPlayers as 1 | 2 | 3 | 4);
+  const humanSeat = seatOfRole(assignments, setup.humanRole);
+  for (const seat of Object.keys(assignments)) {
+    if (seat === humanSeat) continue;
+    if (metadata.players[seat]?.isBot === true) continue;
+    await grantBotControl(
+      // The two BgioServerLike interfaces describe non-overlapping
+      // slices of the same runtime object (botDriver wants `db.fetch`
+      // + `db.listMatches`; seatTakeover wants `db.fetch` +
+      // `db.setMetadata`). The actual server has all four; the cast
+      // bridges the two narrow views.
+      server as unknown as TakeoverBgioServerLike,
+      matchID,
+      seat,
+    );
+    // Also update the local copy so the dispatch loop below sees the
+    // fresh flag without a second fetch in this tick.
+    metadata.players[seat] = {
+      ...(metadata.players[seat] ?? {}),
+      isBot: true,
+    };
+  }
+};
+
 export const makeBotDriver = ({
   server,
   intervalMs = DEFAULT_TICK_MS,
@@ -169,6 +227,10 @@ export const makeBotDriver = ({
           const metadata = fetched.metadata;
           if (!state || !metadata?.players) continue;
           if (state.ctx.gameover !== undefined) continue;
+
+          // Solo-mode wiring: lazily mark non-human seats as bots so
+          // the dispatch loop below can drive them. Idempotent.
+          await markSoloBotSeats(server, matchID, state, metadata);
 
           const seats = seatsActive(state);
           for (const playerID of seats) {
