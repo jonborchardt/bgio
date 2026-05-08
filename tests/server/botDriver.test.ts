@@ -97,4 +97,103 @@ describe('makeBotDriver', () => {
     // pickIndex should never be called because gameover bails first.
     expect(pickIndex).not.toHaveBeenCalled();
   });
+
+  it("solo mode: marks every non-human seat as a bot via setMetadata", async () => {
+    // Use a Map-backed fake storage so setMetadata writes are visible
+    // to subsequent fetches (grantBotControl re-fetches on every call).
+    const matches = new Map<
+      string,
+      {
+        state: unknown;
+        metadata: { players: Record<string, { isBot?: boolean } | undefined> };
+      }
+    >();
+    matches.set('m1', {
+      state: {
+        // 4-player solo where the human plays chief. assignRoles(4) puts
+        // chief on seat 0; seats 1–3 are non-human.
+        G: { _setup: { soloMode: true, humanRole: 'chief' } },
+        ctx: {
+          // currentPlayer 0 means the chief is "active". Bots on
+          // seats 1–3 won't dispatch this tick (none of them is the
+          // active seat) — but they MUST be flagged so the next
+          // chief→others phase boundary lets them act.
+          currentPlayer: '0',
+          activePlayers: null,
+        },
+        _stateID: 0,
+      },
+      metadata: {
+        players: {
+          '0': {},
+          '1': {},
+          '2': {},
+          '3': {},
+        },
+      },
+    });
+
+    const db = {
+      listMatches: () => Array.from(matches.keys()),
+      fetch: async (
+        matchID: string,
+        opts: { state?: boolean; metadata?: boolean },
+      ) => {
+        const m = matches.get(matchID);
+        if (!m) return {};
+        return {
+          state: opts.state ? m.state : undefined,
+          metadata: opts.metadata ? m.metadata : undefined,
+        };
+      },
+      setMetadata: async (
+        matchID: string,
+        metadata: { players: Record<string, { isBot?: boolean } | undefined> },
+      ) => {
+        const m = matches.get(matchID);
+        if (m) m.metadata = metadata;
+      },
+    };
+
+    const driver = makeBotDriver({
+      server: {
+        db: db as unknown as Parameters<typeof makeBotDriver>[0]['server']['db'],
+      },
+    });
+    await driver.__tickNow();
+
+    const players = matches.get('m1')!.metadata.players;
+    const botSeats = Object.entries(players)
+      .filter(([, p]) => p?.isBot === true)
+      .map(([s]) => s);
+    expect(botSeats.sort()).toEqual(['1', '2', '3']);
+    // The human seat must NOT be flagged.
+    expect(players['0']?.isBot).not.toBe(true);
+  });
+
+  it("solo mode: no-op when soloMode flag is absent", async () => {
+    const setMetadataCalls: unknown[] = [];
+    const fetched = vi.fn().mockResolvedValue({
+      state: {
+        G: { _setup: { soloMode: false } },
+        ctx: { currentPlayer: '0', activePlayers: null },
+        _stateID: 0,
+      },
+      metadata: { players: { '0': {}, '1': {}, '2': {}, '3': {} } },
+    });
+    const driver = makeBotDriver({
+      server: {
+        db: {
+          listMatches: () => ['m1'],
+          fetch: fetched,
+          setMetadata: async (...args: unknown[]) => {
+            setMetadataCalls.push(args);
+          },
+        } as unknown as Parameters<typeof makeBotDriver>[0]['server']['db'],
+      },
+    });
+    await driver.__tickNow();
+    // No solo flag → no metadata mutations from markSoloBotSeats.
+    expect(setMetadataCalls).toHaveLength(0);
+  });
 });
