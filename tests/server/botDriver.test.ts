@@ -171,6 +171,80 @@ describe('makeBotDriver', () => {
     expect(players['0']?.isBot).not.toBe(true);
   });
 
+  it("solo mode: revokes bot flag when a human joins a previously-bot seat", async () => {
+    // Reproduces the bug seen in production: user creates a solo match
+    // (seat 0 = human chief), bot driver flags seats 1–3 as bots. A
+    // friend joins seat 1 anyway via the lobby, setting name='jon2'.
+    // Without revoking the bot flag, the auth hook only accepts the
+    // synthetic `bot:1` credential and rejects the human's credentials,
+    // leaving the new player stuck on bgio's "connecting…" screen.
+    const matches = new Map<
+      string,
+      {
+        state: unknown;
+        metadata: {
+          players: Record<
+            string,
+            { isBot?: boolean; name?: string } | undefined
+          >;
+        };
+      }
+    >();
+    matches.set('m1', {
+      state: {
+        G: { _setup: { soloMode: true, humanRole: 'chief' } },
+        ctx: { currentPlayer: '0', activePlayers: null },
+        _stateID: 0,
+      },
+      metadata: {
+        players: {
+          '0': { name: 'jon' }, // human chief
+          '1': { name: 'jon2', isBot: true }, // human took the seat — bot flag is stale
+          '2': { isBot: true }, // still bot — nobody there
+          '3': { isBot: true },
+        },
+      },
+    });
+
+    const db = {
+      listMatches: () => Array.from(matches.keys()),
+      fetch: async (
+        matchID: string,
+        opts: { state?: boolean; metadata?: boolean },
+      ) => {
+        const m = matches.get(matchID);
+        if (!m) return {};
+        return {
+          state: opts.state ? m.state : undefined,
+          metadata: opts.metadata ? m.metadata : undefined,
+        };
+      },
+      setMetadata: async (
+        matchID: string,
+        metadata: { players: Record<string, { isBot?: boolean } | undefined> },
+      ) => {
+        const m = matches.get(matchID);
+        if (m) m.metadata = metadata;
+      },
+    };
+
+    const driver = makeBotDriver({
+      server: {
+        db: db as unknown as Parameters<typeof makeBotDriver>[0]['server']['db'],
+      },
+    });
+    await driver.__tickNow();
+
+    const players = matches.get('m1')!.metadata.players;
+    // Seat 0 is the human chief — never a bot.
+    expect(players['0']?.isBot).not.toBe(true);
+    // Seat 1 had the stale bot flag; the human joined → flag revoked.
+    expect(players['1']?.isBot).toBe(false);
+    // Seats 2 and 3 still have nobody — bot flag stays.
+    expect(players['2']?.isBot).toBe(true);
+    expect(players['3']?.isBot).toBe(true);
+  });
+
   it("solo mode: no-op when soloMode flag is absent", async () => {
     const setMetadataCalls: unknown[] = [];
     const fetched = vi.fn().mockResolvedValue({
