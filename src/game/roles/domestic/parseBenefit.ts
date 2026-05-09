@@ -36,7 +36,25 @@ export type BenefitEffect =
 // effect verbs so the lookup is explicit — content drift on either side
 // fails the unknown-token branch instead of silently routing to the wrong
 // bucket.
-const RESOURCE_VERBS = new Set(['food', 'production', 'science', 'gold']);
+//
+// The list mirrors `Resource` (resources/types.ts) for the items a
+// building can directly yield. `worker` is excluded — it's a chief-only
+// pool — and `happiness` is excluded because it routes through the
+// effects branch (it's a per-seat morale stat, not a transferable
+// resource bag entry produced by buildings). Everything else (food,
+// production, science, gold, wood, stone, steel, horse) can appear in
+// a building's `benefit` string and gets summed straight into the
+// produce bag.
+const RESOURCE_VERBS = new Set([
+  'food',
+  'production',
+  'science',
+  'gold',
+  'wood',
+  'stone',
+  'steel',
+  'horse',
+]);
 
 const splitTokens = (input: string): string[] =>
   // Lowercase first so "and"/"AND"/" And " all delimit. Splitting on a

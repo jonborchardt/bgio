@@ -46,7 +46,9 @@ describe('test helpers', () => {
       '0': ['chief', 'science'],
       '1': ['domestic', 'defense'],
     });
-    expect(G.bank.gold).toBe(3);
+    // 6 gold per `STARTING_BANK_GOLD` (early-game pacing pass — bumped
+    // from 3 so chief can land first-round 8g distribution).
+    expect(G.bank.gold).toBe(6);
     expect(G.round).toBe(0);
     expect(Object.keys(G.hands).sort()).toEqual(['0', '1']);
     // Player mats: one per non-chief seat (2-player game → seat '1' is

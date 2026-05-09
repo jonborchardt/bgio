@@ -66,9 +66,9 @@ describe('bank', () => {
   });
 
   describe('initialBank', () => {
-    it('defaults to 3 gold', () => {
-      expect(eq(initialBank(), bagOf({ gold: 3 }))).toBe(true);
-      expect(total(initialBank())).toBe(3);
+    it('defaults to 6 gold (early-game pacing pass)', () => {
+      expect(eq(initialBank(), bagOf({ gold: 6 }))).toBe(true);
+      expect(total(initialBank())).toBe(6);
     });
 
     it('override replaces the default gold value', () => {
@@ -77,7 +77,7 @@ describe('bank', () => {
       expect(total(b)).toBe(5);
     });
 
-    it('override fully replaces — does not merge with default 3 gold', () => {
+    it('override fully replaces — does not merge with the default starting gold', () => {
       const b = initialBank({ wood: 2 });
       expect(b.gold).toBe(0);
       expect(b.wood).toBe(2);
