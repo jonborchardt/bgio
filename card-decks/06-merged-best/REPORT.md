@@ -83,3 +83,80 @@ If you later want Iron-Frontier's full rename pass, that's a flavor patch over t
 - **Per-color → boss flavor mapping** (master plan open question #1) is still unresolved; this set just makes all four colors *reachable* — assigning each to a flavor of boss attack is a separate code change.
 - **`trackCards.json` is untouched.** A future Set 7 could regenerate the threat curve by formula the same way.
 - **Several civilian utility units** (Scholar, Trader, Treasurer, Potter) reference V1.5 mechanics (sci aura, gold-per-round) that aren't yet in the engine. Their placement bonuses fire today; the auras are future work.
+
+## Early-game pacing pass
+
+Set 5's formula made T1 starters ~50% more expensive than `00-initial`
+without bumping starting resources, slipping first-build from round 2
+to round 3. Combined with the structural gap that **stone** had no
+no-tech path (Mine / Quarry are T2), it meant common bad luck on a
+single track-shuffle could leave the Library red ladder gated for
+multiple rounds. This pass fixes both:
+
+### Starter prices: formula-exception below T2 base
+
+The formula stays the right curve for T2 / T3 buildings (the active
+deck still uses Set 5's base + stat-weight + maxHp-adder math for
+those). T1 **starters get a 30–50% discount** from the formula price
+as the early-game on-ramp:
+
+| Card          | Formula | Set 6 | Note                                    |
+|---------------|--------:|------:|-----------------------------------------|
+| Cellar        |     8g  |   5g  | matches `00-initial`                    |
+| Trading Post  |     9g  |   6g  | matches `00-initial`                    |
+| Granary       |    11g  |   8g  | matches `00-initial`                    |
+| Lumberyard    |    11g  |   5g  | wood is a Library primary — keep cheap  |
+| Homestead     |    11g  |   5g  | new starter (1 food + 1 wood)           |
+| Mason's Yard  |     8g  |   5g  | new starter (1 stone — closes red gate) |
+| Pen           |     8g  |   5g  | new starter (1 horse)                   |
+
+T2 and T3 building costs remain formula-derived.
+
+### New no-tech starters (3 cards)
+
+- **Homestead** — 1 food + 1 wood, 5g. Multi-resource on-ramp; the
+  intended round-2 first build.
+- **Mason's Yard** — 1 stone, 5g. Closes the structural gap that Mine /
+  Quarry Camp at T2 left for stone. Without this, defense red-T1
+  Library buys (4 stone primary cost) were gated on Mining tech
+  (free, but takes a science turn) plus a 12g T2 Mine build (~round
+  4). Now it's available round 2.
+- **Pen** — 1 horse, 5g. Horse on-ramp without waiting for Stables T2.
+  Lets defense recruit cavalry units (Mounted Scout, Light Cavalry)
+  with horse-altStat from round 2.
+
+All three at maxHp 1 — fragile is the deliberate tradeoff for cheap.
+
+### Starting bank: 3 → 6 gold
+
+`initialBank` default bumped in `src/game/resources/bank.ts`. With the
+chief stipend at +2 gold/round, round-1 distribution rises from 5g →
+8g, restoring round-2 first build for every seat (not just domestic).
+Override-per-match still works via `SettlementSetupData.startingBank`.
+
+### T1 ↔ T1 adjacency rules
+
+Five new adjacencies that fire from round 2 onward, replacing the
+"adjacency only matters by round 5+" pattern:
+
+- Granary ↔ Homestead — +1 food (both directions)
+- Lumberyard adjacent to Mason's Yard — +1 production
+- Trading Post adjacent to Homestead — +1 gold
+- Pen adjacent to Granary — +1 horse
+- (existing T2 / T3 rules preserved: Mill+Granary, Workshop+Forge,
+  Library+School, Market+Mint+Bank triangle, Forge+Barracks)
+
+### Tempo verification
+
+Sample round-by-round under conservative chief redistribution
+(distribute everything to domestic for the first three rounds):
+
+| Round | Bank in   | Distrib | Domestic stash | Action                              |
+|-------|-----------|--------:|---------------:|-------------------------------------|
+| 1     | 6 + 2 = 8 |     8   | 0 (in: 8)     | Chief flips first track card        |
+| 2     | 0 + 2 = 2 |     2   | 8 (in: 2)     | **Domestic builds Cellar (5g)**     |
+| 3     | 0 + 2 = 2 |     2   | 5 (in: 2)     | Domestic builds Trading Post (6g) ⇒ stash 7-6=1 |
+| 4     | 1g sweep + 2 = 3 | 3 | 1 + 3 = 4   | Domestic builds Mason's Yard (5g) — needs round 5 |
+
+First build round 2; domestic actively building every round
+thereafter; first stone production round 4-5.

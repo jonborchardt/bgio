@@ -116,11 +116,20 @@ export const TECHNOLOGIES: ReadonlyArray<TechnologyDef> = deepFreezeArray(
 // `'defense'` verbs (D14 / D18). The list now reflects only the verbs the
 // parser still resolves; reintroducing either token requires re-wiring
 // the resolver first, so failing fast at the type level is the win here.
+//
+// Raw-material verbs (wood / stone / steel / horse) were added so the
+// Library cost ladders (blue → wood, green → wood / stone, red → steel,
+// red → horse) have building-driven production paths and aren't
+// dependent on a single random track-boon flip per match.
 export const BENEFIT_TOKENS = [
   'food',
   'production',
   'science',
   'gold',
+  'wood',
+  'stone',
+  'steel',
+  'horse',
   'attack',
   'happiness',
 ] as const;

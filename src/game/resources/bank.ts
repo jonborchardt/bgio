@@ -36,11 +36,18 @@ export const transfer = (
   }
 };
 
-// Default starter bank per game-design.md §Setup.Chief: 3 gold.
-// `override` REPLACES the default — callers that want to merge should do so
-// themselves before calling.
+// Default starter bank: 6 gold. Bumped from the original 3 gold during
+// the early-game pacing pass — chief stipend is +2/round, so 6 starting
+// gives ~8g for the first round's distribution and lets domestic afford
+// a 5g starter (Cellar / Homestead / Mason's Yard / Pen / Lumberyard)
+// in round 2 instead of round 3. Match `SettlementSetupData.startingBank`
+// to override per-match.
+//
+// `override` REPLACES the default — callers that want to merge should do
+// so themselves before calling.
+export const STARTING_BANK_GOLD = 6;
 export const initialBank = (override?: Partial<ResourceBag>): ResourceBag => {
-  if (override === undefined) return bagOf({ gold: 3 });
+  if (override === undefined) return bagOf({ gold: STARTING_BANK_GOLD });
   return bagOf(override);
 };
 

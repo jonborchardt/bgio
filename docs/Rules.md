@@ -75,7 +75,12 @@ take different mixes; the stash is one combined pool of all of them.
 
 At game start:
 
-- The bank is seeded with **3 gold** (overridable per match).
+- The bank is seeded with **6 gold** (overridable per match;
+  `SettlementSetupData.startingBank`). The default was bumped from 3
+  during the early-game pacing pass — combined with the +2/round chief
+  stipend it gives the chief 8g for round-1 distribution, enough for
+  domestic to land its first 5g starter (Cellar / Homestead / Mason's
+  Yard / Pen / Lumberyard) in round 2.
 - The chief gets a starter pool of **3 worker tokens**.
 - **The Library** is built and seeded. The Library deck is composed of
   every tagged card from the active deck under `card-decks/<id>/`
@@ -276,10 +281,23 @@ deferred until boss content gains a `flavor` field.
 
 Production runs automatically at the start of the others phase, so there
 is no "produce" button to press. Each placed building contributes its
-parsed yield (food/production/science/gold), reduced by current damage.
-A worker token on a building **doubles** that building's yield
-contribution (after the damage proration). **Adjacency rules** add
-content-defined bonuses to specific neighbor pairs.
+parsed yield (food, production, science, gold, wood, stone, steel,
+horse), reduced by current damage. A worker token on a building
+**doubles** that building's yield contribution (after the damage
+proration). **Adjacency rules** add content-defined bonuses to specific
+neighbor pairs.
+
+The eight resources above are the verbs `parseBenefit` recognizes in a
+building's `benefit` string (see
+`src/game/roles/domestic/parseBenefit.ts` `RESOURCE_VERBS`). The
+**raw-material** group (wood, stone, steel, horse) appears in the
+Library cost ladders (blue → wood, green → wood / stone, red → stone /
+steel) and on a few unit-recruit `costBag`s (cavalry needs horse), so
+the active deck **must** contain at least one production path for each
+ladder resource — a building, a track-boon, or an event. The
+[`liveDeck.test.ts`](../tests/data/liveDeck.test.ts) linter enforces
+this at CI time so a future deck swap can't accidentally lock the
+science seat out of a color past T1.
 
 #### 5.2.3 Defense
 

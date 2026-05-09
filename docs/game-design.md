@@ -295,7 +295,7 @@ code locations and defaults.
 
 | Tunable                       | Default | Where                                                     |
 | ----------------------------- | :-----: | --------------------------------------------------------- |
-| Starting bank gold            | 3       | `src/game/resources/bank.ts` `initialBank`                |
+| Starting bank gold            | 6       | `src/game/resources/bank.ts` `STARTING_BANK_GOLD` / `initialBank` |
 | Per-round chief gold stipend  | 2       | `src/game/setup.ts` `CHIEF_STIPEND_DEFAULT`               |
 | Chief starter worker pool     | 3       | `src/game/setup.ts` (`chief: { workers: 3 }`)             |
 | Turn cap                      | 80      | `src/game/endConditions.ts` `TURN_CAP_DEFAULT`            |
@@ -308,6 +308,7 @@ code locations and defaults.
 | Building upgrade cost factor  | ×0.5    | `src/game/roles/domestic/upgrade.ts` (V1 stub)            |
 | Building maxHp range          | 1–4     | active deck's `buildings.json` per `BuildingDef.maxHp`    |
 | Active deck                   | id      | `card-decks/deck.config.json#active` (env override `VITE_DECK`) |
+| Building benefit verbs        | 8 + 2   | `src/game/roles/domestic/parseBenefit.ts` `RESOURCE_VERBS` (food / production / science / gold / wood / stone / steel / horse) + effect verbs (attack / defense / happiness) |
 
 The lobby form (`SettlementSetupData`) exposes `turnCap`,
 `chiefStipendPerRound`, `startingBank`, and `soloMode`/`humanRole`. New
